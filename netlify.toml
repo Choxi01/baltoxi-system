@@ -1,7 +1,10 @@
-# Publicación en Netlify. Netlify detecta Next.js y activa su adaptador solo.
+# Publicación en Netlify con el adaptador oficial de Next.js (fijado en package.json).
 [build]
   command = "npm run build"
   publish = ".next"
 
 [build.environment]
   NODE_VERSION = "22"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
