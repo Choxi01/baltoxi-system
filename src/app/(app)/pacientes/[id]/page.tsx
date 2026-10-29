@@ -19,7 +19,7 @@ import {
   vincularTutorExistente,
 } from "@/lib/tutores/acciones";
 import { FichaDatos, type FilaResumen } from "./ficha-datos";
-import { Pestanas } from "./pestanas";
+import { Pestanas } from "@/components/app/pestanas";
 import { TabTutores } from "./tab-tutores";
 
 export const metadata: Metadata = { title: "Paciente · Consultorio" };
@@ -28,8 +28,9 @@ export default async function PaginaPaciente({ params, searchParams }: PageProps
   const { id } = await params;
   const { pestana } = await searchParams;
 
-  const [ficha, tarifas, disponibles] = await Promise.all([obtenerPaciente(id), listarTarifas(), listarTutoresParaVincular(id)]);
+  const [ficha, disponibles] = await Promise.all([obtenerPaciente(id), listarTutoresParaVincular(id)]);
   if (!ficha) notFound();
+  const tarifas = await listarTarifas(ficha.paciente.tarifa_id);
   const { paciente, tutores } = ficha;
   const hoy = hoyEnAsuncion();
   const edad = textoEdad(paciente.fecha_nacimiento, hoy);
@@ -73,6 +74,7 @@ export default async function PaginaPaciente({ params, searchParams }: PageProps
       </div>
 
       <Pestanas
+        etiqueta="Secciones del expediente"
         inicial={typeof pestana === "string" ? pestana : "datos"}
         pestanas={[
           {
