@@ -67,6 +67,9 @@ Todas las tareas asumen que Claude Code leyó `CLAUDE.md`. Si no, empezá con "L
 > Pantalla Agenda con vistas Día, Semana y Mes que muestran bloques libres y turnos (solo lectura por
 > ahora). Día por defecto en iPhone, Semana en iPad y Mac.
 
+> _Dividida en dos PRs. **A2a hecha**: Configuración > Horario y feriados (tramos por día, duración del bloque,
+> feriados y vacaciones cargados a mano) y `bloquesDelDia` con tests. **Falta A2b**: pantalla Agenda._
+
 #### [ ] B1 Configuración de cobros
 > Configuración con pestañas: Consultorio (nombre, profesional, RUC, DV, razón social, dirección,
 > datos de pago, horas mínimas de aviso, plazo de pago, concepto de factura), Tarifas (formato
