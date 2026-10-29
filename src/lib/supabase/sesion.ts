@@ -1,14 +1,23 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-import { decidirAcceso, RUTA_INGRESAR } from "@/lib/auth/acceso";
-import { COOKIE_ULTIMO_USO, leerUltimoUso, sesionVencida } from "@/lib/auth/inactividad";
+import { decidirAcceso, RUTA_INGRESAR, sesionVerificada } from "@/lib/auth/acceso";
+import { opcionesCookie } from "@/lib/auth/cookies";
+import { COOKIE_SESION_CONFIANZA } from "@/lib/auth/dispositivo";
+import {
+  COOKIE_ULTIMO_USO,
+  LIMITE_SESION_MS,
+  leerMilisegundos,
+  momentosDeIngreso,
+  sesionVencida,
+} from "@/lib/auth/inactividad";
 import { supabaseAnonKey, supabaseUrl } from "./env";
 import type { Database } from "./types";
 
 // Corre en cada pedido (lo llama src/proxy.ts):
 // 1. renueva la sesión de Supabase,
-// 2. cierra la sesión si pasaron 12 h sin uso,
+// 2. cierra la sesión tras 24 h sin uso o a los 30 días (ver
+//    src/lib/auth/inactividad.ts),
 // 3. manda al login o al código según la ruta (ver src/lib/auth/acceso.ts).
 export async function actualizarSesion(request: NextRequest) {
   let respuesta = NextResponse.next({ request });
@@ -41,30 +50,34 @@ export async function actualizarSesion(request: NextRequest) {
   const ruta = request.nextUrl.pathname;
   const ahora = Date.now();
 
-  if (claims) {
-    const ultimoUso = leerUltimoUso(request.cookies.get(COOKIE_ULTIMO_USO)?.value);
-    if (sesionVencida(ultimoUso, ahora)) {
-      await supabase.auth.signOut();
-      const destino = redirigir(request, respuesta, RUTA_INGRESAR);
-      destino.cookies.delete(COOKIE_ULTIMO_USO);
-      return destino;
-    }
+  if (
+    claims &&
+    sesionVencida({
+      ahora,
+      ultimoUso: leerMilisegundos(request.cookies.get(COOKIE_ULTIMO_USO)?.value),
+      contrasenaEn: momentosDeIngreso(claims.amr).contrasenaEn,
+    })
+  ) {
+    // La llave del dispositivo (si hay) se queda: vuelve a pedir solo la contraseña.
+    await supabase.auth.signOut();
+    const destino = redirigir(request, respuesta, RUTA_INGRESAR);
+    destino.cookies.delete(COOKIE_ULTIMO_USO);
+    destino.cookies.delete(COOKIE_SESION_CONFIANZA);
+    return destino;
   }
 
-  const decision = decidirAcceso(ruta, {
-    logueado: Boolean(claims),
-    nivel: claims?.aal ?? null,
-  });
+  const decision = decidirAcceso(
+    ruta,
+    {
+      logueado: Boolean(claims),
+      verificada: sesionVerificada(claims, request.cookies.get(COOKIE_SESION_CONFIANZA)?.value),
+    },
+    request.method === "GET" || request.method === "HEAD",
+  );
   const final = decision.tipo === "redirigir" ? redirigir(request, respuesta, decision.a) : respuesta;
 
   if (claims) {
-    final.cookies.set(COOKIE_ULTIMO_USO, String(ahora), {
-      httpOnly: true,
-      sameSite: "lax",
-      secure: request.nextUrl.protocol === "https:",
-      path: "/",
-      maxAge: 60 * 60 * 24 * 30,
-    });
+    final.cookies.set(COOKIE_ULTIMO_USO, String(ahora), opcionesCookie(LIMITE_SESION_MS / 1000));
   }
   return final;
 }

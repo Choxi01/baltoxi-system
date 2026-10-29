@@ -1,6 +1,6 @@
 # Supabase: variables, migraciones y tipos
 
-Proyectos: `pruebas` (ref `onwdydztprleaijfnycr`, ya tiene las migraciones 0001 a 0005).
+Proyectos: `pruebas` (ref `onwdydztprleaijfnycr`, ya tiene las migraciones 0001 a 0006).
 `produccion` se crea en la semana 8 (región São Paulo, `sa-east-1`, plan Pro).
 
 ## 1. Variables en tu compu (`.env.local`)
@@ -55,8 +55,22 @@ Configuración en Supabase > Authentication (en cada proyecto):
 4. **URL Configuration**: Site URL = la dirección de Netlify.
 
 Cómo funciona:
-- `/ingresar` (email + contraseña) → `/codigo` (la primera vez, activar el Autenticador;
-  después, pedir siempre el código) → si no tiene consultorio, `/nuevo-consultorio` → `/hoy`.
+- `/ingresar` (email + contraseña) → `/codigo` (la primera vez, activar el Autenticador; en un
+  navegador nuevo o cada 30 días, pedir el código) → si no tiene consultorio, `/nuevo-consultorio` → `/hoy`.
 - Las reglas de qué ruta pide qué están en `src/lib/auth/acceso.ts` (con tests).
-- La base también exige el código (migración 0005): con solo la contraseña no se ve ningún dato.
-- La sesión se cierra tras 12 h sin uso (cookie `ultimo_uso`, ver `src/lib/auth/inactividad.ts`).
+- El login es un formulario normal que se envía a `/ingresar/enviar` (no por JavaScript), así
+  Safari y el llavero de iCloud ofrecen guardar la contraseña.
+- La base también se protege (migraciones 0005 y 0006): con solo la contraseña, desde un navegador
+  que no es de confianza, no se ve ningún dato.
+- **Dispositivo de confianza** (`src/lib/auth/dispositivo.ts`, migración 0006): al poner el código,
+  el navegador recibe una llave (cookie httpOnly `dispositivo`) por 30 días; en la base queda solo
+  su huella. Al ingresar con contraseña desde ese navegador, el servidor marca la sesión como de
+  confianza (`sesiones_confianza`) y entra sin código. La base muestra datos solo si la sesión tiene
+  el código o está marcada (`sesion_verificada()`).
+- Cuándo pide qué:
+
+  | Situación | Pide |
+  |---|---|
+  | Mismo navegador, usado hace menos de 24 h | Nada |
+  | Mismo navegador, después de Salir o de 24 h sin uso | Email + contraseña |
+  | Navegador nuevo, o pasaron 30 días desde el último código | Email + contraseña + código |

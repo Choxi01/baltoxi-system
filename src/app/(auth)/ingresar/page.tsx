@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 
 import { FormularioIngreso } from "./formulario";
 
@@ -11,7 +12,10 @@ export default function PaginaIngresar() {
         <h1 className="text-2xl font-semibold tracking-tight">Ingresar</h1>
         <p className="text-sm text-muted-foreground">Con tu email y contraseña.</p>
       </div>
-      <FormularioIngreso />
+      {/* Suspense: el formulario lee ?error= de la URL. */}
+      <Suspense>
+        <FormularioIngreso />
+      </Suspense>
     </div>
   );
 }

@@ -1,44 +1,36 @@
 "use client";
 
-import { useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { RUTA_CODIGO } from "@/lib/auth/acceso";
-import { crearClienteNavegador } from "@/lib/supabase/navegador";
+import { mensajeErrorIngreso } from "@/lib/auth/ingreso";
 
+// Formulario "de verdad" (method="post"): el navegador lo envía y cambia de
+// página, así Safari reconoce el login y ofrece guardar la contraseña.
 export function FormularioIngreso() {
-  const [error, setError] = useState<string | null>(null);
+  const error = mensajeErrorIngreso(useSearchParams().get("error"));
   const [enviando, setEnviando] = useState(false);
 
-  async function ingresar(evento: React.FormEvent<HTMLFormElement>) {
-    evento.preventDefault();
-    const datos = new FormData(evento.currentTarget);
-    setEnviando(true);
-    setError(null);
-
-    const { error } = await crearClienteNavegador().auth.signInWithPassword({
-      email: String(datos.get("email") ?? "").trim(),
-      password: String(datos.get("contrasena") ?? ""),
-    });
-
-    if (error) {
-      setEnviando(false);
-      setError(
-        error.code === "invalid_credentials"
-          ? "El email o la contraseña no son correctos."
-          : "No se pudo ingresar. Revisá tu conexión y probá de nuevo.",
-      );
-      return;
-    }
-    // Recarga completa (no navegación interna): así el servidor ve la sesión
-    // nueva y no queda nada guardado en memoria de una sesión anterior.
-    window.location.replace(RUTA_CODIGO);
-  }
+  // Si vuelve con el botón "atrás", Safari restaura la página tal cual:
+  // destrabamos el botón.
+  useEffect(() => {
+    const alVolver = (evento: PageTransitionEvent) => {
+      if (evento.persisted) setEnviando(false);
+    };
+    window.addEventListener("pageshow", alVolver);
+    return () => window.removeEventListener("pageshow", alVolver);
+  }, []);
 
   return (
-    <form onSubmit={ingresar} className="flex flex-col gap-4">
+    <form
+      method="post"
+      action="/ingresar/enviar"
+      onSubmit={() => setEnviando(true)}
+      className="flex flex-col gap-4"
+    >
       <div className="flex flex-col gap-2">
         <Label htmlFor="email">Email</Label>
         <Input id="email" name="email" type="email" autoComplete="username" inputMode="email" required />
@@ -47,7 +39,7 @@ export function FormularioIngreso() {
         <Label htmlFor="contrasena">Contraseña</Label>
         <Input id="contrasena" name="contrasena" type="password" autoComplete="current-password" required />
       </div>
-      {error && (
+      {error && !enviando && (
         <p role="alert" className="text-sm text-destructive">
           {error}
         </p>

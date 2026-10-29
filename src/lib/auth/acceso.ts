@@ -23,19 +23,39 @@ export function requisitoDeRuta(ruta: string): Requisito {
 export type EstadoSesion = {
   /** Hay usuario logueado (al menos con contraseña). */
   logueado: boolean;
-  /** Nivel de la sesión según Supabase: "aal1" = solo contraseña, "aal2" = con código. */
-  nivel: string | null;
+  /** Puso el código, o entró desde un dispositivo de confianza (ver sesionVerificada). */
+  verificada: boolean;
 };
+
+/**
+ * La sesión cuenta como completa si tiene el código ("aal2") o si el servidor
+ * la marcó de confianza al entrar (cookie con el id de esa misma sesión).
+ * Es solo para la navegación: la base hace la misma verificación por su cuenta.
+ */
+export function sesionVerificada(
+  claims: { aal?: string; session_id?: string } | null | undefined,
+  marcaConfianza: string | undefined,
+): boolean {
+  if (!claims) return false;
+  if (claims.aal === "aal2") return true;
+  return Boolean(marcaConfianza && claims.session_id && marcaConfianza === claims.session_id);
+}
 
 /** Qué hacer con un pedido: dejarlo pasar o mandarlo a otra ruta. */
 export type Decision = { tipo: "seguir" } | { tipo: "redirigir"; a: string };
 
-export function decidirAcceso(ruta: string, sesion: EstadoSesion): Decision {
+/**
+ * `esNavegacion`: el navegador está abriendo una página (GET). Los envíos
+ * (POST: el formulario de login, las acciones del servidor) nunca se desvían
+ * por comodidad; si no, se pierden. Ej.: "recordar este navegador" se llama
+ * desde /codigo justo después de poner el código.
+ */
+export function decidirAcceso(ruta: string, sesion: EstadoSesion, esNavegacion = true): Decision {
   const requisito = requisitoDeRuta(ruta);
-  const completo = sesion.logueado && sesion.nivel === "aal2";
+  const completo = sesion.logueado && sesion.verificada;
 
   // Ya entró del todo: el login y el código no tienen sentido.
-  if (completo && (empiezaCon(ruta, RUTA_INGRESAR) || requisito === "sesion")) {
+  if (esNavegacion && completo && (empiezaCon(ruta, RUTA_INGRESAR) || requisito === "sesion")) {
     return { tipo: "redirigir", a: RUTA_INICIO };
   }
   if (requisito === "publico") return { tipo: "seguir" };

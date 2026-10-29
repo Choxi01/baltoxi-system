@@ -1,20 +1,23 @@
 import "server-only";
 
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { crearClienteServidor } from "@/lib/supabase/servidor";
-import { RUTA_CODIGO, RUTA_INGRESAR } from "./acceso";
+import { RUTA_CODIGO, RUTA_INGRESAR, sesionVerificada } from "./acceso";
+import { COOKIE_SESION_CONFIANZA } from "./dispositivo";
 
 // Verificaciones de sesión del lado del servidor. El proxy ya redirige, pero
 // cada página y acción vuelve a verificar: nunca confiar solo en el proxy.
 
-/** Exige contraseña + código (aal2). Devuelve el usuario y el cliente. */
+/** Exige sesión completa: con código o desde un dispositivo de confianza. */
 export async function exigirSesionCompleta() {
   const supabase = await crearClienteServidor();
   const { data } = await supabase.auth.getClaims();
   const claims = data?.claims;
   if (!claims) redirect(RUTA_INGRESAR);
-  if (claims.aal !== "aal2") redirect(RUTA_CODIGO);
+  const marca = (await cookies()).get(COOKIE_SESION_CONFIANZA)?.value;
+  if (!sesionVerificada(claims, marca)) redirect(RUTA_CODIGO);
   return { userId: claims.sub, supabase };
 }
 
