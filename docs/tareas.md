@@ -23,7 +23,7 @@ Todas las tareas asumen que Claude Code leyó `CLAUDE.md`. Si no, empezá con "L
 
 ## Semana 1 — Cimientos (los dos juntos)
 
-### [ ] 0.1 Proyecto base y publicación
+### [x] 0.1 Proyecto base y publicación
 > Leé CLAUDE.md. Creá el proyecto Next.js con TypeScript estricto, Tailwind, shadcn/ui y Vitest, con la
 > estructura de carpetas de CLAUDE.md. Scripts `test`, `lint`, `typecheck`. Página de inicio simple.
 > `netlify.toml` para publicar en Netlify. Explicame paso a paso cómo conectar GitHub con Netlify.

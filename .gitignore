@@ -1,13 +1,32 @@
-node_modules/
-.next/
-out/
+# dependencias
+/node_modules
+
+# next.js / build
+/.next/
+/out/
+/build
 .netlify/
+*.tsbuildinfo
+next-env.d.ts
+
+# tests
+/coverage
+
+# variables de entorno (nunca subir claves)
 .env
-.env.local
-.env.*.local
+.env*.local
+.env.*
+!.env.example
+
+# copias de base y cifrados
 *.sql.gz
 *.gpg
 backup.sql
-.DS_Store
-coverage/
+
+# supabase
 supabase/.temp/
+
+# varios
+.DS_Store
+*.pem
+npm-debug.log*
