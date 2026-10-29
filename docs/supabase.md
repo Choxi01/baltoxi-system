@@ -58,6 +58,8 @@ Cómo funciona:
 - `/ingresar` (email + contraseña) → `/codigo` (la primera vez, activar el Autenticador;
   después, pedir siempre el código) → si no tiene consultorio, `/nuevo-consultorio` → `/hoy`.
 - Las reglas de qué ruta pide qué están en `src/lib/auth/acceso.ts` (con tests).
+- El login es un formulario normal que se envía a `/ingresar/enviar` (no por JavaScript), así
+  Safari y el llavero de iCloud ofrecen guardar la contraseña.
 - La base también exige el código (migración 0005): con solo la contraseña no se ve ningún dato.
 - Tiempos de la sesión (`src/lib/auth/inactividad.ts`, con tests):
   - **24 h sin uso** → se bloquea y pide **solo el código** (cookies `ultimo_uso` y `bloqueo_desde`).

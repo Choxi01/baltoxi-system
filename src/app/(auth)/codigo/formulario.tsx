@@ -164,6 +164,12 @@ export function FormularioCodigo() {
           required
         />
       </div>
+      {paso.tipo === "verificar" && (
+        <p className="text-xs text-muted-foreground">
+          En el iPhone, si guardaste el código en Contraseñas, tocá el campo y elegí el código
+          que te sugiere arriba del teclado.
+        </p>
+      )}
       {error && (
         <p role="alert" className="text-sm text-destructive">
           {error}
