@@ -48,6 +48,16 @@ describe("decidirAcceso", () => {
     expect(decidirAcceso("/codigo", completa)).toEqual({ tipo: "redirigir", a: "/hoy" });
   });
 
+  it("los envíos (POST) no se desvían por comodidad: si no, se pierde 'recordar este navegador'", () => {
+    expect(decidirAcceso("/codigo", completa, false)).toEqual({ tipo: "seguir" });
+    expect(decidirAcceso("/ingresar/enviar", completa, false)).toEqual({ tipo: "seguir" });
+  });
+
+  it("pero las protecciones valen también para los envíos", () => {
+    expect(decidirAcceso("/hoy", sinSesion, false)).toEqual({ tipo: "redirigir", a: "/ingresar" });
+    expect(decidirAcceso("/hoy", soloContrasena, false)).toEqual({ tipo: "redirigir", a: "/codigo" });
+  });
+
   it("la ficha pública se ve igual con o sin sesión", () => {
     expect(decidirAcceso("/ficha/abc", completa)).toEqual({ tipo: "seguir" });
   });

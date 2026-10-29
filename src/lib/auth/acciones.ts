@@ -29,8 +29,15 @@ export async function confiarEnEsteDispositivo() {
   const supabase = await crearClienteServidor();
   const { data } = await supabase.auth.getClaims();
   const claims = data?.claims;
-  if (!claims || claims.aal !== "aal2") return;
-  if (!codigoReciente(momentosDeIngreso(claims.amr).codigoEn, Date.now())) return;
+  // Los avisos van al registro del servidor (Netlify > Logs) sin datos personales.
+  if (!claims || claims.aal !== "aal2") {
+    console.warn("[dispositivo] no se recordó: la sesión no tiene el código");
+    return;
+  }
+  if (!codigoReciente(momentosDeIngreso(claims.amr).codigoEn, Date.now())) {
+    console.warn("[dispositivo] no se recordó: el código no es reciente");
+    return;
+  }
 
   const llave = await recordarDispositivo(claims.sub);
   (await cookies()).set(COOKIE_DISPOSITIVO, llave, opcionesCookie(DURACION_DISPOSITIVO_MS / 1000));

@@ -66,10 +66,14 @@ export async function actualizarSesion(request: NextRequest) {
     return destino;
   }
 
-  const decision = decidirAcceso(ruta, {
-    logueado: Boolean(claims),
-    verificada: sesionVerificada(claims, request.cookies.get(COOKIE_SESION_CONFIANZA)?.value),
-  });
+  const decision = decidirAcceso(
+    ruta,
+    {
+      logueado: Boolean(claims),
+      verificada: sesionVerificada(claims, request.cookies.get(COOKIE_SESION_CONFIANZA)?.value),
+    },
+    request.method === "GET" || request.method === "HEAD",
+  );
   const final = decision.tipo === "redirigir" ? redirigir(request, respuesta, decision.a) : respuesta;
 
   if (claims) {

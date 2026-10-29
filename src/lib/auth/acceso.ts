@@ -44,12 +44,18 @@ export function sesionVerificada(
 /** Qué hacer con un pedido: dejarlo pasar o mandarlo a otra ruta. */
 export type Decision = { tipo: "seguir" } | { tipo: "redirigir"; a: string };
 
-export function decidirAcceso(ruta: string, sesion: EstadoSesion): Decision {
+/**
+ * `esNavegacion`: el navegador está abriendo una página (GET). Los envíos
+ * (POST: el formulario de login, las acciones del servidor) nunca se desvían
+ * por comodidad; si no, se pierden. Ej.: "recordar este navegador" se llama
+ * desde /codigo justo después de poner el código.
+ */
+export function decidirAcceso(ruta: string, sesion: EstadoSesion, esNavegacion = true): Decision {
   const requisito = requisitoDeRuta(ruta);
   const completo = sesion.logueado && sesion.verificada;
 
   // Ya entró del todo: el login y el código no tienen sentido.
-  if (completo && (empiezaCon(ruta, RUTA_INGRESAR) || requisito === "sesion")) {
+  if (esNavegacion && completo && (empiezaCon(ruta, RUTA_INGRESAR) || requisito === "sesion")) {
     return { tipo: "redirigir", a: RUTA_INICIO };
   }
   if (requisito === "publico") return { tipo: "seguir" };
