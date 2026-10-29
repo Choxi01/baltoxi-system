@@ -59,4 +59,8 @@ Cómo funciona:
   después, pedir siempre el código) → si no tiene consultorio, `/nuevo-consultorio` → `/hoy`.
 - Las reglas de qué ruta pide qué están en `src/lib/auth/acceso.ts` (con tests).
 - La base también exige el código (migración 0005): con solo la contraseña no se ve ningún dato.
-- La sesión se cierra tras 12 h sin uso (cookie `ultimo_uso`, ver `src/lib/auth/inactividad.ts`).
+- Tiempos de la sesión (`src/lib/auth/inactividad.ts`, con tests):
+  - **24 h sin uso** → se bloquea y pide **solo el código** (cookies `ultimo_uso` y `bloqueo_desde`).
+    Se desbloquea solo si Supabase registra un código puesto después del bloqueo.
+  - **30 días** desde que puso la contraseña → se cierra y pide contraseña + código.
+  - **Otro dispositivo** o después de **Salir** → contraseña + código.

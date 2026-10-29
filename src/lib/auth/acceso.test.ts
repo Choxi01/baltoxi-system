@@ -48,6 +48,14 @@ describe("decidirAcceso", () => {
     expect(decidirAcceso("/codigo", completa)).toEqual({ tipo: "redirigir", a: "/hoy" });
   });
 
+  it("bloqueada por 24 h sin uso: todo va al código, sin pedir contraseña", () => {
+    const bloqueada = { ...completa, bloqueada: true };
+    expect(decidirAcceso("/hoy", bloqueada)).toEqual({ tipo: "redirigir", a: "/codigo" });
+    expect(decidirAcceso("/codigo", bloqueada)).toEqual({ tipo: "seguir" });
+    expect(decidirAcceso("/ingresar", bloqueada)).toEqual({ tipo: "redirigir", a: "/codigo" });
+    expect(decidirAcceso("/ficha/abc", bloqueada)).toEqual({ tipo: "seguir" });
+  });
+
   it("la ficha pública se ve igual con o sin sesión", () => {
     expect(decidirAcceso("/ficha/abc", completa)).toEqual({ tipo: "seguir" });
   });

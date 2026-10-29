@@ -43,6 +43,8 @@ Todas las tareas asumen que Claude Code leyó `CLAUDE.md`. Si no, empezá con "L
 > (Hoy, Agenda, Pacientes, Cobros, Más) y lateral en iPad y Mac. Todas las rutas protegidas excepto
 > `/ficha/*`. Sesión que vence tras 12 h sin uso.
 
+> _Cambiado después: 24 h sin uso pide solo el código; a los 30 días, contraseña + código (ver `docs/supabase.md`)._
+
 ### [ ] 0.4 Datos de prueba
 > Creá `supabase/seed.sql` con datos INVENTADOS: el consultorio con tarifas (290.000, 280.000, 350.000,
 > 280.000, 350.000), 12 tutores (uno con dos hijos), 15 pacientes con planes por sesión, semanal y

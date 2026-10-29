@@ -2,13 +2,20 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 import { decidirAcceso, RUTA_INGRESAR } from "@/lib/auth/acceso";
-import { COOKIE_ULTIMO_USO, leerUltimoUso, sesionVencida } from "@/lib/auth/inactividad";
+import {
+  COOKIE_BLOQUEO,
+  COOKIE_ULTIMO_USO,
+  evaluarSesion,
+  leerMilisegundos,
+  momentosDeIngreso,
+} from "@/lib/auth/inactividad";
 import { supabaseAnonKey, supabaseUrl } from "./env";
 import type { Database } from "./types";
 
 // Corre en cada pedido (lo llama src/proxy.ts):
 // 1. renueva la sesión de Supabase,
-// 2. cierra la sesión si pasaron 12 h sin uso,
+// 2. cierra la sesión a los 30 días y la bloquea (pide solo el código) tras
+//    24 h sin uso (ver src/lib/auth/inactividad.ts),
 // 3. manda al login o al código según la ruta (ver src/lib/auth/acceso.ts).
 export async function actualizarSesion(request: NextRequest) {
   let respuesta = NextResponse.next({ request });
@@ -41,30 +48,42 @@ export async function actualizarSesion(request: NextRequest) {
   const ruta = request.nextUrl.pathname;
   const ahora = Date.now();
 
+  let bloqueadaDesde: number | null = null;
   if (claims) {
-    const ultimoUso = leerUltimoUso(request.cookies.get(COOKIE_ULTIMO_USO)?.value);
-    if (sesionVencida(ultimoUso, ahora)) {
+    const evaluacion = evaluarSesion({
+      ahora,
+      ultimoUso: leerMilisegundos(request.cookies.get(COOKIE_ULTIMO_USO)?.value),
+      bloqueadaDesde: leerMilisegundos(request.cookies.get(COOKIE_BLOQUEO)?.value),
+      ...momentosDeIngreso(claims.amr),
+    });
+    if (evaluacion.accion === "cerrar") {
       await supabase.auth.signOut();
       const destino = redirigir(request, respuesta, RUTA_INGRESAR);
       destino.cookies.delete(COOKIE_ULTIMO_USO);
+      destino.cookies.delete(COOKIE_BLOQUEO);
       return destino;
     }
+    bloqueadaDesde = evaluacion.bloqueadaDesde;
   }
 
   const decision = decidirAcceso(ruta, {
     logueado: Boolean(claims),
     nivel: claims?.aal ?? null,
+    bloqueada: bloqueadaDesde !== null,
   });
   const final = decision.tipo === "redirigir" ? redirigir(request, respuesta, decision.a) : respuesta;
 
   if (claims) {
-    final.cookies.set(COOKIE_ULTIMO_USO, String(ahora), {
+    const opciones = {
       httpOnly: true,
-      sameSite: "lax",
+      sameSite: "lax" as const,
       secure: request.nextUrl.protocol === "https:",
       path: "/",
-      maxAge: 60 * 60 * 24 * 30,
-    });
+      maxAge: 60 * 60 * 24 * 31,
+    };
+    final.cookies.set(COOKIE_ULTIMO_USO, String(ahora), opciones);
+    if (bloqueadaDesde !== null) final.cookies.set(COOKIE_BLOQUEO, String(bloqueadaDesde), opciones);
+    else if (request.cookies.has(COOKIE_BLOQUEO)) final.cookies.delete(COOKIE_BLOQUEO);
   }
   return final;
 }

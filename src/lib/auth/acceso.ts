@@ -25,6 +25,8 @@ export type EstadoSesion = {
   logueado: boolean;
   /** Nivel de la sesión según Supabase: "aal1" = solo contraseña, "aal2" = con código. */
   nivel: string | null;
+  /** Pasaron 24 h sin uso: hay que volver a poner el código (ver inactividad.ts). */
+  bloqueada?: boolean;
 };
 
 /** Qué hacer con un pedido: dejarlo pasar o mandarlo a otra ruta. */
@@ -32,13 +34,19 @@ export type Decision = { tipo: "seguir" } | { tipo: "redirigir"; a: string };
 
 export function decidirAcceso(ruta: string, sesion: EstadoSesion): Decision {
   const requisito = requisitoDeRuta(ruta);
-  const completo = sesion.logueado && sesion.nivel === "aal2";
+  const completo = sesion.logueado && sesion.nivel === "aal2" && !sesion.bloqueada;
 
   // Ya entró del todo: el login y el código no tienen sentido.
   if (completo && (empiezaCon(ruta, RUTA_INGRESAR) || requisito === "sesion")) {
     return { tipo: "redirigir", a: RUTA_INICIO };
   }
-  if (requisito === "publico") return { tipo: "seguir" };
+  if (requisito === "publico") {
+    // Bloqueada: no hace falta la contraseña de nuevo, solo el código.
+    if (sesion.logueado && sesion.bloqueada && empiezaCon(ruta, RUTA_INGRESAR)) {
+      return { tipo: "redirigir", a: RUTA_CODIGO };
+    }
+    return { tipo: "seguir" };
+  }
   if (!sesion.logueado) return { tipo: "redirigir", a: RUTA_INGRESAR };
   if (requisito === "completo" && !completo) return { tipo: "redirigir", a: RUTA_CODIGO };
   return { tipo: "seguir" };

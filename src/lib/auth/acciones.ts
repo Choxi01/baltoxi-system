@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 import { crearClienteServidor } from "@/lib/supabase/servidor";
 import { RUTA_INICIO } from "./acceso";
 import { validarNombreConsultorio } from "./consultorio";
-import { COOKIE_ULTIMO_USO } from "./inactividad";
+import { COOKIE_BLOQUEO, COOKIE_ULTIMO_USO } from "./inactividad";
 import { buscarConsultorio, exigirSesionCompleta } from "./servidor";
 
 // Cierra la sesión en el servidor. Quien la llama recarga la página entera
@@ -14,7 +14,9 @@ import { buscarConsultorio, exigirSesionCompleta } from "./servidor";
 export async function salir() {
   const supabase = await crearClienteServidor();
   await supabase.auth.signOut();
-  (await cookies()).delete(COOKIE_ULTIMO_USO);
+  const almacen = await cookies();
+  almacen.delete(COOKIE_ULTIMO_USO);
+  almacen.delete(COOKIE_BLOQUEO);
 }
 
 export type EstadoFormulario = { error: string | null };
