@@ -1,18 +1,21 @@
-# Agenda y cobros para consultorios
+# Agenda, expediente y cobros para consultorios
 
-App web para consultorios de terapia: agenda con turnos fijos, asistencia, cobro según el estado
-de cada turno, cuenta corriente por familia, cierre de mes con resumen por WhatsApp y datos para facturar.
+App web de uso interno para consultorios de terapia: agenda que maneja la profesional (con botones
+para copiar horarios libres), expediente de cada paciente (datos, tutores, anamnesis, notas,
+documentos), asistencia y cobros, mensajes de WhatsApp listos para copiar, datos para facturar y
+reportes. Las familias solo tienen una ficha online para actualizar datos y firmar el reglamento.
 
 ## Primeros pasos
-1. Crear cuentas gratis: GitHub, Supabase (2 proyectos: `pruebas` y `produccion`), Netlify.
+1. Crear cuentas: GitHub, Supabase (2 proyectos: `pruebas` y `produccion`), Netlify.
+   Producción pasa a Supabase Pro (US$25/mes) antes de cargar datos reales.
 2. Crear este repo privado en GitHub, subir estos archivos e invitar al socio.
-3. En GitHub > Settings > Branches: proteger `main` (requiere Pull Request con 1 aprobación).
-4. Instalar Node.js (versión LTS) y Claude Code; clonar el repo.
+3. En GitHub > Settings > Branches: proteger `main` (Pull Request con 1 aprobación).
+4. Instalar Node.js (LTS) y Claude Code; clonar el repo.
 5. Seguir `docs/tareas.md` desde la tarea 0.1.
 
 ## Documentos
 - `CLAUDE.md` — reglas del proyecto (Claude Code lo lee solo)
+- `docs/agenda.md`, `docs/expediente.md`, `docs/reglas-cobro.md`, `docs/mensajes.md` — especificaciones
 - `docs/tareas.md` — tareas con el pedido para Claude Code
-- `docs/reglas-cobro.md` — especificación del motor de cobro y casos de prueba
-- `supabase/migrations/0001_inicial.sql` — base de datos con seguridad por consultorio
-- `.github/workflows/backup.yml` — backup semanal cifrado
+- `supabase/migrations/` — base de datos y depósito privado de documentos
+- `.github/workflows/backup.yml` — copia semanal cifrada
