@@ -61,14 +61,15 @@ Todas las tareas asumen que Claude Code leyó `CLAUDE.md`. Si no, empezá con "L
 > existente o crear; marcar responsable de pago; datos de factura (RUC o CI, DV, razón social, email);
 > botón "Copiar link de la ficha". Validá con zod.
 
-#### [ ] A2 Horario de atención y calendario
+#### [x] A2 Horario de atención y calendario
 > Configuración del horario de atención (tramos por día) y feriados/vacaciones. En `src/lib/agenda/`,
 > `bloquesDelDia` según `docs/agenda.md` con tests (horario partido, bloque que no entra, feriado).
 > Pantalla Agenda con vistas Día, Semana y Mes que muestran bloques libres y turnos (solo lectura por
 > ahora). Día por defecto en iPhone, Semana en iPad y Mac.
 
-> _Dividida en dos PRs. **A2a hecha**: Configuración > Horario y feriados (tramos por día, duración del bloque,
-> feriados y vacaciones cargados a mano) y `bloquesDelDia` con tests. **Falta A2b**: pantalla Agenda._
+> _Dividida en dos PRs. **A2a**: Configuración > Horario y feriados (tramos por día, duración del bloque,
+> feriados y vacaciones cargados a mano) y `bloquesDelDia` con tests. **A2b**: pantalla Agenda Día/Semana/Mes
+> de solo lectura (`armarDia`, `liberaBloque` y fechas de `calendario.ts`, con tests)._
 
 #### [x] B1a Configuración: Consultorio y Tarifas
 > Configuración con pestañas: Consultorio (nombre, profesional, RUC, DV, razón social, dirección,
