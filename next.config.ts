@@ -1,7 +1,6 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
   cacheComponents: true,
   partialPrefetching: true,
   turbopack: {
@@ -11,6 +10,10 @@ const nextConfig: NextConfig = {
         as: "*.css",
       },
     },
+  },
+  // La raíz lleva a "Hoy" (el proxy manda al login si no hay sesión).
+  async redirects() {
+    return [{ source: "/", destination: "/hoy", permanent: false }];
   },
 };
 
