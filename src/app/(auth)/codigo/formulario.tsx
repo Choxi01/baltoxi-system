@@ -39,10 +39,22 @@ async function prepararPaso(): Promise<Paso> {
   return {
     tipo: "activar",
     factorId: alta.data.id,
-    qr: alta.data.totp.qr_code,
+    qr: alta.data.totp.qr_code.trimEnd(),
     secreto: alta.data.totp.secret,
     uri: alta.data.totp.uri,
   };
+}
+
+// En desarrollo React monta la pantalla dos veces: compartimos la misma
+// preparación para no pedir dos QR a la vez (el segundo fallaría).
+let preparacionEnCurso: Promise<Paso> | null = null;
+function prepararPasoUnaVez(): Promise<Paso> {
+  if (!preparacionEnCurso) {
+    preparacionEnCurso = prepararPaso().finally(() => {
+      preparacionEnCurso = null;
+    });
+  }
+  return preparacionEnCurso;
 }
 
 export function FormularioCodigo() {
@@ -53,7 +65,7 @@ export function FormularioCodigo() {
 
   useEffect(() => {
     let vigente = true;
-    prepararPaso().then((nuevo) => {
+    prepararPasoUnaVez().then((nuevo) => {
       if (vigente) setPaso(nuevo);
     });
     return () => {

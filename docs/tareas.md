@@ -70,11 +70,15 @@ Todas las tareas asumen que Claude Code leyó `CLAUDE.md`. Si no, empezá con "L
 > _Dividida en dos PRs. **A2a hecha**: Configuración > Horario y feriados (tramos por día, duración del bloque,
 > feriados y vacaciones cargados a mano) y `bloquesDelDia` con tests. **Falta A2b**: pantalla Agenda._
 
-#### [ ] B1 Configuración de cobros
+#### [x] B1a Configuración: Consultorio y Tarifas
 > Configuración con pestañas: Consultorio (nombre, profesional, RUC, DV, razón social, dirección,
-> datos de pago, horas mínimas de aviso, plazo de pago, concepto de factura), Tarifas (formato
-> Gs. 290.000), Tipos de turno (tarifa, cobra en el momento, genera cobro) y Reglas de cobro
-> (porcentaje por estado; excepciones por paciente).
+> datos de pago, horas mínimas de aviso, plazo de pago, concepto de factura) y Tarifas (formato
+> Gs. 290.000; agregar, editar, desactivar/activar — no se borran).
+
+#### [ ] B1b Configuración: Tipos de turno y Reglas de cobro
+> En `/config`, completá las pestañas Tipos de turno (tarifa, cobra en el momento, genera cobro;
+> agregar, editar, desactivar/activar) y Reglas de cobro (porcentaje por estado; excepciones por
+> paciente: agregar y quitar). Validá con zod y tests en `src/lib/config/`.
 
 #### [ ] B2 Motor de cobro
 > Implementá en `src/lib/cobro/` las funciones de `docs/reglas-cobro.md` secciones 1 a 8, más

@@ -99,15 +99,19 @@ export async function listarTutoresParaVincular(pacienteId: string) {
     }));
 }
 
-/** Tarifas activas para elegir en la ficha. */
-export async function listarTarifas() {
+/**
+ * Tarifas para elegir en la ficha: las activas y, si se pasa, la que el paciente
+ * ya tiene aunque esté desactivada (para no perderla al guardar).
+ */
+export async function listarTarifas(actualId?: string | null) {
   const consultorio = await exigirConsultorio();
   const supabase = await crearClienteServidor();
   const { data } = await supabase
     .from("tarifas")
-    .select("id, nombre, monto_gs")
+    .select("id, nombre, monto_gs, activa")
     .eq("consultorio_id", consultorio.id)
-    .eq("activa", true)
     .order("monto_gs", { ascending: false });
-  return data ?? [];
+  return (data ?? [])
+    .filter((t) => t.activa || t.id === actualId)
+    .map(({ id, nombre, monto_gs }) => ({ id, nombre, monto_gs }));
 }
