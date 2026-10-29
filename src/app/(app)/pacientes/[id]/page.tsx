@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
 
+import { Pestanas } from "@/components/app/pestanas";
 import { formatoGs } from "@/lib/cobro/formato";
 import { hoyEnAsuncion } from "@/lib/fechas";
 import { actualizarPaciente } from "@/lib/pacientes/acciones";
@@ -19,7 +20,6 @@ import {
   vincularTutorExistente,
 } from "@/lib/tutores/acciones";
 import { FichaDatos, type FilaResumen } from "./ficha-datos";
-import { Pestanas } from "@/components/app/pestanas";
 import { TabTutores } from "./tab-tutores";
 
 export const metadata: Metadata = { title: "Paciente · Consultorio" };

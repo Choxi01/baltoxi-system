@@ -2,6 +2,7 @@ import "server-only";
 
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { connection } from "next/server";
 
 import { crearClienteServidor } from "@/lib/supabase/servidor";
 import { RUTA_CODIGO, RUTA_INGRESAR, sesionVerificada } from "./acceso";
@@ -12,6 +13,10 @@ import { COOKIE_SESION_CONFIANZA } from "./dispositivo";
 
 /** Exige sesión completa: con código o desde un dispositivo de confianza. */
 export async function exigirSesionCompleta() {
+  // Todo lo que sigue es de cada pedido (la sesión, la hora para ver si el
+  // token venció). Sin esto Next.js avisa "unstable value Date.now()" al
+  // preparar la página de antemano.
+  await connection();
   const supabase = await crearClienteServidor();
   const { data } = await supabase.auth.getClaims();
   const claims = data?.claims;
