@@ -82,4 +82,5 @@ docs/                      especificaciones y tareas
 - `docs/mensajes.md` — plantillas, "Mensajes de hoy" y fase 2 automática
 - `docs/tareas.md` — tareas con el pedido para cada una
 - `docs/supabase.md` — variables, clientes, migraciones y tipos
+- `docs/datos-de-prueba.md` — qué carga `supabase/seed.sql` y cómo cargarlo
 - `supabase/migrations/` — esquema completo comentado
