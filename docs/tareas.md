@@ -45,7 +45,7 @@ Todas las tareas asumen que Claude Code leyó `CLAUDE.md`. Si no, empezá con "L
 
 > _Cambiado después: dispositivo de confianza. El código se pide en un navegador nuevo o cada 30 días; tras Salir o 24 h sin uso, solo email y contraseña (ver `docs/supabase.md`)._
 
-### [ ] 0.4 Datos de prueba
+### [x] 0.4 Datos de prueba
 > Creá `supabase/seed.sql` con datos INVENTADOS: el consultorio con tarifas (290.000, 280.000, 350.000,
 > 280.000, 350.000), 12 tutores (uno con dos hijos), 15 pacientes con planes por sesión, semanal y
 > mensual, series semanales que den unas 25 sesiones por semana, un mes de turnos con estados variados,

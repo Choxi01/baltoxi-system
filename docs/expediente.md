@@ -51,7 +51,8 @@ profesional (tarea A6).
 
 ## Seguridad
 - Ingreso con email + contraseña + código TOTP (Supabase MFA, app Autenticador del iPhone).
-- Sesión que vence a las 12 h sin uso.
+- Sesión: tras 24 h sin uso o al tocar Salir pide la contraseña; el código, en un navegador nuevo o
+  cada 30 días (dispositivo de confianza, ver `docs/supabase.md`).
 - Nada clínico (motivo, notas, anamnesis, documentos) en mensajes, facturas, reportes, logs, nombres
   de archivo ni en la ficha pública.
 - Backups: Supabase Pro (diario) + copia semanal propia de base y documentos (tarea A9).
