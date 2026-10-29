@@ -66,7 +66,7 @@ begin
   -- ---------------------------------------------------------------
   update public.consultorios set
     profesional = 'Lic. Ana Prueba',
-    ruc = '80000000', dv = '1', razon_social = 'Ana Prueba',
+    ruc = '80000000', dv = '5', razon_social = 'Ana Prueba',
     direccion = 'Calle Inventada 123, Asunción',
     telefono_wa = '595981000000',
     datos_pago = 'Alias 000000 (dato de prueba)',
@@ -87,17 +87,17 @@ begin
          lower(v.nombre || '.' || v.apellido) || '@ejemplo.test',
          v.doc_tipo, v.doc, v.dv, v.razon
   from (values
-    ( 1, 'María',  'Benitez',  'RUC', '1000001', '5', 'María Benitez'),
+    ( 1, 'María',  'Benitez',  'RUC', '1000001', '1', 'María Benitez'),
     ( 2, 'Carlos', 'Gimenez',  'CI',  '1000002', null, null),
-    ( 3, 'Laura',  'Ortiz',    'RUC', '1000003', '2', 'Comercial Ortiz S.A. (prueba)'),
+    ( 3, 'Laura',  'Ortiz',    'RUC', '1000003', '8', 'Comercial Ortiz S.A. (prueba)'),
     ( 4, 'Ana',    'Duarte',   'CI',  '1000004', null, null),
-    ( 5, 'Jorge',  'Rolon',    'RUC', '1000005', '8', 'Jorge Rolon'),
+    ( 5, 'Jorge',  'Rolon',    'RUC', '1000005', '4', 'Jorge Rolon'),
     ( 6, 'Sofia',  'Cabrera',  'CI',  '1000006', null, null),
     ( 7, 'Diego',  'Acosta',   'CI',  '1000007', null, null),
-    ( 8, 'Paula',  'Ramirez',  'RUC', '1000008', '0', 'Paula Ramirez'),
+    ( 8, 'Paula',  'Ramirez',  'RUC', '1000008', '9', 'Paula Ramirez'),
     ( 9, 'Lucia',  'Villalba', 'CI',  '1000009', null, null),
     (10, 'Miguel', 'Ayala',    'CI',  '1000010', null, null),
-    (11, 'Rosa',   'Franco',   'RUC', '1000011', '3', 'Rosa Franco'),
+    (11, 'Rosa',   'Franco',   'RUC', '1000011', '9', 'Rosa Franco'),
     (12, 'Andres', 'Nunez',    'CI',  '1000012', null, null)
   ) v(n, nombre, apellido, doc_tipo, doc, dv, razon);
 

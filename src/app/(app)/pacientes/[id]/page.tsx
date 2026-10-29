@@ -7,12 +7,20 @@ import { formatoGs } from "@/lib/cobro/formato";
 import { hoyEnAsuncion } from "@/lib/fechas";
 import { actualizarPaciente } from "@/lib/pacientes/acciones";
 import { NOMBRE_ESTADO, type EstadoPaciente } from "@/lib/pacientes/busqueda";
-import { listarTarifas, obtenerPaciente } from "@/lib/pacientes/datos";
+import { listarTarifas, listarTutoresParaVincular, obtenerPaciente } from "@/lib/pacientes/datos";
 import { textoEdad } from "@/lib/pacientes/edad";
 import { textoFecha } from "@/lib/pacientes/fecha";
 import { NOMBRE_PLAN, PLANES_COBRO } from "@/lib/pacientes/validacion";
+import {
+  actualizarTutor,
+  agregarTutorNuevo,
+  marcarResponsable,
+  quitarTutor,
+  vincularTutorExistente,
+} from "@/lib/tutores/acciones";
 import { FichaDatos, type FilaResumen } from "./ficha-datos";
 import { Pestanas } from "./pestanas";
+import { TabTutores } from "./tab-tutores";
 
 export const metadata: Metadata = { title: "Paciente · Consultorio" };
 
@@ -20,7 +28,7 @@ export default async function PaginaPaciente({ params, searchParams }: PageProps
   const { id } = await params;
   const { pestana } = await searchParams;
 
-  const [ficha, tarifas] = await Promise.all([obtenerPaciente(id), listarTarifas()]);
+  const [ficha, tarifas, disponibles] = await Promise.all([obtenerPaciente(id), listarTarifas(), listarTutoresParaVincular(id)]);
   if (!ficha) notFound();
   const { paciente, tutores } = ficha;
   const hoy = hoyEnAsuncion();
@@ -85,26 +93,16 @@ export default async function PaginaPaciente({ params, searchParams }: PageProps
             id: "tutores",
             titulo: "Tutores",
             contenido: (
-              <div className="flex flex-col gap-3">
-                {tutores.length === 0 ? (
-                  <p className="text-muted-foreground">Este paciente todavía no tiene tutores.</p>
-                ) : (
-                  <ul className="divide-y rounded-lg border">
-                    {tutores.map((t) => (
-                      <li key={t.id} className="flex flex-col px-4 py-3">
-                        <span className="font-medium">
-                          {nombreDe(t)}
-                          {t.id === paciente.responsable_pago_id && (
-                            <span className="ml-2 rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">Paga</span>
-                          )}
-                        </span>
-                        <span className="text-sm text-muted-foreground">{t.parentesco}</span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-                <p className="text-sm text-muted-foreground">Agregar y editar tutores: próximamente (tarea A1b).</p>
-              </div>
+              <TabTutores
+                tutores={tutores}
+                responsableId={paciente.responsable_pago_id}
+                disponibles={disponibles}
+                agregarNuevo={agregarTutorNuevo.bind(null, paciente.id)}
+                vincularExistente={vincularTutorExistente.bind(null, paciente.id)}
+                actualizar={actualizarTutor.bind(null, paciente.id)}
+                quitar={quitarTutor.bind(null, paciente.id)}
+                marcarResponsable={marcarResponsable.bind(null, paciente.id)}
+              />
             ),
           },
           { id: "anamnesis", titulo: "Anamnesis", contenido: proximamente("A6") },

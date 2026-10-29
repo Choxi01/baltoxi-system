@@ -55,7 +55,7 @@ Todas las tareas asumen que Claude Code leyó `CLAUDE.md`. Si no, empezá con "L
 
 ## Semanas 2–3 — Base de cada módulo
 
-#### [ ] A1 Pacientes y tutores
+#### [x] A1 Pacientes y tutores
 > Pantalla Pacientes: lista con buscador y filtro por estado. Ficha (pestaña Datos) según
 > `docs/expediente.md`, con edad calculada. Pestaña Tutores: varios tutores con parentesco, elegir
 > existente o crear; marcar responsable de pago; datos de factura (RUC o CI, DV, razón social, email);
