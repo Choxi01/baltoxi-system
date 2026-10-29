@@ -30,10 +30,16 @@ const ICONOS: Record<string, LucideIcon> = {
   "/config": Settings,
 };
 
+// Lee la ruta actual para marcar la sección activa. Next.js pide que esto
+// vaya dentro de <Suspense> (ver el layout de (app)).
+export function MenuConRuta() {
+  return <Menu ruta={usePathname()} />;
+}
+
 // iPhone: barra fija abajo con 4 secciones + "Más".
 // iPad y Mac (pantallas medianas en adelante): menú lateral con todo.
-export function Menu() {
-  const ruta = usePathname();
+// Sin `ruta` (mientras carga) se muestra sin ninguna sección marcada.
+export function Menu({ ruta = "" }: { ruta?: string }) {
 
   return (
     <>
