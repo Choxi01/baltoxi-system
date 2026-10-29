@@ -6,17 +6,34 @@ import { redirect } from "next/navigation";
 import { crearClienteServidor } from "@/lib/supabase/servidor";
 import { RUTA_INICIO } from "./acceso";
 import { validarNombreConsultorio } from "./consultorio";
-import { COOKIE_BLOQUEO, COOKIE_ULTIMO_USO } from "./inactividad";
+import { opcionesCookie } from "./cookies";
+import { codigoReciente, COOKIE_DISPOSITIVO, COOKIE_SESION_CONFIANZA, DURACION_DISPOSITIVO_MS } from "./dispositivo";
+import { recordarDispositivo } from "./dispositivo-servidor";
+import { COOKIE_ULTIMO_USO, momentosDeIngreso } from "./inactividad";
 import { buscarConsultorio, exigirSesionCompleta } from "./servidor";
 
 // Cierra la sesión en el servidor. Quien la llama recarga la página entera
 // (ver BotonSalir) para no dejar datos de la sesión en memoria.
+// La llave del dispositivo se queda: la próxima vez alcanza con la contraseña.
 export async function salir() {
   const supabase = await crearClienteServidor();
   await supabase.auth.signOut();
   const almacen = await cookies();
   almacen.delete(COOKIE_ULTIMO_USO);
-  almacen.delete(COOKIE_BLOQUEO);
+  almacen.delete(COOKIE_SESION_CONFIANZA);
+}
+
+// Después de poner el código: este navegador queda de confianza por 30 días.
+// Solo si el código se acaba de poner (lo dice Supabase, no el navegador).
+export async function confiarEnEsteDispositivo() {
+  const supabase = await crearClienteServidor();
+  const { data } = await supabase.auth.getClaims();
+  const claims = data?.claims;
+  if (!claims || claims.aal !== "aal2") return;
+  if (!codigoReciente(momentosDeIngreso(claims.amr).codigoEn, Date.now())) return;
+
+  const llave = await recordarDispositivo(claims.sub);
+  (await cookies()).set(COOKIE_DISPOSITIVO, llave, opcionesCookie(DURACION_DISPOSITIVO_MS / 1000));
 }
 
 export type EstadoFormulario = { error: string | null };

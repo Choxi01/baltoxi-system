@@ -1,10 +1,9 @@
 // Tiempos de la sesión (funciones puras):
-// - 24 h sin usar la app → se "bloquea": pide solo el código del Autenticador.
-// - 30 días desde que puso la contraseña → se cierra: pide contraseña + código.
-// - En otro dispositivo no hay sesión, así que siempre pide las dos cosas.
+// - 24 h sin usar la app → se cierra. En un dispositivo de confianza vuelve a
+//   pedir solo email y contraseña (ver dispositivo.ts).
+// - 30 días desde que puso la contraseña → se cierra igual.
 
 export const COOKIE_ULTIMO_USO = "ultimo_uso"; // ms del último pedido
-export const COOKIE_BLOQUEO = "bloqueo_desde"; // ms en que se bloqueó (si está bloqueada)
 
 const HORA_MS = 60 * 60 * 1000;
 export const LIMITE_INACTIVIDAD_MS = 24 * HORA_MS;
@@ -38,29 +37,14 @@ export function momentosDeIngreso(amr: EntradaAmr[] | undefined): {
   return { contrasenaEn, codigoEn };
 }
 
-export type EvaluacionSesion =
-  | { accion: "cerrar" }
-  | { accion: "seguir"; bloqueadaDesde: number | null };
-
-export function evaluarSesion(datos: {
+/** true si hay que cerrar la sesión: 24 h sin uso o 30 días desde la contraseña. */
+export function sesionVencida(datos: {
   ahora: number;
   ultimoUso: number | null;
-  bloqueadaDesde: number | null;
   contrasenaEn: number | null;
-  codigoEn: number | null;
-}): EvaluacionSesion {
-  const { ahora, ultimoUso, contrasenaEn, codigoEn } = datos;
-
-  if (contrasenaEn !== null && ahora - contrasenaEn > LIMITE_SESION_MS) return { accion: "cerrar" };
-
-  let bloqueadaDesde = datos.bloqueadaDesde;
-  if (bloqueadaDesde === null && ultimoUso !== null && ahora - ultimoUso > LIMITE_INACTIVIDAD_MS) {
-    bloqueadaDesde = ahora;
-  }
-  // Se desbloquea si puso el código después del bloqueo. Supabase guarda
-  // segundos, así que comparamos contra el segundo en que se bloqueó.
-  if (bloqueadaDesde !== null && codigoEn !== null && codigoEn >= Math.floor(bloqueadaDesde / 1000) * 1000) {
-    bloqueadaDesde = null;
-  }
-  return { accion: "seguir", bloqueadaDesde };
+}): boolean {
+  const { ahora, ultimoUso, contrasenaEn } = datos;
+  if (ultimoUso !== null && ahora - ultimoUso > LIMITE_INACTIVIDAD_MS) return true;
+  if (contrasenaEn !== null && ahora - contrasenaEn > LIMITE_SESION_MS) return true;
+  return false;
 }

@@ -1,6 +1,6 @@
 # Supabase: variables, migraciones y tipos
 
-Proyectos: `pruebas` (ref `onwdydztprleaijfnycr`, ya tiene las migraciones 0001 a 0005).
+Proyectos: `pruebas` (ref `onwdydztprleaijfnycr`, ya tiene las migraciones 0001 a 0006).
 `produccion` se crea en la semana 8 (región São Paulo, `sa-east-1`, plan Pro).
 
 ## 1. Variables en tu compu (`.env.local`)
@@ -61,8 +61,15 @@ Cómo funciona:
 - El login es un formulario normal que se envía a `/ingresar/enviar` (no por JavaScript), así
   Safari y el llavero de iCloud ofrecen guardar la contraseña.
 - La base también exige el código (migración 0005): con solo la contraseña no se ve ningún dato.
-- Tiempos de la sesión (`src/lib/auth/inactividad.ts`, con tests):
-  - **24 h sin uso** → se bloquea y pide **solo el código** (cookies `ultimo_uso` y `bloqueo_desde`).
-    Se desbloquea solo si Supabase registra un código puesto después del bloqueo.
-  - **30 días** desde que puso la contraseña → se cierra y pide contraseña + código.
-  - **Otro dispositivo** o después de **Salir** → contraseña + código.
+- **Dispositivo de confianza** (`src/lib/auth/dispositivo.ts`, migración 0006): al poner el código,
+  el navegador recibe una llave (cookie httpOnly `dispositivo`) por 30 días; en la base queda solo
+  su huella. Al ingresar con contraseña desde ese navegador, el servidor marca la sesión como de
+  confianza (`sesiones_confianza`) y entra sin código. La base muestra datos solo si la sesión tiene
+  el código o está marcada (`sesion_verificada()`).
+- Cuándo pide qué:
+
+  | Situación | Pide |
+  |---|---|
+  | Mismo navegador, usado hace menos de 24 h | Nada |
+  | Mismo navegador, después de Salir o de 24 h sin uso | Email + contraseña |
+  | Navegador nuevo, o pasaron 30 días desde el último código | Email + contraseña + código |

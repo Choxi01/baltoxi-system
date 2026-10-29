@@ -1,21 +1,23 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-import { decidirAcceso, RUTA_INGRESAR } from "@/lib/auth/acceso";
+import { decidirAcceso, RUTA_INGRESAR, sesionVerificada } from "@/lib/auth/acceso";
+import { opcionesCookie } from "@/lib/auth/cookies";
+import { COOKIE_SESION_CONFIANZA } from "@/lib/auth/dispositivo";
 import {
-  COOKIE_BLOQUEO,
   COOKIE_ULTIMO_USO,
-  evaluarSesion,
+  LIMITE_SESION_MS,
   leerMilisegundos,
   momentosDeIngreso,
+  sesionVencida,
 } from "@/lib/auth/inactividad";
 import { supabaseAnonKey, supabaseUrl } from "./env";
 import type { Database } from "./types";
 
 // Corre en cada pedido (lo llama src/proxy.ts):
 // 1. renueva la sesión de Supabase,
-// 2. cierra la sesión a los 30 días y la bloquea (pide solo el código) tras
-//    24 h sin uso (ver src/lib/auth/inactividad.ts),
+// 2. cierra la sesión tras 24 h sin uso o a los 30 días (ver
+//    src/lib/auth/inactividad.ts),
 // 3. manda al login o al código según la ruta (ver src/lib/auth/acceso.ts).
 export async function actualizarSesion(request: NextRequest) {
   let respuesta = NextResponse.next({ request });
@@ -48,42 +50,30 @@ export async function actualizarSesion(request: NextRequest) {
   const ruta = request.nextUrl.pathname;
   const ahora = Date.now();
 
-  let bloqueadaDesde: number | null = null;
-  if (claims) {
-    const evaluacion = evaluarSesion({
+  if (
+    claims &&
+    sesionVencida({
       ahora,
       ultimoUso: leerMilisegundos(request.cookies.get(COOKIE_ULTIMO_USO)?.value),
-      bloqueadaDesde: leerMilisegundos(request.cookies.get(COOKIE_BLOQUEO)?.value),
-      ...momentosDeIngreso(claims.amr),
-    });
-    if (evaluacion.accion === "cerrar") {
-      await supabase.auth.signOut();
-      const destino = redirigir(request, respuesta, RUTA_INGRESAR);
-      destino.cookies.delete(COOKIE_ULTIMO_USO);
-      destino.cookies.delete(COOKIE_BLOQUEO);
-      return destino;
-    }
-    bloqueadaDesde = evaluacion.bloqueadaDesde;
+      contrasenaEn: momentosDeIngreso(claims.amr).contrasenaEn,
+    })
+  ) {
+    // La llave del dispositivo (si hay) se queda: vuelve a pedir solo la contraseña.
+    await supabase.auth.signOut();
+    const destino = redirigir(request, respuesta, RUTA_INGRESAR);
+    destino.cookies.delete(COOKIE_ULTIMO_USO);
+    destino.cookies.delete(COOKIE_SESION_CONFIANZA);
+    return destino;
   }
 
   const decision = decidirAcceso(ruta, {
     logueado: Boolean(claims),
-    nivel: claims?.aal ?? null,
-    bloqueada: bloqueadaDesde !== null,
+    verificada: sesionVerificada(claims, request.cookies.get(COOKIE_SESION_CONFIANZA)?.value),
   });
   const final = decision.tipo === "redirigir" ? redirigir(request, respuesta, decision.a) : respuesta;
 
   if (claims) {
-    const opciones = {
-      httpOnly: true,
-      sameSite: "lax" as const,
-      secure: request.nextUrl.protocol === "https:",
-      path: "/",
-      maxAge: 60 * 60 * 24 * 31,
-    };
-    final.cookies.set(COOKIE_ULTIMO_USO, String(ahora), opciones);
-    if (bloqueadaDesde !== null) final.cookies.set(COOKIE_BLOQUEO, String(bloqueadaDesde), opciones);
-    else if (request.cookies.has(COOKIE_BLOQUEO)) final.cookies.delete(COOKIE_BLOQUEO);
+    final.cookies.set(COOKIE_ULTIMO_USO, String(ahora), opcionesCookie(LIMITE_SESION_MS / 1000));
   }
   return final;
 }

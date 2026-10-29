@@ -319,6 +319,30 @@ export type Database = {
         }
         Relationships: []
       }
+      dispositivos_confianza: {
+        Row: {
+          creado_en: string
+          id: string
+          llave_hash: string
+          user_id: string
+          vence_en: string
+        }
+        Insert: {
+          creado_en?: string
+          id?: string
+          llave_hash: string
+          user_id: string
+          vence_en: string
+        }
+        Update: {
+          creado_en?: string
+          id?: string
+          llave_hash?: string
+          user_id?: string
+          vence_en?: string
+        }
+        Relationships: []
+      }
       documentos: {
         Row: {
           consultorio_id: string
@@ -1054,6 +1078,35 @@ export type Database = {
           },
         ]
       }
+      sesiones_confianza: {
+        Row: {
+          creado_en: string
+          dispositivo_id: string
+          session_id: string
+          user_id: string
+        }
+        Insert: {
+          creado_en?: string
+          dispositivo_id: string
+          session_id: string
+          user_id: string
+        }
+        Update: {
+          creado_en?: string
+          dispositivo_id?: string
+          session_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sesiones_confianza_dispositivo_id_fkey"
+            columns: ["dispositivo_id"]
+            isOneToOne: false
+            referencedRelation: "dispositivos_confianza"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tarifas: {
         Row: {
           activa: boolean
@@ -1330,6 +1383,7 @@ export type Database = {
     Functions: {
       crear_consultorio: { Args: { p_nombre: string }; Returns: string }
       mis_consultorios: { Args: never; Returns: string[] }
+      sesion_verificada: { Args: never; Returns: boolean }
     }
     Enums: {
       [_ in never]: never

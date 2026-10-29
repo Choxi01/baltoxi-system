@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RUTA_INGRESAR, RUTA_INICIO } from "@/lib/auth/acceso";
+import { confiarEnEsteDispositivo } from "@/lib/auth/acciones";
 import { codigoCompleto, limpiarCodigo } from "@/lib/auth/codigo";
 import { crearClienteNavegador } from "@/lib/supabase/navegador";
 
@@ -79,6 +80,11 @@ export function FormularioCodigo() {
       setError("El código no es correcto o ya cambió. Mirá el Autenticador y probá de nuevo.");
       return;
     }
+    // Este navegador queda de confianza por 30 días (la próxima vez alcanza
+    // con la contraseña). Si falla, igual se entra: solo pedirá el código otra vez.
+    try {
+      await confiarEnEsteDispositivo();
+    } catch {}
     // Recarga completa para que el servidor vea la sesión con el código.
     window.location.replace(RUTA_INICIO);
   }

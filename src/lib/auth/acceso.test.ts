@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { decidirAcceso, requisitoDeRuta } from "./acceso";
+import { decidirAcceso, requisitoDeRuta, sesionVerificada } from "./acceso";
 
-const sinSesion = { logueado: false, nivel: null };
-const soloContrasena = { logueado: true, nivel: "aal1" };
-const completa = { logueado: true, nivel: "aal2" };
+const sinSesion = { logueado: false, verificada: false };
+const soloContrasena = { logueado: true, verificada: false };
+const completa = { logueado: true, verificada: true };
 
 describe("requisitoDeRuta", () => {
   it("login y ficha son públicos", () => {
@@ -48,15 +48,26 @@ describe("decidirAcceso", () => {
     expect(decidirAcceso("/codigo", completa)).toEqual({ tipo: "redirigir", a: "/hoy" });
   });
 
-  it("bloqueada por 24 h sin uso: todo va al código, sin pedir contraseña", () => {
-    const bloqueada = { ...completa, bloqueada: true };
-    expect(decidirAcceso("/hoy", bloqueada)).toEqual({ tipo: "redirigir", a: "/codigo" });
-    expect(decidirAcceso("/codigo", bloqueada)).toEqual({ tipo: "seguir" });
-    expect(decidirAcceso("/ingresar", bloqueada)).toEqual({ tipo: "redirigir", a: "/codigo" });
-    expect(decidirAcceso("/ficha/abc", bloqueada)).toEqual({ tipo: "seguir" });
-  });
-
   it("la ficha pública se ve igual con o sin sesión", () => {
     expect(decidirAcceso("/ficha/abc", completa)).toEqual({ tipo: "seguir" });
+  });
+});
+
+describe("sesionVerificada", () => {
+  const sesion = "11111111-1111-1111-1111-111111111111";
+
+  it("con el código (aal2) está verificada", () => {
+    expect(sesionVerificada({ aal: "aal2", session_id: sesion }, undefined)).toBe(true);
+  });
+
+  it("solo contraseña: verificada si la marca de confianza es de esta misma sesión", () => {
+    expect(sesionVerificada({ aal: "aal1", session_id: sesion }, sesion)).toBe(true);
+    expect(sesionVerificada({ aal: "aal1", session_id: sesion }, "otra-sesion")).toBe(false);
+    expect(sesionVerificada({ aal: "aal1", session_id: sesion }, undefined)).toBe(false);
+  });
+
+  it("sin sesión o sin id de sesión, nunca", () => {
+    expect(sesionVerificada(null, sesion)).toBe(false);
+    expect(sesionVerificada({ aal: "aal1" }, "")).toBe(false);
   });
 });
