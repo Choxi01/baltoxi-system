@@ -50,17 +50,53 @@ export async function obtenerPaciente(id: string) {
     .eq("consultorio_id", consultorio.id)
     .eq("paciente_id", id);
   const ids = (vinculos ?? []).map((v) => v.tutor_id);
-  const { data: tutores } = ids.length
-    ? await supabase.from("tutores").select("id, nombre, apellido, telefono_wa").in("id", ids)
-    : { data: [] };
+  const [{ data: tutores }, { data: otrosVinculos }] = ids.length
+    ? await Promise.all([
+        supabase
+          .from("tutores")
+          .select("id, nombre, apellido, telefono_wa, email, doc_tipo, doc_numero, dv, razon_social, token_ficha")
+          .in("id", ids),
+        // Otros hijos de estos tutores (para avisar que el cambio les afecta).
+        supabase
+          .from("paciente_tutores")
+          .select("tutor_id, pacientes!paciente_tutores_consultorio_id_paciente_id_fkey(id, nombre)")
+          .in("tutor_id", ids)
+          .neq("paciente_id", id),
+      ])
+    : [{ data: [] }, { data: [] }];
 
   return {
     paciente,
     tutores: (vinculos ?? []).flatMap((v) => {
       const tutor = (tutores ?? []).find((t) => t.id === v.tutor_id);
-      return tutor ? [{ ...tutor, parentesco: v.parentesco }] : [];
+      if (!tutor) return [];
+      const otrosHijos = (otrosVinculos ?? [])
+        .filter((o) => o.tutor_id === tutor.id && o.pacientes)
+        .map((o) => o.pacientes!.nombre);
+      return [{ ...tutor, parentesco: v.parentesco, otrosHijos }];
     }),
   };
+}
+
+/** Tutores del consultorio que todavía no están en este paciente (para "Elegir existente"). */
+export async function listarTutoresParaVincular(pacienteId: string) {
+  if (!esIdValido(pacienteId)) return [];
+  const consultorio = await exigirConsultorio();
+  const supabase = await crearClienteServidor();
+  const [{ data: tutores }, { data: vinculos }] = await Promise.all([
+    supabase.from("tutores").select("id, nombre, apellido, telefono_wa").eq("consultorio_id", consultorio.id).eq("activo", true),
+    supabase
+      .from("paciente_tutores")
+      .select("tutor_id, paciente_id, pacientes!paciente_tutores_consultorio_id_paciente_id_fkey(nombre)")
+      .eq("consultorio_id", consultorio.id),
+  ]);
+  const yaVinculados = new Set((vinculos ?? []).filter((v) => v.paciente_id === pacienteId).map((v) => v.tutor_id));
+  return (tutores ?? [])
+    .filter((t) => !yaVinculados.has(t.id))
+    .map((t) => ({
+      ...t,
+      hijos: (vinculos ?? []).filter((v) => v.tutor_id === t.id && v.pacientes).map((v) => v.pacientes!.nombre),
+    }));
 }
 
 /** Tarifas activas para elegir en la ficha. */
