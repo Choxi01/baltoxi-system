@@ -34,9 +34,9 @@ Todas las tareas asumen que Claude Code leyó `CLAUDE.md`. Si no, empezá con "L
 > `src/lib/supabase/`, más un cliente admin con service role importable solo desde el servidor
 > (`import 'server-only'`). Script `gen:types` y `.env.example`. Ninguna clave real en el repo.
 
-> _Hecho en `pruebas` (migraciones 0001–0004). Producción se aplica en la semana 8: ver `docs/supabase.md`._
+> _Hecho en `pruebas` (migraciones 0001–0004; la 0005 vino con la 0.3). Producción se aplica en la semana 8: ver `docs/supabase.md`._
 
-### [ ] 0.3 Ingreso seguro
+### [x] 0.3 Ingreso seguro
 > Login con email y contraseña + segundo factor TOTP (Supabase MFA): al primer ingreso, mostrar el QR
 > para la app Autenticador del iPhone; después pedir el código siempre. Si el usuario no tiene
 > consultorio, formulario que llame a `crear_consultorio(nombre)`. Layout con menú inferior en iPhone

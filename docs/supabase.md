@@ -1,6 +1,6 @@
 # Supabase: variables, migraciones y tipos
 
-Proyectos: `pruebas` (ref `onwdydztprleaijfnycr`, ya tiene las migraciones 0001 a 0004).
+Proyectos: `pruebas` (ref `onwdydztprleaijfnycr`, ya tiene las migraciones 0001 a 0005).
 `produccion` se crea en la semana 8 (región São Paulo, `sa-east-1`, plan Pro).
 
 ## 1. Variables en tu compu (`.env.local`)
@@ -44,3 +44,19 @@ npm run db:push
 npx supabase link --project-ref onwdydztprleaijfnycr
 ```
 (El último paso vuelve a dejar vinculado `pruebas`.)
+
+## 7. Ingreso (tarea 0.3)
+Configuración en Supabase > Authentication (en cada proyecto):
+1. **Sign In / Providers**: dejar Email activado y **desactivar "Allow new users to sign up"**
+   (nadie de afuera puede crearse una cuenta).
+2. **Users > Add user > Create new user**: email y contraseña de la profesional, con
+   "Auto Confirm User" marcado.
+3. **Multi-Factor**: TOTP (app Autenticador) viene activado; dejarlo así.
+4. **URL Configuration**: Site URL = la dirección de Netlify.
+
+Cómo funciona:
+- `/ingresar` (email + contraseña) → `/codigo` (la primera vez, activar el Autenticador;
+  después, pedir siempre el código) → si no tiene consultorio, `/nuevo-consultorio` → `/hoy`.
+- Las reglas de qué ruta pide qué están en `src/lib/auth/acceso.ts` (con tests).
+- La base también exige el código (migración 0005): con solo la contraseña no se ve ningún dato.
+- La sesión se cierra tras 12 h sin uso (cookie `ultimo_uso`, ver `src/lib/auth/inactividad.ts`).

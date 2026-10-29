@@ -1,11 +1,15 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
+import { decidirAcceso, RUTA_INGRESAR } from "@/lib/auth/acceso";
+import { COOKIE_ULTIMO_USO, leerUltimoUso, sesionVencida } from "@/lib/auth/inactividad";
 import { supabaseAnonKey, supabaseUrl } from "./env";
 import type { Database } from "./types";
 
-// Renueva la sesión de Supabase en cada pedido (la llama src/proxy.ts).
-// Las rutas protegidas y la redirección al login se agregan en la tarea 0.3.
+// Corre en cada pedido (lo llama src/proxy.ts):
+// 1. renueva la sesión de Supabase,
+// 2. cierra la sesión si pasaron 12 h sin uso,
+// 3. manda al login o al código según la ruta (ver src/lib/auth/acceso.ts).
 export async function actualizarSesion(request: NextRequest) {
   let respuesta = NextResponse.next({ request });
 
@@ -32,7 +36,45 @@ export async function actualizarSesion(request: NextRequest) {
 
   // No poner código entre createServerClient y getClaims(): getClaims()
   // valida el token y, si venció, lo renueva y escribe las cookies nuevas.
-  await supabase.auth.getClaims();
+  const { data } = await supabase.auth.getClaims();
+  const claims = data?.claims;
+  const ruta = request.nextUrl.pathname;
+  const ahora = Date.now();
 
-  return respuesta;
+  if (claims) {
+    const ultimoUso = leerUltimoUso(request.cookies.get(COOKIE_ULTIMO_USO)?.value);
+    if (sesionVencida(ultimoUso, ahora)) {
+      await supabase.auth.signOut();
+      const destino = redirigir(request, respuesta, RUTA_INGRESAR);
+      destino.cookies.delete(COOKIE_ULTIMO_USO);
+      return destino;
+    }
+  }
+
+  const decision = decidirAcceso(ruta, {
+    logueado: Boolean(claims),
+    nivel: claims?.aal ?? null,
+  });
+  const final = decision.tipo === "redirigir" ? redirigir(request, respuesta, decision.a) : respuesta;
+
+  if (claims) {
+    final.cookies.set(COOKIE_ULTIMO_USO, String(ahora), {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: request.nextUrl.protocol === "https:",
+      path: "/",
+      maxAge: 60 * 60 * 24 * 30,
+    });
+  }
+  return final;
+}
+
+// Redirección que conserva las cookies de sesión que Supabase acaba de escribir.
+function redirigir(request: NextRequest, respuesta: NextResponse, ruta: string) {
+  const url = request.nextUrl.clone();
+  url.pathname = ruta;
+  url.search = "";
+  const redireccion = NextResponse.redirect(url);
+  for (const cookie of respuesta.cookies.getAll()) redireccion.cookies.set(cookie);
+  return redireccion;
 }
