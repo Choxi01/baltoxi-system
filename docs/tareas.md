@@ -28,11 +28,13 @@ Todas las tareas asumen que Claude Code leyó `CLAUDE.md`. Si no, empezá con "L
 > estructura de carpetas de CLAUDE.md. Scripts `test`, `lint`, `typecheck`. Página de inicio simple.
 > `netlify.toml` para publicar en Netlify. Explicame paso a paso cómo conectar GitHub con Netlify.
 
-### [ ] 0.2 Base de datos
+### [x] 0.2 Base de datos
 > Ayudame a aplicar las migraciones de `supabase/migrations/` en mis dos proyectos de Supabase (pruebas
 > y producción) con el Supabase CLI. Clientes `@supabase/ssr` de navegador y servidor en
 > `src/lib/supabase/`, más un cliente admin con service role importable solo desde el servidor
 > (`import 'server-only'`). Script `gen:types` y `.env.example`. Ninguna clave real en el repo.
+
+> _Hecho en `pruebas` (migraciones 0001–0004). Producción se aplica en la semana 8: ver `docs/supabase.md`._
 
 ### [ ] 0.3 Ingreso seguro
 > Login con email y contraseña + segundo factor TOTP (Supabase MFA): al primer ingreso, mostrar el QR
