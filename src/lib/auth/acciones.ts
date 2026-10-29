@@ -4,16 +4,17 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { crearClienteServidor } from "@/lib/supabase/servidor";
-import { RUTA_INGRESAR, RUTA_INICIO } from "./acceso";
+import { RUTA_INICIO } from "./acceso";
 import { validarNombreConsultorio } from "./consultorio";
 import { COOKIE_ULTIMO_USO } from "./inactividad";
 import { buscarConsultorio, exigirSesionCompleta } from "./servidor";
 
+// Cierra la sesión en el servidor. Quien la llama recarga la página entera
+// (ver BotonSalir) para no dejar datos de la sesión en memoria.
 export async function salir() {
   const supabase = await crearClienteServidor();
   await supabase.auth.signOut();
   (await cookies()).delete(COOKIE_ULTIMO_USO);
-  redirect(RUTA_INGRESAR);
 }
 
 export type EstadoFormulario = { error: string | null };

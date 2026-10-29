@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -10,7 +9,6 @@ import { RUTA_CODIGO } from "@/lib/auth/acceso";
 import { crearClienteNavegador } from "@/lib/supabase/navegador";
 
 export function FormularioIngreso() {
-  const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
 
@@ -34,8 +32,9 @@ export function FormularioIngreso() {
       );
       return;
     }
-    router.replace(RUTA_CODIGO);
-    router.refresh();
+    // Recarga completa (no navegación interna): así el servidor ve la sesión
+    // nueva y no queda nada guardado en memoria de una sesión anterior.
+    window.location.replace(RUTA_CODIGO);
   }
 
   return (

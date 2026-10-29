@@ -1,7 +1,6 @@
 "use client";
 
 import Image from "next/image";
-import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -46,7 +45,6 @@ async function prepararPaso(): Promise<Paso> {
 }
 
 export function FormularioCodigo() {
-  const router = useRouter();
   const [paso, setPaso] = useState<Paso>({ tipo: "cargando" });
   const [codigo, setCodigo] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -81,14 +79,14 @@ export function FormularioCodigo() {
       setError("El código no es correcto o ya cambió. Mirá el Autenticador y probá de nuevo.");
       return;
     }
-    router.replace(RUTA_INICIO);
-    router.refresh();
+    // Recarga completa para que el servidor vea la sesión con el código.
+    window.location.replace(RUTA_INICIO);
   }
 
   async function cancelar() {
+    setEnviando(true);
     await crearClienteNavegador().auth.signOut();
-    router.replace(RUTA_INGRESAR);
-    router.refresh();
+    window.location.replace(RUTA_INGRESAR);
   }
 
   if (paso.tipo === "cargando") {
@@ -174,7 +172,7 @@ export function FormularioCodigo() {
       <Button type="submit" size="touch" disabled={enviando}>
         {enviando ? "Verificando…" : "Confirmar"}
       </Button>
-      <Button type="button" variant="ghost" onClick={cancelar}>
+      <Button type="button" variant="ghost" onClick={cancelar} disabled={enviando}>
         Cancelar y salir
       </Button>
     </form>

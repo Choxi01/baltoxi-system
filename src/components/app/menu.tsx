@@ -5,7 +5,6 @@ import {
   CalendarCheck,
   CalendarDays,
   FileText,
-  LogOut,
   Menu as IconoMas,
   MessageCircle,
   Settings,
@@ -16,8 +15,8 @@ import {
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-import { salir } from "@/lib/auth/acciones";
 import { SECCIONES, seccionActiva } from "@/lib/navegacion";
+import { BotonSalir } from "./boton-salir";
 import { cn } from "@/lib/utils";
 
 const ICONOS: Record<string, LucideIcon> = {
@@ -73,7 +72,7 @@ export function Menu() {
                   href={s.href}
                   aria-current={activo ? "page" : undefined}
                   className={cn(
-                    "flex h-11 items-center gap-3 rounded-lg px-3 text-sm font-medium",
+                    "flex h-11 items-center gap-3 rounded-lg px-3 text-sm font-medium active:opacity-70",
                     activo ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:bg-accent/60",
                   )}
                 >
@@ -84,15 +83,7 @@ export function Menu() {
             );
           })}
         </ul>
-        <form action={salir}>
-          <button
-            type="submit"
-            className="flex h-11 w-full items-center gap-3 rounded-lg px-3 text-sm font-medium text-muted-foreground hover:bg-accent/60"
-          >
-            <LogOut className="size-5" />
-            Salir
-          </button>
-        </form>
+        <BotonSalir className="h-11 w-full rounded-lg px-3 text-sm font-medium text-muted-foreground hover:bg-accent/60" />
       </nav>
     </>
   );
@@ -114,7 +105,7 @@ function ItemBarra({
       href={href}
       aria-current={activo ? "page" : undefined}
       className={cn(
-        "flex h-16 flex-col items-center justify-center gap-1 text-xs font-medium",
+        "flex h-16 flex-col items-center justify-center gap-1 text-xs font-medium active:opacity-60",
         activo ? "text-foreground" : "text-muted-foreground",
       )}
     >
