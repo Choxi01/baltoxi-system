@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { leerGs } from "@/lib/cobro/formato";
 import { ESTADOS_PACIENTE } from "./busqueda";
+import { armarFecha } from "./fecha";
 
 export const PLANES_COBRO = ["por_sesion", "semanal", "mensual"] as const;
 export const NOMBRE_PLAN: Record<(typeof PLANES_COBRO)[number], string> = {
@@ -66,15 +67,23 @@ const CAMPOS = [
   "estado", "tarifa_id", "monto_override_gs", "plan_cobro", "responsable_pago_id",
 ] as const;
 
-/** Valida lo que viene del formulario. Devuelve los datos limpios o un error por campo. */
+/**
+ * Valida lo que viene del formulario. Devuelve los datos limpios o un error por campo.
+ * La fecha de nacimiento llega en tres ruedas: fecha_dia, fecha_mes, fecha_anio.
+ */
 export function validarPaciente(
   formulario: FormData,
   hoy: string,
 ): { ok: true; datos: DatosPaciente } | { ok: false; errores: ErroresFormulario } {
   const crudo = Object.fromEntries(CAMPOS.map((c) => [c, String(formulario.get(c) ?? "")]));
+  const leer = (c: string) => String(formulario.get(c) ?? "");
+  const fecha = armarFecha(leer("fecha_dia"), leer("fecha_mes"), leer("fecha_anio"));
+  crudo.fecha_nacimiento = fecha.ok ? (fecha.fecha ?? "") : "";
+
   const resultado = esquemaPaciente(hoy).safeParse(crudo);
-  if (resultado.success) return { ok: true, datos: resultado.data };
-  const errores: ErroresFormulario = {};
+  if (resultado.success && fecha.ok) return { ok: true, datos: resultado.data };
+  const errores: ErroresFormulario = fecha.ok ? {} : { fecha_nacimiento: fecha.error };
+  if (resultado.success) return { ok: false, errores };
   for (const problema of resultado.error.issues) {
     const campo = String(problema.path[0] ?? "general");
     errores[campo] ??= problema.message;

@@ -38,9 +38,21 @@ describe("validarPaciente", () => {
     expect(!r.ok && r.errores.monto_override_gs).toMatch(/sin decimales/);
   });
 
-  it("rechaza fecha de nacimiento futura", () => {
-    const r = validarPaciente(formulario({ fecha_nacimiento: "2027-01-01" }), hoy);
-    expect(!r.ok && r.errores.fecha_nacimiento).toMatch(/futura/);
+  it("arma la fecha de nacimiento desde las tres ruedas", () => {
+    const r = validarPaciente(formulario({ fecha_dia: "15", fecha_mes: "7", fecha_anio: "2020" }), hoy);
+    expect(r.ok && r.datos.fecha_nacimiento).toBe("2020-07-15");
+  });
+
+  it("rechaza fecha de nacimiento futura o que no existe", () => {
+    const futura = validarPaciente(formulario({ fecha_dia: "1", fecha_mes: "1", fecha_anio: "2027" }), hoy);
+    expect(!futura.ok && futura.errores.fecha_nacimiento).toMatch(/futura/);
+    const inexistente = validarPaciente(formulario({ fecha_dia: "31", fecha_mes: "2", fecha_anio: "2020" }), hoy);
+    expect(!inexistente.ok && inexistente.errores.fecha_nacimiento).toBe("Esa fecha no existe.");
+  });
+
+  it("junta el error de fecha con los demás", () => {
+    const r = validarPaciente(formulario({ nombre: "", fecha_dia: "5", fecha_mes: "", fecha_anio: "2020" }), hoy);
+    expect(!r.ok && Object.keys(r.errores).sort()).toEqual(["fecha_nacimiento", "nombre"]);
   });
 
   it("rechaza estados, planes o ids inventados", () => {

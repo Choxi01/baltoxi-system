@@ -28,10 +28,47 @@ export function filtrarPacientes<T extends PacienteBuscable>(
     .filter((p) => {
       const texto = normalizar(`${p.nombre} ${p.apellido ?? ""}`);
       return palabras.every((palabra) => texto.includes(palabra));
-    })
-    .sort((a, b) =>
-      normalizar(`${a.apellido ?? ""} ${a.nombre}`).localeCompare(normalizar(`${b.apellido ?? ""} ${b.nombre}`), "es"),
-    );
+    });
+}
+
+export const ORDENES = {
+  apellido: "Apellido A-Z",
+  nombre: "Nombre A-Z",
+  menor: "Menor edad",
+  mayor: "Mayor edad",
+  recientes: "Recientes",
+} as const;
+export type Orden = keyof typeof ORDENES;
+
+export function ordenDeFiltro(valor: string | undefined): Orden {
+  return valor && valor in ORDENES ? (valor as Orden) : "apellido";
+}
+
+type PacienteOrdenable = PacienteBuscable & { fecha_nacimiento: string | null; creado_en: string };
+
+/** Devuelve una copia ordenada. Sin fecha de nacimiento van al final al ordenar por edad. */
+export function ordenarPacientes<T extends PacienteOrdenable>(pacientes: T[], orden: Orden): T[] {
+  const porApellido = (a: T, b: T) =>
+    normalizar(`${a.apellido ?? ""} ${a.nombre}`).localeCompare(normalizar(`${b.apellido ?? ""} ${b.nombre}`), "es");
+  const porNombre = (a: T, b: T) =>
+    normalizar(`${a.nombre} ${a.apellido ?? ""}`).localeCompare(normalizar(`${b.nombre} ${b.apellido ?? ""}`), "es");
+  const porEdad = (menorPrimero: boolean) => (a: T, b: T) => {
+    if (!a.fecha_nacimiento || !b.fecha_nacimiento) {
+      if (a.fecha_nacimiento === b.fecha_nacimiento) return porApellido(a, b);
+      return a.fecha_nacimiento ? -1 : 1;
+    }
+    // Menor = nació más tarde = fecha más grande.
+    const diferencia = a.fecha_nacimiento.localeCompare(b.fecha_nacimiento);
+    return (menorPrimero ? -diferencia : diferencia) || porApellido(a, b);
+  };
+  const comparar = {
+    apellido: porApellido,
+    nombre: porNombre,
+    menor: porEdad(true),
+    mayor: porEdad(false),
+    recientes: (a: T, b: T) => b.creado_en.localeCompare(a.creado_en) || porApellido(a, b),
+  }[orden];
+  return [...pacientes].sort(comparar);
 }
 
 /** Estado elegido en la URL; si falta o es inválido, "activo". */

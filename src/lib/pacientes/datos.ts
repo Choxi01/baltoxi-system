@@ -19,7 +19,7 @@ export async function listarPacientes() {
   const [{ data: pacientes, error }, { data: tutores }] = await Promise.all([
     supabase
       .from("pacientes")
-      .select("id, nombre, apellido, fecha_nacimiento, estado, responsable_pago_id")
+      .select("id, nombre, apellido, fecha_nacimiento, estado, responsable_pago_id, creado_en")
       .eq("consultorio_id", consultorio.id),
     supabase.from("tutores").select("id, nombre, apellido").eq("consultorio_id", consultorio.id),
   ]);

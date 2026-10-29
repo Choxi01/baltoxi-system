@@ -9,6 +9,7 @@ import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { formatoGs } from "@/lib/cobro/formato";
 import { NOMBRE_ESTADO, ESTADOS_PACIENTE } from "@/lib/pacientes/busqueda";
+import { aniosParaElegir, MESES, partirFecha } from "@/lib/pacientes/fecha";
 import type { EstadoFormularioPaciente } from "@/lib/pacientes/acciones";
 import { NOMBRE_PLAN, PLANES_COBRO } from "@/lib/pacientes/validacion";
 
@@ -36,8 +37,14 @@ export function FormularioPaciente({
   tarifas,
   tutores,
   textoBoton,
+  hoy,
+  alCancelar,
 }: {
   accion: Accion;
+  /** "AAAA-MM-DD" en Asunción, para la lista de años. */
+  hoy: string;
+  /** Si está, muestra el botón Cancelar (volver al resumen sin guardar). */
+  alCancelar?: () => void;
   valores?: ValoresPaciente;
   tarifas: { id: string; nombre: string; monto_gs: number }[];
   /** Tutores ya vinculados (para elegir responsable de pago). Sin esto, no se muestra el campo. */
@@ -49,6 +56,7 @@ export function FormularioPaciente({
   // Valor inicial de cada campo: lo que se escribió (si hubo error) o lo guardado.
   const v = (campo: string, guardado: string | number | null | undefined) =>
     estado.enviado?.[campo] ?? (guardado == null ? "" : String(guardado));
+  const fecha = partirFecha(valores?.fecha_nacimiento);
 
   return (
     <form key={estado.revision ?? 0} action={enviar} className="flex flex-col gap-5" noValidate>
@@ -59,9 +67,37 @@ export function FormularioPaciente({
         <Campo id="apellido" etiqueta="Apellido" error={e.apellido}>
           <Input id="apellido" name="apellido" defaultValue={v("apellido", valores?.apellido ?? "")} autoComplete="off" />
         </Campo>
-        <Campo id="fecha_nacimiento" etiqueta="Fecha de nacimiento" error={e.fecha_nacimiento}>
-          <Input id="fecha_nacimiento" name="fecha_nacimiento" type="date" defaultValue={v("fecha_nacimiento", valores?.fecha_nacimiento ?? "")} aria-invalid={!!e.fecha_nacimiento} />
-        </Campo>
+        {/* Tres ruedas (día, mes, año): en el iPhone es más cómodo que el calendario. */}
+        <fieldset className="flex flex-col gap-2">
+          <legend className="mb-2 text-sm font-medium">Fecha de nacimiento</legend>
+          <div className="grid grid-cols-[1fr_2fr_1.5fr] gap-2">
+            <Select name="fecha_dia" aria-label="Día" defaultValue={v("fecha_dia", fecha.dia)} aria-invalid={!!e.fecha_nacimiento}>
+              <option value="">Día</option>
+              {Array.from({ length: 31 }, (_, i) => (
+                <option key={i + 1} value={i + 1}>
+                  {i + 1}
+                </option>
+              ))}
+            </Select>
+            <Select name="fecha_mes" aria-label="Mes" defaultValue={v("fecha_mes", fecha.mes)} aria-invalid={!!e.fecha_nacimiento}>
+              <option value="">Mes</option>
+              {MESES.map((mes, i) => (
+                <option key={mes} value={i + 1}>
+                  {mes}
+                </option>
+              ))}
+            </Select>
+            <Select name="fecha_anio" aria-label="Año" defaultValue={v("fecha_anio", fecha.anio)} aria-invalid={!!e.fecha_nacimiento}>
+              <option value="">Año</option>
+              {aniosParaElegir(hoy).map((anio) => (
+                <option key={anio} value={anio}>
+                  {anio}
+                </option>
+              ))}
+            </Select>
+          </div>
+          {e.fecha_nacimiento && <p className="text-sm text-destructive">{e.fecha_nacimiento}</p>}
+        </fieldset>
         <Campo id="colegio" etiqueta="Colegio" error={e.colegio}>
           <Input id="colegio" name="colegio" defaultValue={v("colegio", valores?.colegio ?? "")} />
         </Campo>
@@ -148,6 +184,11 @@ export function FormularioPaciente({
         <Button type="submit" size="touch" disabled={enviando}>
           {enviando ? "Guardando…" : textoBoton}
         </Button>
+        {alCancelar && (
+          <Button type="button" variant="ghost" onClick={alCancelar} disabled={enviando}>
+            Cancelar
+          </Button>
+        )}
         {estado.guardadoEn && !enviando && (
           <p role="status" className="text-center text-sm text-muted-foreground">
             Guardado ✓

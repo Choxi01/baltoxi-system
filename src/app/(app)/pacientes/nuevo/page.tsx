@@ -4,6 +4,7 @@ import { ChevronLeft } from "lucide-react";
 
 import { crearPaciente } from "@/lib/pacientes/acciones";
 import { listarTarifas } from "@/lib/pacientes/datos";
+import { hoyEnAsuncion } from "@/lib/fechas";
 import { FormularioPaciente } from "../formulario-paciente";
 
 export const metadata: Metadata = { title: "Nuevo paciente · Consultorio" };
@@ -17,7 +18,7 @@ export default async function PaginaNuevoPaciente() {
       </Link>
       <h1 className="text-2xl font-semibold tracking-tight">Nuevo paciente</h1>
       <p className="text-sm text-muted-foreground">Después de guardarlo vas a poder agregar sus tutores.</p>
-      <FormularioPaciente accion={crearPaciente} tarifas={tarifas} textoBoton="Crear paciente" />
+      <FormularioPaciente accion={crearPaciente} tarifas={tarifas} hoy={hoyEnAsuncion()} textoBoton="Crear paciente" />
     </div>
   );
 }

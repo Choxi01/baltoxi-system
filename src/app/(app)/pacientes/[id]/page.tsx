@@ -3,34 +3,52 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
 
+import { formatoGs } from "@/lib/cobro/formato";
+import { hoyEnAsuncion } from "@/lib/fechas";
 import { actualizarPaciente } from "@/lib/pacientes/acciones";
-import { NOMBRE_ESTADO } from "@/lib/pacientes/busqueda";
+import { NOMBRE_ESTADO, type EstadoPaciente } from "@/lib/pacientes/busqueda";
 import { listarTarifas, obtenerPaciente } from "@/lib/pacientes/datos";
 import { textoEdad } from "@/lib/pacientes/edad";
-import { hoyEnAsuncion } from "@/lib/fechas";
-import { cn } from "@/lib/utils";
-import { FormularioPaciente } from "../formulario-paciente";
+import { textoFecha } from "@/lib/pacientes/fecha";
+import { NOMBRE_PLAN, PLANES_COBRO } from "@/lib/pacientes/validacion";
+import { FichaDatos, type FilaResumen } from "./ficha-datos";
+import { Pestanas } from "./pestanas";
 
 export const metadata: Metadata = { title: "Paciente · Consultorio" };
-
-const PESTANAS = [
-  { id: "datos", titulo: "Datos" },
-  { id: "tutores", titulo: "Tutores" },
-  { id: "anamnesis", titulo: "Anamnesis", tarea: "A6" },
-  { id: "notas", titulo: "Notas", tarea: "A5" },
-  { id: "documentos", titulo: "Documentos", tarea: "A7" },
-  { id: "cuenta", titulo: "Turnos y cuenta", tarea: "B4" },
-] as const;
 
 export default async function PaginaPaciente({ params, searchParams }: PageProps<"/pacientes/[id]">) {
   const { id } = await params;
   const { pestana } = await searchParams;
-  const actual = PESTANAS.find((p) => p.id === pestana) ?? PESTANAS[0];
 
-  const ficha = await obtenerPaciente(id);
+  const [ficha, tarifas] = await Promise.all([obtenerPaciente(id), listarTarifas()]);
   if (!ficha) notFound();
   const { paciente, tutores } = ficha;
-  const edad = textoEdad(paciente.fecha_nacimiento, hoyEnAsuncion());
+  const hoy = hoyEnAsuncion();
+  const edad = textoEdad(paciente.fecha_nacimiento, hoy);
+  const nombreDe = (t: { nombre: string; apellido: string | null }) => `${t.nombre} ${t.apellido ?? ""}`.trim();
+
+  const tarifa = tarifas.find((t) => t.id === paciente.tarifa_id);
+  const responsable = tutores.find((t) => t.id === paciente.responsable_pago_id);
+  const plan = paciente.plan_cobro as (typeof PLANES_COBRO)[number];
+  const resumen: FilaResumen[] = [
+    {
+      etiqueta: "Fecha de nacimiento",
+      valor: paciente.fecha_nacimiento ? `${textoFecha(paciente.fecha_nacimiento)} (${edad})` : null,
+    },
+    { etiqueta: "Colegio", valor: paciente.colegio },
+    { etiqueta: "Derivado por", valor: paciente.derivado_por },
+    { etiqueta: "Motivo de consulta", valor: paciente.motivo_consulta, clinico: true },
+    { etiqueta: "Estado", valor: NOMBRE_ESTADO[paciente.estado as EstadoPaciente] ?? paciente.estado },
+    { etiqueta: "Tarifa", valor: tarifa ? `${tarifa.nombre} · ${formatoGs(tarifa.monto_gs)}` : null },
+    {
+      etiqueta: "Precio especial",
+      valor: paciente.monto_override_gs != null ? formatoGs(paciente.monto_override_gs) : null,
+    },
+    { etiqueta: "Forma de pago", valor: NOMBRE_PLAN[plan] ?? paciente.plan_cobro },
+    { etiqueta: "Responsable de pago", valor: responsable ? nombreDe(responsable) : null },
+  ];
+
+  const proximamente = (tarea: string) => <p className="text-muted-foreground">Próximamente (tarea {tarea}).</p>;
 
   return (
     <div className="flex flex-col gap-4">
@@ -42,67 +60,59 @@ export default async function PaginaPaciente({ params, searchParams }: PageProps
           {paciente.nombre} {paciente.apellido}
         </h1>
         <p className="text-sm text-muted-foreground">
-          {[edad, NOMBRE_ESTADO[paciente.estado as keyof typeof NOMBRE_ESTADO]].filter(Boolean).join(" · ")}
+          {[edad, NOMBRE_ESTADO[paciente.estado as EstadoPaciente]].filter(Boolean).join(" · ")}
         </p>
       </div>
 
-      {/* Pestañas: links comunes, se pueden deslizar en el iPhone. */}
-      <nav aria-label="Secciones del expediente" className="-mx-4 overflow-x-auto px-4">
-        <ul className="flex min-w-max gap-1 border-b">
-          {PESTANAS.map((p) => (
-            <li key={p.id}>
-              <Link
-                href={`/pacientes/${id}?pestana=${p.id}`}
-                replace
-                aria-current={p.id === actual.id ? "page" : undefined}
-                className={cn(
-                  "flex h-11 items-center border-b-2 px-3 text-sm font-medium",
-                  p.id === actual.id ? "border-foreground text-foreground" : "border-transparent text-muted-foreground",
+      <Pestanas
+        inicial={typeof pestana === "string" ? pestana : "datos"}
+        pestanas={[
+          {
+            id: "datos",
+            titulo: "Datos",
+            contenido: (
+              <FichaDatos
+                resumen={resumen}
+                accion={actualizarPaciente.bind(null, paciente.id)}
+                valores={paciente}
+                tarifas={tarifas}
+                tutores={tutores}
+                hoy={hoy}
+              />
+            ),
+          },
+          {
+            id: "tutores",
+            titulo: "Tutores",
+            contenido: (
+              <div className="flex flex-col gap-3">
+                {tutores.length === 0 ? (
+                  <p className="text-muted-foreground">Este paciente todavía no tiene tutores.</p>
+                ) : (
+                  <ul className="divide-y rounded-lg border">
+                    {tutores.map((t) => (
+                      <li key={t.id} className="flex flex-col px-4 py-3">
+                        <span className="font-medium">
+                          {nombreDe(t)}
+                          {t.id === paciente.responsable_pago_id && (
+                            <span className="ml-2 rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">Paga</span>
+                          )}
+                        </span>
+                        <span className="text-sm text-muted-foreground">{t.parentesco}</span>
+                      </li>
+                    ))}
+                  </ul>
                 )}
-              >
-                {p.titulo}
-              </Link>
-            </li>
-          ))}
-        </ul>
-      </nav>
-
-      {actual.id === "datos" && (
-        <FormularioPaciente
-          accion={actualizarPaciente.bind(null, paciente.id)}
-          valores={paciente}
-          tarifas={await listarTarifas()}
-          tutores={tutores}
-          textoBoton="Guardar cambios"
-        />
-      )}
-
-      {actual.id === "tutores" && (
-        <div className="flex flex-col gap-3">
-          {tutores.length === 0 ? (
-            <p className="text-muted-foreground">Este paciente todavía no tiene tutores.</p>
-          ) : (
-            <ul className="divide-y rounded-lg border">
-              {tutores.map((t) => (
-                <li key={t.id} className="flex flex-col px-4 py-3">
-                  <span className="font-medium">
-                    {t.nombre} {t.apellido}
-                    {t.id === paciente.responsable_pago_id && (
-                      <span className="ml-2 rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">Paga</span>
-                    )}
-                  </span>
-                  <span className="text-sm text-muted-foreground">{t.parentesco}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-          <p className="text-sm text-muted-foreground">Agregar y editar tutores: próximamente (tarea A1b).</p>
-        </div>
-      )}
-
-      {"tarea" in actual && (
-        <p className="text-muted-foreground">Próximamente (tarea {actual.tarea}).</p>
-      )}
+                <p className="text-sm text-muted-foreground">Agregar y editar tutores: próximamente (tarea A1b).</p>
+              </div>
+            ),
+          },
+          { id: "anamnesis", titulo: "Anamnesis", contenido: proximamente("A6") },
+          { id: "notas", titulo: "Notas", contenido: proximamente("A5") },
+          { id: "documentos", titulo: "Documentos", contenido: proximamente("A7") },
+          { id: "cuenta", titulo: "Turnos y cuenta", contenido: proximamente("B4") },
+        ]}
+      />
     </div>
   );
 }

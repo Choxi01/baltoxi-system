@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { estadoDeFiltro, filtrarPacientes, normalizar } from "./busqueda";
+import { estadoDeFiltro, filtrarPacientes, normalizar, ordenarPacientes, ordenDeFiltro } from "./busqueda";
 
 const pacientes = [
   { nombre: "Mateo", apellido: "Benítez", estado: "activo" },
@@ -33,13 +33,40 @@ describe("filtrarPacientes", () => {
     expect(filtrarPacientes(pacientes, { estado: "alta" }).map((p) => p.nombre)).toEqual(["Ana"]);
   });
 
-  it("ordena por apellido y nombre", () => {
-    expect(filtrarPacientes(pacientes, { estado: "todos" }).map((p) => p.nombre)).toEqual([
-      "Ana",
-      "Mateo",
-      "Valentina",
-      "Thiago",
-    ]);
+});
+
+describe("ordenarPacientes", () => {
+  const lista = [
+    { nombre: "Thiago", apellido: "Giménez", estado: "activo", fecha_nacimiento: "2019-09-01", creado_en: "2026-10-01" },
+    { nombre: "Mateo", apellido: "Benítez", estado: "activo", fecha_nacimiento: "2020-07-15", creado_en: "2026-10-03" },
+    { nombre: "Ana", apellido: null, estado: "alta", fecha_nacimiento: null, creado_en: "2026-10-02" },
+    { nombre: "Valentina", apellido: "Benítez", estado: "activo", fecha_nacimiento: "2022-02-10", creado_en: "2026-09-30" },
+  ];
+  const nombres = (orden: Parameters<typeof ordenarPacientes>[1]) => ordenarPacientes(lista, orden).map((p) => p.nombre);
+
+  it("por apellido (sin apellido primero) y por nombre", () => {
+    expect(nombres("apellido")).toEqual(["Ana", "Mateo", "Valentina", "Thiago"]);
+    expect(nombres("nombre")).toEqual(["Ana", "Mateo", "Thiago", "Valentina"]);
+  });
+
+  it("por edad, y sin fecha al final", () => {
+    expect(nombres("menor")).toEqual(["Valentina", "Mateo", "Thiago", "Ana"]);
+    expect(nombres("mayor")).toEqual(["Thiago", "Mateo", "Valentina", "Ana"]);
+  });
+
+  it("últimos cargados primero", () => {
+    expect(nombres("recientes")).toEqual(["Mateo", "Ana", "Thiago", "Valentina"]);
+  });
+
+  it("no cambia la lista original", () => {
+    ordenarPacientes(lista, "menor");
+    expect(lista[0].nombre).toBe("Thiago");
+  });
+
+  it("orden por defecto: apellido", () => {
+    expect(ordenDeFiltro(undefined)).toBe("apellido");
+    expect(ordenDeFiltro("raro")).toBe("apellido");
+    expect(ordenDeFiltro("menor")).toBe("menor");
   });
 });
 

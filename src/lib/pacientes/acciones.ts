@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { exigirConsultorio } from "@/lib/auth/servidor";
@@ -38,6 +39,7 @@ export async function crearPaciente(
     .select("id")
     .single();
   if (error || !data) return conError({ general: "No se pudo guardar. Probá de nuevo." }, formulario);
+  revalidatePath("/pacientes");
   redirect(`/pacientes/${data.id}`);
 }
 
@@ -74,6 +76,9 @@ export async function actualizarPaciente(
     .eq("consultorio_id", consultorio.id)
     .eq("id", id);
   if (error) return conError({ general: "No se pudo guardar. Probá de nuevo." }, formulario);
+  // Que la ficha y la lista muestren los datos nuevos.
+  revalidatePath(`/pacientes/${id}`);
+  revalidatePath("/pacientes");
   const ahora = Date.now();
   return { errores: {}, guardadoEn: ahora, revision: ahora };
 }
