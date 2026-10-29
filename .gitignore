@@ -1,0 +1,13 @@
+node_modules/
+.next/
+out/
+.netlify/
+.env
+.env.local
+.env.*.local
+*.sql.gz
+*.gpg
+backup.sql
+.DS_Store
+coverage/
+supabase/.temp/
