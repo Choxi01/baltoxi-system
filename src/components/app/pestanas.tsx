@@ -8,7 +8,7 @@ export type Pestana = { id: string; titulo: string; contenido: React.ReactNode }
 
 // Las pestañas cambian al instante (todo el contenido ya vino del servidor) y
 // la elegida queda en la dirección (?pestana=), sin recargar.
-export function Pestanas({ pestanas, inicial }: { pestanas: Pestana[]; inicial: string }) {
+export function Pestanas({ pestanas, inicial, etiqueta }: { pestanas: Pestana[]; inicial: string; etiqueta: string }) {
   const [actual, setActual] = useState(pestanas.some((p) => p.id === inicial) ? inicial : pestanas[0].id);
 
   function elegir(id: string) {
@@ -20,7 +20,7 @@ export function Pestanas({ pestanas, inicial }: { pestanas: Pestana[]; inicial: 
 
   return (
     <>
-      <div role="tablist" aria-label="Secciones del expediente" className="-mx-4 overflow-x-auto px-4">
+      <div role="tablist" aria-label={etiqueta} className="-mx-4 overflow-x-auto px-4">
         <div className="flex min-w-max gap-1 border-b">
           {pestanas.map((p) => (
             <button
