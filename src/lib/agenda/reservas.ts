@@ -83,6 +83,8 @@ const esquemaReserva = z.discriminatedUnion("clase", [
     inicio: hora,
     paciente_id: id,
     tipo_turno_id: id,
+    /** Si repone una sesión que canceló la profesional ("Para reponer"). */
+    repone_a: id.nullable().optional(),
     confirmado: z.boolean(),
   }),
   z.object({

@@ -98,7 +98,8 @@ Todas las tareas asumen que Claude Code leyó `CLAUDE.md`. Si no, empezá con "L
 
 > _Dividida en tres PRs. **A3a hecha**: Reservar (paciente o nombre suelto), Marcar ocupado, Ver expediente,
 > Crear ficha desde un reservado, confirmación de superposición y aviso de traslado (`avisosAlAgendar` con tests).
-> **Falta A3b** (Mover, Cancelar, Para reponer) y **A3c** (Turnos fijos)._
+> **A3b hecha**: Mover (migración 0007 `mover_turno`), Cancelar (familia con cuándo avisó, o profesional → reponer;
+> sin cargos hasta la B3), Quitar reservado/ocupado y "Para reponer este mes". **Falta A3c** (Turnos fijos)._
 
 #### [ ] A4 Copiar libres
 > Botones Copiar libres de hoy / semana / mes con filtros (mañana, tarde, desde mañana), usando

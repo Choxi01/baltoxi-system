@@ -2,7 +2,8 @@ import "server-only";
 
 import { exigirConsultorio } from "@/lib/auth/servidor";
 import { crearClienteServidor } from "@/lib/supabase/servidor";
-import { sumarDias } from "./calendario";
+import { finDeMes, inicioDeMes, sumarDias } from "./calendario";
+import { pendientesDeReponer } from "./cancelacion";
 import { horaDeBase } from "./horario";
 import { aHoraLocal, inicioDelDiaUtc, type ClaseTurno, type EstadoTurno, type TurnoAgenda } from "./turnos";
 
@@ -35,7 +36,7 @@ export async function listarTurnos(desde: string, hasta: string): Promise<TurnoA
   const { data, error } = await supabase
     .from("turnos")
     .select(
-      "id, clase, estado, inicio, fin, paciente_id, nombre_reserva, motivo_ocupado, pacientes!turnos_consultorio_id_paciente_id_fkey(nombre, apellido), tipos_turno!turnos_consultorio_id_tipo_turno_id_fkey(nombre, modalidad)",
+      "id, clase, estado, inicio, fin, paciente_id, tipo_turno_id, nombre_reserva, motivo_ocupado, pacientes!turnos_consultorio_id_paciente_id_fkey(nombre, apellido), tipos_turno!turnos_consultorio_id_tipo_turno_id_fkey(nombre, modalidad)",
     )
     .eq("consultorio_id", consultorio.id)
     .gte("inicio", inicioDelDiaUtc(desde))
@@ -55,13 +56,14 @@ export async function listarTurnos(desde: string, hasta: string): Promise<TurnoA
       fin: aHoraLocal(t.fin).hora,
       titulo: (t.clase === "turno" ? paciente : t.clase === "reservado" ? t.nombre_reserva : t.motivo_ocupado) ?? "",
       tipo: t.tipos_turno?.nombre ?? null,
+      tipoId: t.tipo_turno_id,
       pacienteId: t.paciente_id,
       modalidad: t.tipos_turno?.modalidad ?? null,
     };
   });
 }
 
-/** Lo que necesita la agenda para reservar: pacientes activos, tipos de turno y el tiempo de traslado. */
+/** Lo que necesita la agenda para reservar: pacientes activos, tipos de turno, traslado y horas mínimas de aviso. */
 export async function obtenerDatosParaReservar() {
   const consultorio = await exigirConsultorio();
   const supabase = await crearClienteServidor();
@@ -78,11 +80,44 @@ export async function obtenerDatosParaReservar() {
       .eq("consultorio_id", consultorio.id)
       .eq("activo", true)
       .order("nombre"),
-    supabase.from("consultorios").select("traslado_domicilio_min").eq("id", consultorio.id).single(),
+    supabase.from("consultorios").select("traslado_domicilio_min, horas_aviso_minimas").eq("id", consultorio.id).single(),
   ]);
   return {
     pacientes: pacientes ?? [],
     tipos: tipos ?? [],
     trasladoMin: config?.traslado_domicilio_min ?? 30,
+    horasAvisoMinimas: config?.horas_aviso_minimas ?? 48,
   };
+}
+
+/** "Para reponer este mes": sesiones que canceló la profesional y todavía no tienen reposición. */
+export async function listarParaReponer(hoy: string) {
+  const consultorio = await exigirConsultorio();
+  const supabase = await crearClienteServidor();
+  const { data: cancelados } = await supabase
+    .from("turnos")
+    .select("id, estado, reponer, inicio, paciente_id, tipo_turno_id, pacientes!turnos_consultorio_id_paciente_id_fkey(nombre, apellido)")
+    .eq("consultorio_id", consultorio.id)
+    .eq("estado", "cancelado_profesional")
+    .eq("reponer", true)
+    .gte("inicio", inicioDelDiaUtc(inicioDeMes(hoy)))
+    .lt("inicio", inicioDelDiaUtc(sumarDias(finDeMes(hoy), 1)))
+    .order("inicio");
+  if (!cancelados?.length) return [];
+  const { data: reposiciones } = await supabase
+    .from("turnos")
+    .select("repone_a, estado")
+    .eq("consultorio_id", consultorio.id)
+    .in("repone_a", cancelados.map((c) => c.id));
+  return pendientesDeReponer(cancelados, reposiciones ?? []).map((t) => {
+    const { fecha, hora } = aHoraLocal(t.inicio);
+    return {
+      id: t.id,
+      fecha,
+      inicio: hora,
+      pacienteId: t.paciente_id,
+      tipoId: t.tipo_turno_id,
+      titulo: t.pacientes ? `${t.pacientes.nombre} ${t.pacientes.apellido ?? ""}`.trim() : "",
+    };
+  });
 }

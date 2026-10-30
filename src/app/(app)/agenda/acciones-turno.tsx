@@ -1,0 +1,258 @@
+"use client";
+
+import { useState, useTransition } from "react";
+
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
+import type { ResultadoSimple } from "@/lib/agenda/acciones-turnos";
+import { aHora, aMinutos, horaCorta } from "@/lib/agenda/bloques";
+import { fechasEntre, sumarDias, tituloDia } from "@/lib/agenda/calendario";
+import { clasificarCancelacion, type QuienCancela } from "@/lib/agenda/cancelacion";
+import { instanteUtc } from "@/lib/agenda/reservas";
+import { aHoraLocal, textoTurno, type TurnoAgenda } from "@/lib/agenda/turnos";
+import { cn } from "@/lib/utils";
+
+export type AccionesDeTurno = {
+  libresDelDia: (fecha: string) => Promise<{ ok: true; libres: string[]; bloqueo: string | null } | { ok: false; error: string }>;
+  moverTurno: (id: string, fecha: string, inicio: string) => Promise<ResultadoSimple>;
+  cancelarTurno: (id: string, quien: QuienCancela, aviso: { fecha: string; hora: string } | null) => Promise<ResultadoSimple>;
+  quitarTurno: (id: string) => Promise<ResultadoSimple>;
+};
+
+// Una sola rueda con los días (más cómoda en el iPhone que un calendario).
+function RuedaDia({ id, dias, valor, alCambiar }: { id: string; dias: string[]; valor: string; alCambiar: (f: string) => void }) {
+  return (
+    <Select id={id} value={valor} onChange={(e) => alCambiar(e.target.value)}>
+      {dias.map((f) => (
+        <option key={f} value={f}>
+          {tituloDia(f)}
+        </option>
+      ))}
+    </Select>
+  );
+}
+
+/** Mover: elegir el día y uno de sus bloques libres. */
+export function FormularioMover({
+  turno,
+  hoy,
+  acciones,
+  alVolver,
+  alGuardar,
+}: {
+  turno: TurnoAgenda;
+  hoy: string;
+  acciones: AccionesDeTurno;
+  alVolver: () => void;
+  alGuardar: (aviso: string) => void;
+}) {
+  // De hoy a 3 meses (y el día del turno, si ya pasó).
+  const dias = fechasEntre(turno.fecha < hoy ? turno.fecha : hoy, sumarDias(hoy, 90));
+  const [fecha, setFecha] = useState(turno.fecha);
+  const [libres, setLibres] = useState<string[] | null>(null);
+  const [bloqueo, setBloqueo] = useState<string | null>(null);
+  const [elegido, setElegido] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [buscando, iniciarBusqueda] = useTransition();
+  const [enviando, iniciar] = useTransition();
+
+  function buscar(nueva: string) {
+    setFecha(nueva);
+    setElegido(null);
+    setError(null);
+    iniciarBusqueda(async () => {
+      const r = await acciones.libresDelDia(nueva);
+      if (r.ok) {
+        setLibres(r.libres);
+        setBloqueo(r.bloqueo);
+      } else setError(r.error);
+    });
+  }
+
+  function mover() {
+    if (!elegido) return;
+    iniciar(async () => {
+      const r = await acciones.moverTurno(turno.id, fecha, elegido);
+      if (r.ok) alGuardar(`Movido al ${tituloDia(fecha).toLowerCase()} a las ${horaCorta(elegido)} ✓`);
+      else setError(r.error);
+    });
+  }
+
+  return (
+    <div className="flex flex-col gap-3">
+      <p className="text-sm">
+        Mover <strong>{textoTurno(turno)}</strong>
+        {turno.clase === "turno" && " (el turno original queda como reprogramado, sin costo)"}.
+      </p>
+      <div className="flex flex-col gap-2">
+        <Label htmlFor="mover-dia">Día</Label>
+        <RuedaDia id="mover-dia" dias={dias} valor={fecha} alCambiar={buscar} />
+      </div>
+      {libres === null && !buscando && (
+        <Button variant="outline" className="h-12" onClick={() => buscar(fecha)}>
+          Ver horarios libres
+        </Button>
+      )}
+      {buscando && <p className="text-sm text-muted-foreground">Buscando horarios libres…</p>}
+      {!buscando && libres !== null && (
+        <>
+          {bloqueo && <p className="text-sm text-muted-foreground">Sin agenda: {bloqueo}.</p>}
+          {!bloqueo && libres.length === 0 && <p className="text-sm text-muted-foreground">No hay horarios libres ese día.</p>}
+          {libres.length > 0 && (
+            <div className="grid grid-cols-4 gap-2" role="group" aria-label="Horarios libres">
+              {libres.map((h) => (
+                <button
+                  key={h}
+                  type="button"
+                  aria-pressed={elegido === h}
+                  onClick={() => setElegido(h)}
+                  className={cn(
+                    "h-12 rounded-lg border text-sm tabular-nums active:bg-accent",
+                    elegido === h && "border-primary bg-primary text-primary-foreground",
+                  )}
+                >
+                  {horaCorta(h)}
+                </button>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+      {error && (
+        <p role="alert" className="text-sm text-destructive">
+          {error}
+        </p>
+      )}
+      <div className="flex flex-col gap-2">
+        {elegido && (
+          <Button size="touch" onClick={mover} disabled={enviando}>
+            {enviando ? "Moviendo…" : `Mover a las ${horaCorta(elegido)}`}
+          </Button>
+        )}
+        <Button variant="ghost" onClick={alVolver} disabled={enviando}>
+          Volver
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+/** Cancelar: quién canceló y, si fue la familia, cuándo avisó. */
+export function FormularioCancelar({
+  turno,
+  hoy,
+  horasAvisoMinimas,
+  acciones,
+  alVolver,
+  alGuardar,
+}: {
+  turno: TurnoAgenda;
+  hoy: string;
+  horasAvisoMinimas: number;
+  acciones: AccionesDeTurno;
+  alVolver: () => void;
+  alGuardar: (aviso: string) => void;
+}) {
+  const [quien, setQuien] = useState<QuienCancela | null>(null);
+  // Cuándo avisó: arranca en "ahora" (hora de Asunción, redondeada a 15 minutos).
+  const [avisoFecha, setAvisoFecha] = useState(hoy);
+  const [avisoHora, setAvisoHora] = useState(() => {
+    const ahora = aMinutos(aHoraLocal(new Date().toISOString()).hora);
+    return aHora(ahora - (ahora % 15));
+  });
+  const [error, setError] = useState<string | null>(null);
+  const [enviando, iniciar] = useTransition();
+
+  // Días para elegir: dos semanas antes del turno (o de hoy) hasta hoy.
+  const desde = sumarDias(turno.fecha < hoy ? turno.fecha : hoy, -14);
+  const dias = fechasEntre(desde, hoy).reverse();
+  const horas = Array.from({ length: 24 * 4 }, (_, i) => aHora(i * 15));
+
+  const clasificacion = clasificarCancelacion({
+    inicio: new Date(instanteUtc(turno.fecha, turno.inicio)),
+    avisoEn: new Date(instanteUtc(avisoFecha, avisoHora)),
+    horasAvisoMinimas,
+  });
+
+  function confirmar() {
+    if (!quien) return;
+    iniciar(async () => {
+      const r = await acciones.cancelarTurno(turno.id, quien, quien === "familia" ? { fecha: avisoFecha, hora: avisoHora } : null);
+      if (r.ok) alGuardar(quien === "profesional" ? "Cancelado ✓ Quedó en «Para reponer»." : "Cancelado ✓");
+      else setError(r.error);
+    });
+  }
+
+  return (
+    <div className="flex flex-col gap-3">
+      <p className="text-sm">
+        Cancelar la sesión de <strong>{turno.titulo}</strong> ({horaCorta(turno.inicio)}). El horario queda libre.
+      </p>
+      <div className="grid grid-cols-2 gap-2" role="group" aria-label="Quién canceló">
+        {(
+          [
+            ["familia", "Canceló la familia"],
+            ["profesional", "Cancelé yo"],
+          ] as const
+        ).map(([valor, texto]) => (
+          <button
+            key={valor}
+            type="button"
+            aria-pressed={quien === valor}
+            onClick={() => setQuien(valor)}
+            className={cn("h-12 rounded-lg border px-2 text-sm active:bg-accent", quien === valor && "border-primary bg-primary text-primary-foreground")}
+          >
+            {texto}
+          </button>
+        ))}
+      </div>
+
+      {quien === "familia" && (
+        <fieldset className="flex flex-col gap-2">
+          <legend className="mb-2 text-sm font-medium">¿Cuándo avisó?</legend>
+          <div className="grid grid-cols-[2fr_1fr] gap-2">
+            <Select aria-label="Día del aviso" value={avisoFecha} onChange={(e) => setAvisoFecha(e.target.value)}>
+              {dias.map((f) => (
+                <option key={f} value={f}>
+                  {f === hoy ? "Hoy" : tituloDia(f)}
+                </option>
+              ))}
+            </Select>
+            <Select aria-label="Hora del aviso" value={avisoHora} onChange={(e) => setAvisoHora(e.target.value)}>
+              {horas.map((h) => (
+                <option key={h} value={h}>
+                  {horaCorta(h)}
+                </option>
+              ))}
+            </Select>
+          </div>
+          <p className="rounded-md bg-muted px-3 py-2 text-sm">
+            {clasificacion === "ausente_con_aviso"
+              ? `Avisó con ${horasAvisoMinimas} h o más: cancelación con aviso.`
+              : `Avisó con menos de ${horasAvisoMinimas} h: aviso tardío.`}
+          </p>
+        </fieldset>
+      )}
+      {quien === "profesional" && (
+        <p className="rounded-md bg-muted px-3 py-2 text-sm">Va a aparecer en «Para reponer este mes» hasta que le des otro turno.</p>
+      )}
+
+      {error && (
+        <p role="alert" className="text-sm text-destructive">
+          {error}
+        </p>
+      )}
+      <div className="flex flex-col gap-2">
+        {quien && (
+          <Button size="touch" variant="destructive" onClick={confirmar} disabled={enviando}>
+            {enviando ? "Cancelando…" : "Confirmar cancelación"}
+          </Button>
+        )}
+        <Button variant="ghost" onClick={alVolver} disabled={enviando}>
+          Volver
+        </Button>
+      </div>
+    </div>
+  );
+}

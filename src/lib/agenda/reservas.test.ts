@@ -12,6 +12,7 @@ const turno = (inicio: string, fin: string, datos: Partial<TurnoAgenda> = {}): T
   fin,
   titulo: "Ana Prueba",
   tipo: "Sesión",
+  tipoId: null,
   pacienteId: null,
   modalidad: "consultorio",
   ...datos,
