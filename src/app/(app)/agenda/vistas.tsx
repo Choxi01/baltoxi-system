@@ -23,21 +23,51 @@ function AvisoBloqueo({ dia }: { dia: Dia }) {
   );
 }
 
-export function VistaDia({ dia }: { dia: Dia }) {
+/** Clave de una fila del día (para saber cuál tiene el panel abierto). */
+export function claveFila(fecha: string, fila: FilaDia): string {
+  return `${fecha}|${fila.inicio}|${fila.tipo === "fuera" ? fila.turno.id : "bloque"}`;
+}
+
+export function VistaDia({
+  dia,
+  abierta,
+  alTocar,
+  panel,
+}: {
+  dia: Dia;
+  /** Clave de la fila con el panel abierto (ver claveFila). */
+  abierta?: string | null;
+  alTocar?: (clave: string) => void;
+  /** Lo que se muestra debajo de la fila abierta (acciones). */
+  panel?: (fila: FilaDia) => React.ReactNode;
+}) {
   return (
     <div className="flex flex-col gap-2">
       <AvisoBloqueo dia={dia} />
       {dia.filas.length === 0 && !dia.bloqueo && <p className="text-muted-foreground">No atendés este día.</p>}
       {dia.filas.length > 0 && (
         <ol className="flex flex-col gap-2">
-          {dia.filas.map((f, i) => (
-            <li key={`${f.inicio}-${i}`} className="flex gap-3">
-              <span className="w-12 shrink-0 pt-3 text-right text-sm tabular-nums text-muted-foreground">{horaCorta(f.inicio)}</span>
-              <div className="flex min-w-0 flex-1 flex-col gap-1">
-                <ContenidoFila fila={f} />
-              </div>
-            </li>
-          ))}
+          {dia.filas.map((f) => {
+            const clave = claveFila(dia.fecha, f);
+            const abiertaEsta = abierta === clave;
+            return (
+              <li key={clave} className="flex gap-3">
+                <span className="w-12 shrink-0 pt-3 text-right text-sm tabular-nums text-muted-foreground">{horaCorta(f.inicio)}</span>
+                <div className="flex min-w-0 flex-1 flex-col gap-1">
+                  <button
+                    type="button"
+                    className="flex flex-col gap-1 text-left disabled:cursor-default"
+                    aria-expanded={alTocar ? abiertaEsta : undefined}
+                    disabled={!alTocar}
+                    onClick={() => alTocar?.(clave)}
+                  >
+                    <ContenidoFila fila={f} />
+                  </button>
+                  {abiertaEsta && panel?.(f)}
+                </div>
+              </li>
+            );
+          })}
         </ol>
       )}
     </div>
@@ -49,15 +79,17 @@ function ContenidoFila({ fila }: { fila: FilaDia }) {
   return (
     <>
       {fila.turnos.length === 0 && (
-        <div className="flex min-h-12 items-center rounded-lg border border-dashed px-3 text-sm text-muted-foreground">Libre</div>
+        <span className="flex min-h-12 w-full items-center rounded-lg border border-dashed px-3 text-sm text-muted-foreground active:bg-accent">
+          Libre
+        </span>
       )}
       {fila.turnos.map((t) => (
         <TarjetaTurno key={t.id} turno={t} />
       ))}
       {fila.liberados.map((t) => (
-        <p key={t.id} className="px-3 text-xs text-muted-foreground">
+        <span key={t.id} className="px-3 text-xs text-muted-foreground">
           <span className="line-through">{textoTurno(t)}</span> · {NOMBRE_ESTADO_TURNO[t.estado]}
-        </p>
+        </span>
       ))}
     </>
   );
@@ -71,15 +103,26 @@ function TarjetaTurno({ turno, aviso }: { turno: TurnoAgenda; aviso?: string }) 
     aviso,
   ].filter(Boolean);
   return (
-    <div className={cn("flex min-h-12 flex-col justify-center rounded-lg border px-3 py-2", colorTurno(turno))}>
+    <span className={cn("flex min-h-12 w-full flex-col justify-center rounded-lg border px-3 py-2", colorTurno(turno))}>
       <span className="truncate font-medium">{textoTurno(turno)}</span>
       <span className="text-xs opacity-80">{detalle.join(" · ")}</span>
-    </div>
+    </span>
   );
 }
 
 /** Grilla de la semana: una columna por día y una fila por horario de bloque. */
-export function VistaSemana({ dias, hoy, alElegirDia }: { dias: Dia[]; hoy: string; alElegirDia: (fecha: string) => void }) {
+export function VistaSemana({
+  dias,
+  hoy,
+  alElegirDia,
+  alElegirFila,
+}: {
+  dias: Dia[];
+  hoy: string;
+  alElegirDia: (fecha: string) => void;
+  /** Tocar una celda: abre ese día con esa fila abierta. */
+  alElegirFila?: (fecha: string, clave: string) => void;
+}) {
   const horas = [...new Set(dias.flatMap((d) => d.filas.map((f) => f.inicio)))].sort();
   return (
     <div className="-mx-4 overflow-x-auto px-4 md:mx-0 md:px-0">
@@ -106,7 +149,7 @@ export function VistaSemana({ dias, hoy, alElegirDia }: { dias: Dia[]; hoy: stri
               <td className="pr-1 text-right align-top text-xs tabular-nums text-muted-foreground">{horaCorta(hora)}</td>
               {dias.map((d) => (
                 <td key={d.fecha} className="align-top">
-                  <CeldaSemana dia={d} hora={hora} alElegir={() => alElegirDia(d.fecha)} />
+                  <CeldaSemana dia={d} hora={hora} alElegir={(clave) => (alElegirFila ? alElegirFila(d.fecha, clave) : alElegirDia(d.fecha))} />
                 </td>
               ))}
             </tr>
@@ -133,12 +176,12 @@ export function VistaSemana({ dias, hoy, alElegirDia }: { dias: Dia[]; hoy: stri
   );
 }
 
-function CeldaSemana({ dia, hora, alElegir }: { dia: Dia; hora: string; alElegir: () => void }) {
+function CeldaSemana({ dia, hora, alElegir }: { dia: Dia; hora: string; alElegir: (clave: string) => void }) {
   const filas = dia.filas.filter((f) => f.inicio === hora);
   if (filas.length === 0) return <div className="h-12" />;
   const turnos = filas.flatMap((f) => (f.tipo === "fuera" ? [f.turno] : f.turnos));
   return (
-    <button type="button" onClick={alElegir} className="flex w-full flex-col gap-1 text-left">
+    <button type="button" onClick={() => alElegir(claveFila(dia.fecha, filas[0]))} className="flex w-full flex-col gap-1 text-left">
       {turnos.length === 0 ? (
         <span className="flex h-12 items-center justify-center rounded-md border border-dashed text-xs text-muted-foreground">Libre</span>
       ) : (

@@ -39,6 +39,7 @@ export function FormularioPaciente({
   textoBoton,
   hoy,
   alCancelar,
+  reservaId,
 }: {
   accion: Accion;
   /** "AAAA-MM-DD" en Asunción, para la lista de años. */
@@ -50,6 +51,8 @@ export function FormularioPaciente({
   /** Tutores ya vinculados (para elegir responsable de pago). Sin esto, no se muestra el campo. */
   tutores?: { id: string; nombre: string; apellido: string | null }[];
   textoBoton: string;
+  /** Al crear la ficha desde "Reservado: Fulano": esa reserva pasa a ser un turno del paciente nuevo. */
+  reservaId?: string;
 }) {
   const [estado, enviar, enviando] = useActionState(accion, inicial);
   const e = estado.errores;
@@ -60,6 +63,7 @@ export function FormularioPaciente({
 
   return (
     <form key={estado.revision ?? 0} action={enviar} className="flex flex-col gap-5" noValidate>
+      {reservaId && <input type="hidden" name="reserva_id" value={reservaId} />}
       <Seccion titulo="Datos personales">
         <Campo id="nombre" etiqueta="Nombre" error={e.nombre}>
           <Input id="nombre" name="nombre" defaultValue={v("nombre", valores?.nombre)} required autoComplete="off" aria-invalid={!!e.nombre} />

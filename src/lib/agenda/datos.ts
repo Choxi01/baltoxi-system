@@ -35,7 +35,7 @@ export async function listarTurnos(desde: string, hasta: string): Promise<TurnoA
   const { data, error } = await supabase
     .from("turnos")
     .select(
-      "id, clase, estado, inicio, fin, nombre_reserva, motivo_ocupado, pacientes!turnos_consultorio_id_paciente_id_fkey(nombre, apellido), tipos_turno!turnos_consultorio_id_tipo_turno_id_fkey(nombre)",
+      "id, clase, estado, inicio, fin, paciente_id, nombre_reserva, motivo_ocupado, pacientes!turnos_consultorio_id_paciente_id_fkey(nombre, apellido), tipos_turno!turnos_consultorio_id_tipo_turno_id_fkey(nombre, modalidad)",
     )
     .eq("consultorio_id", consultorio.id)
     .gte("inicio", inicioDelDiaUtc(desde))
@@ -55,6 +55,34 @@ export async function listarTurnos(desde: string, hasta: string): Promise<TurnoA
       fin: aHoraLocal(t.fin).hora,
       titulo: (t.clase === "turno" ? paciente : t.clase === "reservado" ? t.nombre_reserva : t.motivo_ocupado) ?? "",
       tipo: t.tipos_turno?.nombre ?? null,
+      pacienteId: t.paciente_id,
+      modalidad: t.tipos_turno?.modalidad ?? null,
     };
   });
+}
+
+/** Lo que necesita la agenda para reservar: pacientes activos, tipos de turno y el tiempo de traslado. */
+export async function obtenerDatosParaReservar() {
+  const consultorio = await exigirConsultorio();
+  const supabase = await crearClienteServidor();
+  const [{ data: pacientes }, { data: tipos }, { data: config }] = await Promise.all([
+    supabase
+      .from("pacientes")
+      .select("id, nombre, apellido")
+      .eq("consultorio_id", consultorio.id)
+      .eq("estado", "activo")
+      .order("nombre"),
+    supabase
+      .from("tipos_turno")
+      .select("id, nombre, modalidad, requiere_paciente")
+      .eq("consultorio_id", consultorio.id)
+      .eq("activo", true)
+      .order("nombre"),
+    supabase.from("consultorios").select("traslado_domicilio_min").eq("id", consultorio.id).single(),
+  ]);
+  return {
+    pacientes: pacientes ?? [],
+    tipos: tipos ?? [],
+    trasladoMin: config?.traslado_domicilio_min ?? 30,
+  };
 }
