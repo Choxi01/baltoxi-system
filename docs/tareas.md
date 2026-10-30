@@ -96,6 +96,10 @@ Todas las tareas asumen que Claude Code leyó `CLAUDE.md`. Si no, empezá con "L
 > cuándo avisó), Ver expediente. Confirmación si hay superposición; aviso de traslado entre domicilios.
 > "Reservado: Fulano" → botón Crear ficha que lo convierte en turno. Lista "Para reponer este mes".
 
+> _Dividida en tres PRs. **A3a hecha**: Reservar (paciente o nombre suelto), Marcar ocupado, Ver expediente,
+> Crear ficha desde un reservado, confirmación de superposición y aviso de traslado (`avisosAlAgendar` con tests).
+> **Falta A3b** (Mover, Cancelar, Para reponer) y **A3c** (Turnos fijos)._
+
 #### [ ] A4 Copiar libres
 > Botones Copiar libres de hoy / semana / mes con filtros (mañana, tarde, desde mañana), usando
 > `textoLibres` (función pura con tests) y la plantilla `horarios_libres`. Copiar al portapapeles con

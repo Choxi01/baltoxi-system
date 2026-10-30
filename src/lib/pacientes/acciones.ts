@@ -39,6 +39,18 @@ export async function crearPaciente(
     .select("id")
     .single();
   if (error || !data) return conError({ general: "No se pudo guardar. Probá de nuevo." }, formulario);
+
+  // Vino de "Crear ficha" en un "Reservado: Fulano": la reserva pasa a ser un turno del paciente.
+  const reserva = String(formulario.get("reserva_id") ?? "");
+  if (esIdValido(reserva)) {
+    await supabase
+      .from("turnos")
+      .update({ clase: "turno", paciente_id: data.id, nombre_reserva: null })
+      .eq("consultorio_id", consultorio.id)
+      .eq("id", reserva)
+      .eq("clase", "reservado");
+    revalidatePath("/agenda");
+  }
   revalidatePath("/pacientes");
   redirect(`/pacientes/${data.id}`);
 }

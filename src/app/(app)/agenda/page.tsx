@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 
 import { rangoParaCargar, type Vista } from "@/lib/agenda/calendario";
-import { listarTurnos, obtenerHorario } from "@/lib/agenda/datos";
+import { agendar } from "@/lib/agenda/acciones-turnos";
+import { listarTurnos, obtenerDatosParaReservar, obtenerHorario } from "@/lib/agenda/datos";
 import { hoyEnAsuncion } from "@/lib/fechas";
 import { armarFecha, partirFecha } from "@/lib/pacientes/fecha";
 import { Agenda } from "./agenda";
@@ -18,7 +19,7 @@ function fechaValida(valor: unknown): string | null {
   return r.ok ? r.fecha : null;
 }
 
-// Agenda de solo lectura (A2b). Las acciones (reservar, mover, cancelar) llegan en la A3.
+// Agenda (A2b + A3a: reservar, marcar ocupado, crear ficha). Mover y cancelar: A3b. Turnos fijos: A3c.
 export default async function Pagina({ searchParams }: PageProps<"/agenda">) {
   const parametros = await searchParams;
   const { duracion, tramos, bloqueos } = await obtenerHorario();
@@ -28,7 +29,7 @@ export default async function Pagina({ searchParams }: PageProps<"/agenda">) {
 
   // Se trae del mes anterior al siguiente: moverse por la agenda no vuelve a pedir datos.
   const rango = rangoParaCargar(fecha);
-  const turnos = await listarTurnos(rango.desde, rango.hasta);
+  const [turnos, paraReservar] = await Promise.all([listarTurnos(rango.desde, rango.hasta), obtenerDatosParaReservar()]);
 
   return (
     <div className="flex flex-col gap-4">
@@ -42,6 +43,7 @@ export default async function Pagina({ searchParams }: PageProps<"/agenda">) {
         tramos={tramos}
         bloqueos={bloqueos}
         turnos={turnos}
+        datosPanel={{ ...paraReservar, agendar }}
       />
     </div>
   );

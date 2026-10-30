@@ -45,6 +45,10 @@ export type TurnoAgenda = {
   titulo: string;
   /** Tipo de turno (ej. "Sesión a domicilio"), si tiene. */
   tipo: string | null;
+  /** Paciente con ficha (para "Ver expediente"). */
+  pacienteId: string | null;
+  /** Modalidad del tipo de turno (para el aviso de traslado). Sin tipo = consultorio. */
+  modalidad: string | null;
 };
 
 /** timestamptz de la base → fecha y hora en Asunción (regla de oro 6). */
