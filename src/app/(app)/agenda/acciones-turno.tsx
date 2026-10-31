@@ -5,12 +5,13 @@ import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
-import type { ResultadoSimple } from "@/lib/agenda/acciones-turnos";
+import type { ResultadoAgendar, ResultadoSimple } from "@/lib/agenda/acciones-turnos";
 import { aHora, aMinutos, horaCorta } from "@/lib/agenda/bloques";
 import { fechasEntre, sumarDias, tituloDia } from "@/lib/agenda/calendario";
-import { clasificarCancelacion, type QuienCancela } from "@/lib/agenda/cancelacion";
+import { type QuienCancela } from "@/lib/agenda/cancelacion";
 import { instanteUtc } from "@/lib/agenda/reservas";
 import { aHoraLocal, textoTurno, type TurnoAgenda } from "@/lib/agenda/turnos";
+import { clasificarCancelacion } from "@/lib/cobro/cancelacion";
 import { cn } from "@/lib/utils";
 
 export type AccionesDeTurno = {
@@ -18,6 +19,8 @@ export type AccionesDeTurno = {
   moverTurno: (id: string, fecha: string, inicio: string) => Promise<ResultadoSimple>;
   cancelarTurno: (id: string, quien: QuienCancela, aviso: { fecha: string; hora: string } | null) => Promise<ResultadoSimple>;
   quitarTurno: (id: string) => Promise<ResultadoSimple>;
+  crearSerie: (entrada: unknown) => Promise<ResultadoAgendar>;
+  finalizarSerie: (serieId: string) => Promise<ResultadoSimple>;
 };
 
 // Una sola rueda con los días (más cómoda en el iPhone que un calendario).

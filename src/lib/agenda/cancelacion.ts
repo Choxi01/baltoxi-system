@@ -1,29 +1,10 @@
 // Cancelar y reponer turnos (docs/agenda.md y docs/reglas-cobro.md sección 1).
-// Funciones puras con tests.
-//
-// OJO: clasificarCancelacion es provisoria. Cuando la persona B haga la B2,
-// se usa la de src/lib/cobro/ y se borra esta (mismos casos de prueba).
+// Funciones puras con tests. La regla de las 48 h es la del motor de cobro (B2).
 
+import { clasificarCancelacion } from "@/lib/cobro/cancelacion";
 import { liberaBloque } from "./turnos";
 
 export type QuienCancela = "familia" | "profesional";
-
-/**
- * Cancelación de la familia: con `horasAvisoMinimas` (48 h) o más de aviso es
- * 'ausente_con_aviso'; con menos (o avisando después de la hora) es 'aviso_tardio'.
- */
-export function clasificarCancelacion({
-  inicio,
-  avisoEn,
-  horasAvisoMinimas,
-}: {
-  inicio: Date;
-  avisoEn: Date;
-  horasAvisoMinimas: number;
-}): "ausente_con_aviso" | "aviso_tardio" {
-  const horas = (inicio.getTime() - avisoEn.getTime()) / 3_600_000;
-  return horas >= horasAvisoMinimas ? "ausente_con_aviso" : "aviso_tardio";
-}
 
 /** Qué se guarda en el turno al cancelar. Sin cargos: eso lo hace la B3. */
 export function datosCancelacion(

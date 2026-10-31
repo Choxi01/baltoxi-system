@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRightLeft, Ban, ExternalLink, Trash2, UserPlus, X } from "lucide-react";
+import { ArrowRightLeft, Ban, ExternalLink, Repeat, Trash2, UserPlus, X } from "lucide-react";
 import Link from "next/link";
 import { useState, useTransition } from "react";
 
@@ -10,9 +10,12 @@ import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import type { ResultadoAgendar } from "@/lib/agenda/acciones-turnos";
 import { horaCorta } from "@/lib/agenda/bloques";
+import { tituloDia } from "@/lib/agenda/calendario";
 import { avisosAlAgendar, horaFin, textosAvisos } from "@/lib/agenda/reservas";
+import { fechasParaHasta } from "@/lib/agenda/series";
 import { textoTurno, type FilaDia, type TurnoAgenda } from "@/lib/agenda/turnos";
 import { filtrarPacientes } from "@/lib/pacientes/busqueda";
+import { cn } from "@/lib/utils";
 import { FormularioCancelar, FormularioMover, type AccionesDeTurno } from "./acciones-turno";
 
 export type PacienteParaReservar = { id: string; nombre: string; apellido: string | null };
@@ -32,7 +35,13 @@ export type DatosPanel = {
 /** Sesión cancelada por la profesional que se está reponiendo ("Para reponer este mes"). */
 export type Reposicion = { id: string; pacienteId: string | null; tipoId: string | null; titulo: string };
 
-type Modo = "menu" | "reservar" | "ocupado" | { accion: "mover" | "cancelar"; turno: TurnoAgenda };
+/** "lunes", "sábados": para "todos los …". */
+function diasDeLaSemana(fecha: string): string {
+  const dia = tituloDia(fecha).split(" ")[0].toLowerCase();
+  return dia.endsWith("s") ? dia : `${dia}s`;
+}
+
+type Modo = "menu" | "reservar" | "fijo" | "ocupado" | { accion: "mover" | "cancelar"; turno: TurnoAgenda };
 
 // Acciones de una fila de la agenda (se abre debajo del bloque, sin ventanas).
 export function PanelFila({
@@ -57,6 +66,18 @@ export function PanelFila({
   const [modo, setModo] = useState<Modo>(reponiendo && turnos.length === 0 ? "reservar" : "menu");
   const [error, setError] = useState<string | null>(null);
   const [quitando, iniciarQuitar] = useTransition();
+
+  function finalizar(t: TurnoAgenda) {
+    if (!t.serieId) return;
+    const dia = tituloDia(t.fecha).split(" ")[0].toLowerCase();
+    if (!window.confirm(`¿Finalizar el turno fijo de ${t.titulo} (${dia} ${horaCorta(t.inicio)})? Se borran sus turnos futuros agendados; los pasados quedan.`)) return;
+    setError(null);
+    iniciarQuitar(async () => {
+      const r = await datos.acciones.finalizarSerie(t.serieId!);
+      if (r.ok) alGuardar("Turno fijo finalizado ✓");
+      else setError(r.error);
+    });
+  }
 
   function quitar(t: TurnoAgenda) {
     if (!window.confirm(`¿Quitar «${textoTurno(t)}»? El horario queda libre.`)) return;
@@ -90,6 +111,7 @@ export function PanelFila({
               alMover={() => setModo({ accion: "mover", turno: t })}
               alCancelar={() => setModo({ accion: "cancelar", turno: t })}
               alQuitar={() => quitar(t)}
+              alFinalizar={() => finalizar(t)}
             />
           ))}
           {error && (
@@ -101,7 +123,12 @@ export function PanelFila({
             <Button variant="outline" className="h-12" onClick={() => setModo("reservar")}>
               {turnos.length === 0 ? "Reservar" : "Agregar otro acá"}
             </Button>
-            <Button variant="outline" className="h-12" onClick={() => setModo("ocupado")}>
+            {turnos.length === 0 && (
+              <Button variant="outline" className="h-12" onClick={() => setModo("fijo")}>
+                <Repeat /> Turno fijo
+              </Button>
+            )}
+            <Button variant="outline" className={cn("h-12", turnos.length === 0 && "col-span-2")} onClick={() => setModo("ocupado")}>
               Marcar ocupado
             </Button>
           </div>
@@ -120,7 +147,7 @@ export function PanelFila({
           alGuardar={alGuardar}
         />
       )}
-      {(modo === "reservar" || modo === "ocupado") && (
+      {(modo === "reservar" || modo === "fijo" || modo === "ocupado") && (
         <FormularioAgendar
           modo={modo}
           reponiendo={modo === "reservar" ? reponiendo : null}
@@ -142,17 +169,24 @@ function AccionesTurno({
   alMover,
   alCancelar,
   alQuitar,
+  alFinalizar,
 }: {
   turno: TurnoAgenda;
   ocupado: boolean;
   alMover: () => void;
   alCancelar: () => void;
   alQuitar: () => void;
+  alFinalizar: () => void;
 }) {
   const agendado = turno.estado === "agendado";
   return (
     <div className="flex flex-col gap-2 rounded-lg border bg-background p-2">
       <p className="px-1 text-sm font-medium">{textoTurno(turno)}</p>
+      {turno.serieId && (
+        <p className="flex items-center gap-1 px-1 text-xs text-muted-foreground">
+          <Repeat className="size-3" /> Turno fijo: {tituloDia(turno.fecha).split(" ")[0].toLowerCase()} {horaCorta(turno.inicio)}
+        </p>
+      )}
       {turno.clase === "turno" && turno.pacienteId && (
         <Button asChild variant="outline" className="h-12 justify-start">
           <Link href={`/pacientes/${turno.pacienteId}`}>
@@ -183,6 +217,11 @@ function AccionesTurno({
           )}
         </div>
       )}
+      {turno.serieId && (
+        <Button variant="ghost" className="h-12 text-destructive" onClick={alFinalizar} disabled={ocupado}>
+          Finalizar turno fijo
+        </Button>
+      )}
     </div>
   );
 }
@@ -197,7 +236,7 @@ function FormularioAgendar({
   alVolver,
   alGuardar,
 }: {
-  modo: "reservar" | "ocupado";
+  modo: "reservar" | "fijo" | "ocupado";
   reponiendo?: Reposicion | null;
   fecha: string;
   inicio: string;
@@ -219,6 +258,8 @@ function FormularioAgendar({
       "",
   );
   const [motivo, setMotivo] = useState("");
+  // Turno fijo: último día (opcional), siempre el mismo día de la semana.
+  const [hasta, setHasta] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [confirmarServidor, setConfirmarServidor] = useState<string | null>(null);
   const [enviando, iniciar] = useTransition();
@@ -243,8 +284,15 @@ function FormularioAgendar({
           ? { ...base, clase: "turno", paciente_id: paciente.id, tipo_turno_id: tipoId, repone_a: reponiendo?.id ?? null }
           : { ...base, clase: "reservado", nombre_reserva: nombreSuelto ?? "", tipo_turno_id: tipoId || null };
     iniciar(async () => {
-      const r = await datos.agendar(entrada);
-      if (r.ok) alGuardar(modo === "ocupado" ? "Marcado como ocupado ✓" : reponiendo ? "Sesión repuesta ✓" : "Agendado ✓");
+      const r =
+        modo === "fijo" && paciente
+          ? await datos.acciones.crearSerie({ ...base, paciente_id: paciente.id, tipo_turno_id: tipoId, hasta: hasta || null })
+          : await datos.agendar(entrada);
+      if (r.ok) {
+        alGuardar(
+          modo === "ocupado" ? "Marcado como ocupado ✓" : modo === "fijo" ? "Turno fijo creado ✓" : reponiendo ? "Sesión repuesta ✓" : "Agendado ✓",
+        );
+      }
       else if ("confirmar" in r) setConfirmarServidor(r.confirmar);
       else setError(r.error);
     });
@@ -267,7 +315,7 @@ function FormularioAgendar({
         </div>
       )}
 
-      {modo === "reservar" && !paciente && nombreSuelto === null && (
+      {modo !== "ocupado" && !paciente && nombreSuelto === null && (
         <div className="flex flex-col gap-2">
           <Label htmlFor="buscar-paciente">Paciente</Label>
           <Input
@@ -289,7 +337,7 @@ function FormularioAgendar({
               ))}
             </ul>
           )}
-          {busqueda.trim() && (
+          {busqueda.trim() && modo === "reservar" && (
             <Button variant="ghost" className="h-12 justify-start" onClick={() => setNombreSuelto(busqueda.trim())}>
               Reservar a “{busqueda.trim()}” sin ficha
             </Button>
@@ -297,7 +345,7 @@ function FormularioAgendar({
         </div>
       )}
 
-      {modo === "reservar" && (paciente || nombreSuelto !== null) && (
+      {modo !== "ocupado" && (paciente || nombreSuelto !== null) && (
         <>
           <div className="flex items-center justify-between gap-2 rounded-lg border bg-background px-3 py-2">
             <span>
@@ -328,6 +376,24 @@ function FormularioAgendar({
               ))}
             </Select>
           </div>
+          {modo === "fijo" && (
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="hasta-serie">Hasta</Label>
+              <Select id="hasta-serie" value={hasta} onChange={(e) => setHasta(e.target.value)}>
+                <option value="">Sin fecha de fin</option>
+                {fechasParaHasta(fecha).map((f) => (
+                  <option key={f} value={f}>
+                    {tituloDia(f)}
+                  </option>
+                ))}
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Todos los {diasDeLaSemana(fecha)} a las {horaCorta(inicio)}, desde el{" "}
+                {tituloDia(fecha).split(" ").slice(1).join(" ")}. Se agendan las próximas 8 semanas (salteando feriados) y se
+                completan solas al abrir la agenda.
+              </p>
+            </div>
+          )}
         </>
       )}
 
@@ -348,7 +414,17 @@ function FormularioAgendar({
       <div className="flex flex-col gap-2">
         {elegido && (
           <Button size="touch" onClick={guardar} disabled={enviando || (modo === "ocupado" && !motivo.trim())}>
-            {enviando ? "Guardando…" : confirmar ? "Agendar igual" : modo === "ocupado" ? "Marcar ocupado" : "Agendar"}
+            {enviando
+              ? "Guardando…"
+              : confirmar
+                ? modo === "fijo"
+                  ? "Crear igual"
+                  : "Agendar igual"
+                : modo === "ocupado"
+                  ? "Marcar ocupado"
+                  : modo === "fijo"
+                    ? "Crear turno fijo"
+                    : "Agendar"}
           </Button>
         )}
         <Button variant="ghost" onClick={alVolver} disabled={enviando}>
