@@ -43,6 +43,17 @@ separados por menos de `traslado_domicilio_min`, mostrar aviso (no bloquear).
 - Turno cancelado por la profesional → queda `reponer = true` y aparece en una lista "Para reponer este
   mes" hasta que se agende otro turno con `repone_a`.
 
+### Acciones optimistas (la pantalla cambia al tocar)
+- Vino, No vino, Volver a agendado, Quitar excepción, Excepción, Quitar, Cancelar y Mover se ven
+  **al instante** en la Agenda y en Hoy; el guardado sigue por detrás. La tarjeta dice «Guardando…».
+- Si el servidor no puede, la tarjeta vuelve sola a como estaba y se muestra el error.
+- Cómo: `aplicarCambio` (`src/lib/agenda/optimista.ts`, con tests) copia lo que hace el servidor en
+  cada acción; `useTurnosOptimistas` (`src/app/(app)/agenda/turnos-optimistas.ts`) lo aplica con
+  `useOptimistic` y vive en la pantalla (el formulario se cierra enseguida).
+- **Una acción nueva** sobre un turno: sumá su caso en `aplicarCambio` (con test) y llamala con
+  `ejecutar(cambio, () => accion(...), "Aviso ✓")`.
+- Todavía esperan al servidor: Reservar, Cobrar ahora y crear o finalizar un turno fijo.
+
 ## Copiar libres
 Botones en la vista: **Copiar libres de hoy / de esta semana / de este mes**. Filtros opcionales:
 solo mañana, solo tarde, desde mañana (no mostrar horarios de hoy que ya pasaron).

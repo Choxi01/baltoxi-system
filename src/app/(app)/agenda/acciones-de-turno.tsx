@@ -14,6 +14,7 @@ import { NOMBRE_ESTADO_TURNO, textoEstado, textoTurno, type TurnoAgenda } from "
 import type { MensajeListo } from "@/lib/mensajes/tipos";
 import { cn } from "@/lib/utils";
 import { FormularioCancelar, FormularioExcepcion, FormularioMover, type AccionesDeTurno } from "./acciones-turno";
+import type { Ejecutar } from "./turnos-optimistas";
 
 const BOTONES: Record<AccionTurno, { texto: string; icono: LucideIcon; peligro?: boolean }> = {
   vino: { texto: NOMBRE_ESTADO_TURNO.presente, icono: Check },
@@ -46,11 +47,14 @@ export function AccionesTurno({
 }) {
   const acciones = accionesDelTurno(turno, hoy);
   const estado = textoEstado(turno);
+  // Mientras se guarda un cambio de este turno: se ve más claro y no se puede tocar otra vez.
+  const enCurso = ocupado || Boolean(turno.guardando);
   return (
-    <div className="flex flex-col gap-2 rounded-lg border bg-background p-2">
+    <div className={cn("flex flex-col gap-2 rounded-lg border bg-background p-2", turno.guardando && "opacity-60")} aria-busy={turno.guardando || undefined}>
       <div className="px-1">
         <p className="text-sm font-medium">{textoTurno(turno)}</p>
         {estado && <p className="text-sm text-muted-foreground">{estado}</p>}
+        {turno.guardando && <p className="text-xs text-muted-foreground">Guardando…</p>}
         {turno.serieId && (
           <p className="flex items-center gap-1 text-xs text-muted-foreground">
             <Repeat className="size-3" /> Turno fijo: {tituloDia(turno.fecha).split(" ")[0].toLowerCase()} {horaCorta(turno.inicio)}
@@ -72,7 +76,7 @@ export function AccionesTurno({
         </Button>
       )}
       {turno.cobro && (
-        <Button className="h-12" onClick={() => alAccion("cobrar")} disabled={ocupado}>
+        <Button className="h-12" onClick={() => alAccion("cobrar")} disabled={enCurso}>
           <Banknote /> Cobrar ahora · {formatoGs(turno.cobro.pendiente)}
         </Button>
       )}
@@ -86,7 +90,7 @@ export function AccionesTurno({
                 variant="outline"
                 className={cn("h-12", peligro && "text-destructive")}
                 onClick={() => alAccion(a)}
-                disabled={ocupado}
+                disabled={enCurso}
               >
                 <Icono /> {a === "excepcion" && turno.porcentajeManual != null ? "Cambiar excepción" : texto}
               </Button>
@@ -95,7 +99,7 @@ export function AccionesTurno({
         </div>
       )}
       {turno.serieId && alFinalizarSerie && (
-        <Button variant="ghost" className="h-12 text-destructive" onClick={alFinalizarSerie} disabled={ocupado}>
+        <Button variant="ghost" className="h-12 text-destructive" onClick={alFinalizarSerie} disabled={enCurso}>
           Finalizar turno fijo
         </Button>
       )}
@@ -118,7 +122,17 @@ const LISTO: Record<Exclude<AccionAsistencia, "excepcion">, string> = {
  * Mover / Cancelar / Excepción / Cobrar ahora abren su formulario; Vino, No vino, Volver a agendado,
  * Quitar excepción y Quitar se guardan directo.
  */
-export function useAccionesTurno({ acciones, alGuardar }: { acciones: AccionesDeTurno; alGuardar: (aviso: string, mensaje?: MensajeListo) => void }) {
+export function useAccionesTurno({
+  acciones,
+  ejecutar,
+  alGuardar,
+}: {
+  acciones: AccionesDeTurno;
+  /** Guarda de forma optimista (useTurnosOptimistas de la pantalla). */
+  ejecutar: Ejecutar;
+  /** Para lo que todavía espera al servidor (finalizar un turno fijo). */
+  alGuardar: (aviso: string, mensaje?: MensajeListo) => void;
+}) {
   const [abierto, setAbierto] = useState<TurnoAbierto | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [guardando, iniciar] = useTransition();
@@ -126,21 +140,13 @@ export function useAccionesTurno({ acciones, alGuardar }: { acciones: AccionesDe
   function quitar(t: TurnoAgenda) {
     if (!window.confirm(`¿Quitar «${textoTurno(t)}»? El horario queda libre.`)) return;
     setError(null);
-    iniciar(async () => {
-      const r = await acciones.quitarTurno(t.id);
-      if (r.ok) alGuardar("Quitado ✓");
-      else setError(r.error);
-    });
+    ejecutar({ tipo: "quitar", id: t.id }, () => acciones.quitarTurno(t.id), "Quitado ✓");
   }
 
   function marcar(t: TurnoAgenda, accion: Exclude<AccionAsistencia, "excepcion">) {
     if (accion === "agendado" && !window.confirm(`¿Volver «${textoTurno(t)}» a agendado? Se borra su cobro.`)) return;
     setError(null);
-    iniciar(async () => {
-      const r = await acciones.marcarAsistencia(t.id, accion);
-      if (r.ok) alGuardar(LISTO[accion]);
-      else setError(r.error);
-    });
+    ejecutar({ tipo: "asistencia", id: t.id, accion }, () => acciones.marcarAsistencia(t.id, accion), LISTO[accion]);
   }
 
   function alAccion(t: TurnoAgenda, accion: AccionTarjeta) {
@@ -172,6 +178,7 @@ export function FormularioTurno({
   hoy,
   horasAvisoMinimas,
   acciones,
+  ejecutar,
   alVolver,
   alGuardar,
 }: {
@@ -179,7 +186,10 @@ export function FormularioTurno({
   hoy: string;
   horasAvisoMinimas: number;
   acciones: AccionesDeTurno;
+  /** Mover, Cancelar y Excepción se guardan de forma optimista. */
+  ejecutar: Ejecutar;
   alVolver: () => void;
+  /** Cobrar ahora todavía espera al servidor. */
   alGuardar: (aviso: string, mensaje?: MensajeListo) => void;
 }) {
   const { accion, turno } = abierto;
@@ -198,7 +208,7 @@ export function FormularioTurno({
       />
     );
   }
-  if (accion === "mover") return <FormularioMover turno={turno} hoy={hoy} acciones={acciones} alVolver={alVolver} alGuardar={alGuardar} />;
+  if (accion === "mover") return <FormularioMover turno={turno} hoy={hoy} acciones={acciones} ejecutar={ejecutar} alVolver={alVolver} />;
   if (accion === "cancelar") {
     return (
       <FormularioCancelar
@@ -206,10 +216,10 @@ export function FormularioTurno({
         hoy={hoy}
         horasAvisoMinimas={horasAvisoMinimas}
         acciones={acciones}
+        ejecutar={ejecutar}
         alVolver={alVolver}
-        alGuardar={alGuardar}
       />
     );
   }
-  return <FormularioExcepcion turno={turno} acciones={acciones} alVolver={alVolver} alGuardar={alGuardar} />;
+  return <FormularioExcepcion turno={turno} acciones={acciones} ejecutar={ejecutar} alVolver={alVolver} />;
 }

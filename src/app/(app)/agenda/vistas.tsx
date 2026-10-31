@@ -101,9 +101,10 @@ function TarjetaTurno({ turno, aviso }: { turno: TurnoAgenda; aviso?: string }) 
     `${horaCorta(turno.inicio)}–${horaCorta(turno.fin)}`,
     textoEstado(turno),
     aviso,
+    turno.guardando ? "Guardando…" : null,
   ].filter(Boolean);
   return (
-    <span className={cn("flex min-h-12 w-full flex-col justify-center rounded-lg border px-3 py-2", colorTurno(turno))}>
+    <span className={cn("flex min-h-12 w-full flex-col justify-center rounded-lg border px-3 py-2", colorTurno(turno), turno.guardando && "opacity-60")}>
       <span className="truncate font-medium">{textoTurno(turno)}</span>
       <span className="text-xs opacity-80">{detalle.join(" · ")}</span>
     </span>
@@ -186,7 +187,7 @@ function CeldaSemana({ dia, hora, alElegir }: { dia: Dia; hora: string; alElegir
         <span className="flex h-12 items-center justify-center rounded-md border border-dashed text-xs text-muted-foreground">Libre</span>
       ) : (
         turnos.map((t) => (
-          <span key={t.id} className={cn("flex min-h-12 flex-col justify-center rounded-md border px-1.5 py-1", colorTurno(t))}>
+          <span key={t.id} className={cn("flex min-h-12 flex-col justify-center rounded-md border px-1.5 py-1", colorTurno(t), t.guardando && "opacity-60")}>
             <span className="line-clamp-2 text-xs font-medium leading-tight">{textoTurno(t)}</span>
             {textoEstado(t) && <span className="text-[0.65rem] leading-tight opacity-80">{textoEstado(t)}</span>}
           </span>

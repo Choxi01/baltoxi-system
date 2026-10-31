@@ -57,6 +57,8 @@ export type TurnoAgenda = {
   porcentajeManual: number | null;
   /** Solo si va "Cobrar ahora" (B4): quién paga, lo pendiente de este turno y lo que debe de antes. */
   cobro?: CobroTurno;
+  /** Se está guardando un cambio de este turno (acción optimista: src/lib/agenda/optimista.ts). */
+  guardando?: boolean;
 };
 
 export type CobroTurno = { tutorId: string; tutorNombre: string; pendiente: number; deudaAnterior: number };

@@ -10,13 +10,13 @@ import type { ResultadoAgendar, ResultadoSimple } from "@/lib/agenda/acciones-tu
 import { validarExcepcion, type AccionAsistencia, type Excepcion } from "@/lib/agenda/asistencia";
 import { aHora, aMinutos, horaCorta } from "@/lib/agenda/bloques";
 import { fechasEntre, sumarDias, tituloDia } from "@/lib/agenda/calendario";
-import { type QuienCancela } from "@/lib/agenda/cancelacion";
-import { instanteUtc } from "@/lib/agenda/reservas";
+import { datosCancelacion, type QuienCancela } from "@/lib/agenda/cancelacion";
+import { horaFin, instanteUtc } from "@/lib/agenda/reservas";
 import { aHoraLocal, NOMBRE_ESTADO_TURNO, textoTurno, type TurnoAgenda } from "@/lib/agenda/turnos";
 import type { ResultadoPago } from "@/lib/cobro/acciones-pagos";
 import { clasificarCancelacion } from "@/lib/cobro/cancelacion";
-import type { MensajeListo } from "@/lib/mensajes/tipos";
 import { cn } from "@/lib/utils";
+import type { Ejecutar } from "./turnos-optimistas";
 
 export type AccionesDeTurno = {
   libresDelDia: (fecha: string) => Promise<{ ok: true; libres: string[]; bloqueo: string | null } | { ok: false; error: string }>;
@@ -47,14 +47,14 @@ export function FormularioMover({
   turno,
   hoy,
   acciones,
+  ejecutar,
   alVolver,
-  alGuardar,
 }: {
   turno: TurnoAgenda;
   hoy: string;
   acciones: AccionesDeTurno;
+  ejecutar: Ejecutar;
   alVolver: () => void;
-  alGuardar: (aviso: string, mensaje?: MensajeListo) => void;
 }) {
   // De hoy a 3 meses (y el día del turno, si ya pasó).
   const dias = fechasEntre(turno.fecha < hoy ? turno.fecha : hoy, sumarDias(hoy, 90));
@@ -64,7 +64,6 @@ export function FormularioMover({
   const [elegido, setElegido] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [buscando, iniciarBusqueda] = useTransition();
-  const [enviando, iniciar] = useTransition();
 
   function buscar(nueva: string) {
     setFecha(nueva);
@@ -81,11 +80,14 @@ export function FormularioMover({
 
   function mover() {
     if (!elegido) return;
-    iniciar(async () => {
-      const r = await acciones.moverTurno(turno.id, fecha, elegido);
-      if (r.ok) alGuardar(r.aviso ?? `Movido al ${tituloDia(fecha).toLowerCase()} a las ${horaCorta(elegido)} ✓`, r.mensaje);
-      else setError(r.error);
-    });
+    // Misma duración que el turno (igual que el servidor).
+    const duracion = aMinutos(turno.fin) - aMinutos(turno.inicio);
+    const fin = horaFin(elegido, duracion > 0 ? duracion : 45);
+    ejecutar(
+      { tipo: "mover", id: turno.id, fecha, inicio: elegido, fin },
+      () => acciones.moverTurno(turno.id, fecha, elegido),
+      `Movido al ${tituloDia(fecha).toLowerCase()} a las ${horaCorta(elegido)} ✓`,
+    );
   }
 
   return (
@@ -135,11 +137,11 @@ export function FormularioMover({
       )}
       <div className="flex flex-col gap-2">
         {elegido && (
-          <Button size="touch" onClick={mover} disabled={enviando}>
-            {enviando ? "Moviendo…" : `Mover a las ${horaCorta(elegido)}`}
+          <Button size="touch" onClick={mover}>
+            Mover a las {horaCorta(elegido)}
           </Button>
         )}
-        <Button variant="ghost" onClick={alVolver} disabled={enviando}>
+        <Button variant="ghost" onClick={alVolver}>
           Volver
         </Button>
       </div>
@@ -153,15 +155,15 @@ export function FormularioCancelar({
   hoy,
   horasAvisoMinimas,
   acciones,
+  ejecutar,
   alVolver,
-  alGuardar,
 }: {
   turno: TurnoAgenda;
   hoy: string;
   horasAvisoMinimas: number;
   acciones: AccionesDeTurno;
+  ejecutar: Ejecutar;
   alVolver: () => void;
-  alGuardar: (aviso: string, mensaje?: MensajeListo) => void;
 }) {
   const [quien, setQuien] = useState<QuienCancela | null>(null);
   // Cuándo avisó: arranca en "ahora" (hora de Asunción, redondeada a 15 minutos).
@@ -170,8 +172,6 @@ export function FormularioCancelar({
     const ahora = aMinutos(aHoraLocal(new Date().toISOString()).hora);
     return aHora(ahora - (ahora % 15));
   });
-  const [error, setError] = useState<string | null>(null);
-  const [enviando, iniciar] = useTransition();
 
   // Días para elegir: dos semanas antes del turno (o de hoy) hasta hoy.
   const desde = sumarDias(turno.fecha < hoy ? turno.fecha : hoy, -14);
@@ -186,11 +186,19 @@ export function FormularioCancelar({
 
   function confirmar() {
     if (!quien) return;
-    iniciar(async () => {
-      const r = await acciones.cancelarTurno(turno.id, quien, quien === "familia" ? { fecha: avisoFecha, hora: avisoHora } : null);
-      if (r.ok) alGuardar(quien === "profesional" ? "Cancelado ✓ Quedó en «Para reponer»." : "Cancelado ✓", r.mensaje);
-      else setError(r.error);
-    });
+    const aviso = quien === "familia" ? { fecha: avisoFecha, hora: avisoHora } : null;
+    // El mismo estado que va a guardar el servidor (con aviso, aviso tardío o "Cancelé yo").
+    const { estado } = datosCancelacion(
+      quien,
+      { inicio: new Date(instanteUtc(turno.fecha, turno.inicio)) },
+      aviso ? new Date(instanteUtc(aviso.fecha, aviso.hora)) : new Date(),
+      horasAvisoMinimas,
+    );
+    ejecutar(
+      { tipo: "cancelar", id: turno.id, estado },
+      () => acciones.cancelarTurno(turno.id, quien, aviso),
+      quien === "profesional" ? "Cancelado ✓ Quedó en «Para reponer»." : "Cancelado ✓",
+    );
   }
 
   return (
@@ -247,18 +255,13 @@ export function FormularioCancelar({
         <p className="rounded-md bg-muted px-3 py-2 text-sm">Va a aparecer en «Para reponer este mes» hasta que le des otro turno.</p>
       )}
 
-      {error && (
-        <p role="alert" className="text-sm text-destructive">
-          {error}
-        </p>
-      )}
       <div className="flex flex-col gap-2">
         {quien && (
-          <Button size="touch" variant="destructive" onClick={confirmar} disabled={enviando}>
-            {enviando ? "Cancelando…" : "Confirmar cancelación"}
+          <Button size="touch" variant="destructive" onClick={confirmar}>
+            Confirmar cancelación
           </Button>
         )}
-        <Button variant="ghost" onClick={alVolver} disabled={enviando}>
+        <Button variant="ghost" onClick={alVolver}>
           Volver
         </Button>
       </div>
@@ -270,28 +273,27 @@ export function FormularioCancelar({
 export function FormularioExcepcion({
   turno,
   acciones,
+  ejecutar,
   alVolver,
-  alGuardar,
 }: {
   turno: TurnoAgenda;
   acciones: AccionesDeTurno;
+  ejecutar: Ejecutar;
   alVolver: () => void;
-  alGuardar: (aviso: string, mensaje?: MensajeListo) => void;
 }) {
   const [porcentaje, setPorcentaje] = useState(turno.porcentajeManual != null ? String(turno.porcentajeManual) : "");
   const [motivo, setMotivo] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [enviando, iniciar] = useTransition();
 
   function guardar() {
     setError(null);
     const v = validarExcepcion({ porcentaje: porcentaje.trim() === "" ? Number.NaN : Number(porcentaje), motivo });
     if (!v.ok) return setError(v.error);
-    iniciar(async () => {
-      const r = await acciones.marcarAsistencia(turno.id, "excepcion", v.datos);
-      if (r.ok) alGuardar(`Excepción ${v.datos.porcentaje}% ✓`);
-      else setError(r.error);
-    });
+    ejecutar(
+      { tipo: "excepcion", id: turno.id, porcentaje: v.datos.porcentaje },
+      () => acciones.marcarAsistencia(turno.id, "excepcion", v.datos),
+      `Excepción ${v.datos.porcentaje}% ✓`,
+    );
   }
 
   return (
@@ -343,10 +345,10 @@ export function FormularioExcepcion({
         </p>
       )}
       <div className="flex flex-col gap-2">
-        <Button size="touch" onClick={guardar} disabled={enviando}>
-          {enviando ? "Guardando…" : "Guardar excepción"}
+        <Button size="touch" onClick={guardar}>
+          Guardar excepción
         </Button>
-        <Button variant="ghost" onClick={alVolver} disabled={enviando}>
+        <Button variant="ghost" onClick={alVolver}>
           Volver
         </Button>
       </div>

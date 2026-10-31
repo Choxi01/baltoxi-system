@@ -17,6 +17,7 @@ import type { MensajeListo } from "@/lib/mensajes/tipos";
 import { filtrarPacientes } from "@/lib/pacientes/busqueda";
 import { cn } from "@/lib/utils";
 import { AccionesTurno, FormularioTurno, useAccionesTurno } from "./acciones-de-turno";
+import type { Ejecutar } from "./turnos-optimistas";
 import type { AccionesDeTurno } from "./acciones-turno";
 
 export type PacienteParaReservar = { id: string; nombre: string; apellido: string | null };
@@ -51,6 +52,7 @@ export function PanelFila({
   turnosDelDia,
   datos,
   reponiendo,
+  ejecutar,
   alCerrar,
   alGuardar,
 }: {
@@ -58,6 +60,8 @@ export function PanelFila({
   fila: FilaDia;
   turnosDelDia: TurnoAgenda[];
   datos: DatosPanel;
+  /** Guarda de forma optimista (useTurnosOptimistas de la Agenda). */
+  ejecutar: Ejecutar;
   /** Si se está reponiendo una sesión: un bloque libre abre directo el formulario con ese paciente. */
   reponiendo?: Reposicion | null;
   alCerrar: () => void;
@@ -67,7 +71,7 @@ export function PanelFila({
   // Los cancelados de este horario también se muestran: a "Canceló tarde" se le puede poner excepción.
   const liberados = fila.tipo === "bloque" ? fila.liberados.filter((t) => t.clase === "turno") : [];
   const [modo, setModo] = useState<Modo>(reponiendo && turnos.length === 0 ? "reservar" : "menu");
-  const { abierto, cerrar, error, guardando, alAccion, finalizarSerie } = useAccionesTurno({ acciones: datos.acciones, alGuardar });
+  const { abierto, cerrar, error, guardando, alAccion, finalizarSerie } = useAccionesTurno({ acciones: datos.acciones, ejecutar, alGuardar });
 
   return (
     <div className="flex flex-col gap-3 rounded-lg border bg-muted/40 p-3">
@@ -87,6 +91,7 @@ export function PanelFila({
           hoy={datos.hoy}
           horasAvisoMinimas={datos.horasAvisoMinimas}
           acciones={datos.acciones}
+          ejecutar={ejecutar}
           alVolver={cerrar}
           alGuardar={alGuardar}
         />
