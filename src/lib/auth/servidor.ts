@@ -13,9 +13,9 @@ import { COOKIE_SESION_CONFIANZA } from "./dispositivo";
 // cada página y acción vuelve a verificar: nunca confiar solo en el proxy.
 //
 // `cache()` (de React): dentro de un mismo pedido, la sesión y el consultorio se
-// verifican UNA vez aunque los pidan el layout y cada lectura de la página (antes
-// eran 6 o 7 veces por pantalla, cada una con su consulta a la base). Cada pedido
-// nuevo vuelve a verificar: no se comparte nada entre pedidos ni entre usuarios.
+// verifican UNA vez aunque los pidan el layout y cada lectura de la página (Next ya
+// juntaba la consulta a `miembros`, pero se repetía el resto de la verificación).
+// Cada pedido nuevo vuelve a verificar: no se comparte nada entre pedidos ni usuarios.
 
 /** Exige sesión completa: con código o desde un dispositivo de confianza. */
 export const exigirSesionCompleta = cache(async () => {
