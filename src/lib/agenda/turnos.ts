@@ -55,7 +55,11 @@ export type TurnoAgenda = {
   modalidad: string | null;
   /** Excepción "a criterio" del cobro (0 a 100), si tiene. */
   porcentajeManual: number | null;
+  /** Solo si va "Cobrar ahora" (B4): quién paga, lo pendiente de este turno y lo que debe de antes. */
+  cobro?: CobroTurno;
 };
+
+export type CobroTurno = { tutorId: string; tutorNombre: string; pendiente: number; deudaAnterior: number };
 
 /** timestamptz de la base → fecha y hora en Asunción (regla de oro 6). */
 export function aHoraLocal(instante: string): { fecha: string; hora: string } {
