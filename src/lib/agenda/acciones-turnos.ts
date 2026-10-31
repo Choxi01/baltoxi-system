@@ -4,15 +4,19 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import { exigirConsultorio } from "@/lib/auth/servidor";
+import { MES_CERRADO } from "@/lib/cobro/aplicar";
+import { aplicarEstadoTurno } from "@/lib/cobro/aplicar-estado";
 import { hoyEnAsuncion } from "@/lib/fechas";
 import { crearClienteServidor } from "@/lib/supabase/servidor";
+import { ACCIONES_ASISTENCIA, accionesDelTurno, cambiosAsistencia, validarExcepcion, type AccionAsistencia, type Excepcion } from "./asistencia";
 import { diaSemana } from "./bloques";
+import { inicioDeMes } from "./calendario";
 import { datosCancelacion, pendientesDeReponer } from "./cancelacion";
 import { listarTurnos, obtenerHorario } from "./datos";
 import { avisosAlAgendar, horaFin, instanteUtc, textosAvisos, validarReserva } from "./reservas";
 import { fechasDeSerie } from "./series";
 import { materializarSeries } from "./series-servidor";
-import { armarDia } from "./turnos";
+import { aHoraLocal, armarDia, type ClaseTurno, type EstadoTurno } from "./turnos";
 
 export type ResultadoAgendar =
   | { ok: true }
@@ -106,7 +110,7 @@ export async function agendar(entrada: unknown): Promise<ResultadoAgendar> {
     fin: instanteUtc(datos.fecha, fin),
   });
   if (error) return { ok: false, error: NO_SE_PUDO };
-  revalidatePath("/agenda");
+  revalidar();
   return { ok: true };
 }
 
@@ -118,7 +122,28 @@ const esFecha = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 const esHora = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/);
 const esId = z.uuid();
 
-export type ResultadoSimple = { ok: true } | { ok: false; error: string };
+/** `aviso`: se guardó, pero hay algo para contarle a la profesional. */
+export type ResultadoSimple = { ok: true; aviso?: string } | { ok: false; error: string };
+
+function revalidar() {
+  revalidatePath("/agenda");
+  revalidatePath("/hoy");
+}
+
+type Supabase = Awaited<ReturnType<typeof crearClienteServidor>>;
+
+/** ¿El mes del turno está cerrado? Entonces no se cambia nada del turno (regla de oro 5). */
+async function mesCerrado(supabase: Supabase, consultorioId: string, inicio: string): Promise<boolean> {
+  const { data, error } = await supabase
+    .from("cierres")
+    .select("id")
+    .eq("consultorio_id", consultorioId)
+    .eq("periodo", inicioDeMes(aHoraLocal(inicio).fecha))
+    .eq("estado", "cerrado")
+    .maybeSingle();
+  // Si no se pudo leer, mejor no tocar nada.
+  return !!data || !!error;
+}
 
 /** Bloques libres de un día (para elegir a dónde mover). */
 export async function libresDelDia(
@@ -156,8 +181,10 @@ export async function moverTurno(id: string, fecha: string, inicio: string): Pro
   if (!esId.safeParse(id).success || !esFecha.safeParse(fecha).success || !esHora.safeParse(inicio).success) {
     return { ok: false, error: "Faltan datos para mover." };
   }
-  const { supabase, turno } = await turnoAgendado(id);
+  const { consultorio, supabase, turno } = await turnoAgendado(id);
   if (!turno) return { ok: false, error: "Ese turno ya no se puede mover." };
+  // Mover un turno con paciente cambia su estado (reprogramado): no en un mes cerrado.
+  if (turno.clase === "turno" && (await mesCerrado(supabase, consultorio.id, turno.inicio))) return { ok: false, error: MES_CERRADO };
 
   // Con las fechas completas (no solo la hora), así no falla si el turno cruza la medianoche.
   const duracion = Math.round((new Date(turno.fin).getTime() - new Date(turno.inicio).getTime()) / 60_000);
@@ -168,13 +195,20 @@ export async function moverTurno(id: string, fecha: string, inicio: string): Pro
     p_fin: instanteUtc(fecha, fin),
   });
   if (error) return { ok: false, error: NO_SE_PUDO };
-  revalidatePath("/agenda");
+  revalidar();
+  // El original queda 'reprogramado' con su cargo de Gs. 0 (así aparece en el detalle).
+  // Si eso falla, el turno se movió igual: el cobro real es el del turno nuevo.
+  if (turno.clase === "turno") {
+    const cargo = await aplicarEstadoTurno(supabase, consultorio.id, id);
+    if (!cargo.ok) return { ok: true, aviso: `Movido ✓ pero no se anotó el cobro de Gs. 0 del original: ${cargo.error}` };
+  }
   return { ok: true };
 }
 
 /**
  * Cancelar un turno con paciente. La familia: se clasifica según cuándo avisó
- * (48 h). La profesional: queda para reponer. No crea cargos (eso es la B3).
+ * (48 h). La profesional: queda para reponer. Después crea el cargo (aplicarEstadoTurno);
+ * si eso falla, el turno vuelve a quedar agendado.
  */
 export async function cancelarTurno(
   id: string,
@@ -189,20 +223,107 @@ export async function cancelarTurno(
   }
   const { consultorio, supabase, turno } = await turnoAgendado(id);
   if (!turno || turno.clase !== "turno") return { ok: false, error: "Ese turno ya no se puede cancelar." };
+  if (await mesCerrado(supabase, consultorio.id, turno.inicio)) return { ok: false, error: MES_CERRADO };
 
   const { data: config } = await supabase.from("consultorios").select("horas_aviso_minimas").eq("id", consultorio.id).single();
   if (!config) return { ok: false, error: NO_SE_PUDO };
   const avisoEn = aviso ? new Date(instanteUtc(aviso.fecha, aviso.hora)) : new Date();
   const cambios = datosCancelacion(quien, { inicio: new Date(turno.inicio) }, avisoEn, config.horas_aviso_minimas);
 
-  const { error } = await supabase
+  const { data: cancelados, error } = await supabase
     .from("turnos")
     .update({ ...cambios, marcado_en: new Date().toISOString() })
     .eq("consultorio_id", consultorio.id)
     .eq("id", id)
-    .eq("estado", "agendado");
+    .eq("estado", "agendado")
+    .select("id");
   if (error) return { ok: false, error: NO_SE_PUDO };
-  revalidatePath("/agenda");
+  if (!cancelados?.length) return { ok: false, error: "El turno cambió en otro dispositivo. Recargá la página." };
+
+  const cargo = await aplicarEstadoTurno(supabase, consultorio.id, id);
+  if (!cargo.ok) {
+    // Deshacer: el turno vuelve a como estaba (estaba agendado, sin excepción).
+    await supabase
+      .from("turnos")
+      .update({ estado: "agendado", aviso_en: null, reponer: false, marcado_en: null })
+      .eq("consultorio_id", consultorio.id)
+      .eq("id", id);
+    revalidar();
+    return { ok: false, error: cargo.error };
+  }
+  revalidar();
+  return { ok: true };
+}
+
+// ---------------------------------------------------------------------
+// Asistencia (B3): Vino / No vino / volver a agendado / excepción
+// ---------------------------------------------------------------------
+
+/**
+ * Marca la asistencia o la excepción de un turno con paciente y actualiza su cargo.
+ * Solo lo que permite `accionesDelTurno` (la misma regla que los botones).
+ * Si el cargo no se puede guardar, el turno vuelve a como estaba.
+ */
+export async function marcarAsistencia(id: string, accion: AccionAsistencia, excepcion: Excepcion | null = null): Promise<ResultadoSimple> {
+  if (!esId.safeParse(id).success || !(ACCIONES_ASISTENCIA as readonly string[]).includes(accion)) {
+    return { ok: false, error: "Faltan datos." };
+  }
+  let datosExcepcion: Excepcion | null = null;
+  if (accion === "excepcion") {
+    const v = validarExcepcion(excepcion);
+    if (!v.ok) return v;
+    datosExcepcion = v.datos;
+  }
+
+  const consultorio = await exigirConsultorio();
+  const supabase = await crearClienteServidor();
+  const { data: turno } = await supabase
+    .from("turnos")
+    .select("id, clase, estado, inicio, porcentaje_manual, motivo_excepcion, marcado_en")
+    .eq("consultorio_id", consultorio.id)
+    .eq("id", id)
+    .maybeSingle();
+  if (!turno) return { ok: false, error: "Turno no encontrado." };
+
+  const permitidas = accionesDelTurno(
+    {
+      clase: turno.clase as ClaseTurno,
+      estado: turno.estado as EstadoTurno,
+      fecha: aHoraLocal(turno.inicio).fecha,
+      porcentajeManual: turno.porcentaje_manual,
+    },
+    hoyEnAsuncion(),
+  );
+  if (!permitidas.includes(accion)) return { ok: false, error: "Ese turno ya no se puede cambiar así. Recargá la página." };
+  if (await mesCerrado(supabase, consultorio.id, turno.inicio)) return { ok: false, error: MES_CERRADO };
+
+  // Solo si sigue en el mismo estado (por si otro dispositivo lo cambió mientras tanto).
+  const { data: cambiados, error } = await supabase
+    .from("turnos")
+    .update(cambiosAsistencia(accion, datosExcepcion, new Date()))
+    .eq("consultorio_id", consultorio.id)
+    .eq("id", id)
+    .eq("estado", turno.estado)
+    .select("id");
+  if (error) return { ok: false, error: NO_SE_PUDO };
+  if (!cambiados?.length) return { ok: false, error: "El turno cambió en otro dispositivo. Recargá la página." };
+
+  const cargo = await aplicarEstadoTurno(supabase, consultorio.id, id);
+  if (!cargo.ok) {
+    await supabase
+      .from("turnos")
+      .update({
+        estado: turno.estado,
+        porcentaje_manual: turno.porcentaje_manual,
+        motivo_excepcion: turno.motivo_excepcion,
+        marcado_en: turno.marcado_en,
+      })
+      .eq("consultorio_id", consultorio.id)
+      .eq("id", id);
+    revalidar();
+    return { ok: false, error: cargo.error };
+  }
+  revalidar();
   return { ok: true };
 }
 
@@ -213,7 +334,7 @@ export async function quitarTurno(id: string): Promise<ResultadoSimple> {
   if (!turno || turno.clase === "turno") return { ok: false, error: "Ese turno no se puede quitar: cancelalo." };
   const { error } = await supabase.from("turnos").delete().eq("consultorio_id", consultorio.id).eq("id", id);
   if (error) return { ok: false, error: NO_SE_PUDO };
-  revalidatePath("/agenda");
+  revalidar();
   return { ok: true };
 }
 
@@ -291,7 +412,7 @@ export async function crearSerie(entrada: unknown): Promise<ResultadoAgendar> {
   if (error || !nueva) return { ok: false, error: NO_SE_PUDO };
   const materializado = await materializarSeries(hoy, nueva.id);
   if (materializado.error) return { ok: false, error: materializado.error };
-  revalidatePath("/agenda");
+  revalidar();
   return { ok: true };
 }
 
@@ -329,6 +450,6 @@ export async function finalizarSerie(serieId: string): Promise<ResultadoSimple> 
     .eq("estado", "agendado")
     .gte("inicio", new Date().toISOString());
   if (errorBorrar) return { ok: false, error: NO_SE_PUDO };
-  revalidatePath("/agenda");
+  revalidar();
   return { ok: true };
 }

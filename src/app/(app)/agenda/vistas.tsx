@@ -1,6 +1,6 @@
 import { horaCorta } from "@/lib/agenda/bloques";
 import { diaCorto, numeroDia } from "@/lib/agenda/calendario";
-import { NOMBRE_ESTADO_TURNO, textoTurno, type Dia, type FilaDia, type TurnoAgenda } from "@/lib/agenda/turnos";
+import { NOMBRE_ESTADO_TURNO, textoEstado, textoTurno, type Dia, type FilaDia, type TurnoAgenda } from "@/lib/agenda/turnos";
 import { cn } from "@/lib/utils";
 
 // Vistas de la agenda (solo lectura). Reciben los días ya armados con
@@ -88,7 +88,7 @@ function ContenidoFila({ fila }: { fila: FilaDia }) {
       ))}
       {fila.liberados.map((t) => (
         <span key={t.id} className="px-3 text-xs text-muted-foreground">
-          <span className="line-through">{textoTurno(t)}</span> · {NOMBRE_ESTADO_TURNO[t.estado]}
+          <span className="line-through">{textoTurno(t)}</span> · {textoEstado(t) ?? NOMBRE_ESTADO_TURNO[t.estado]}
         </span>
       ))}
     </>
@@ -99,7 +99,7 @@ function TarjetaTurno({ turno, aviso }: { turno: TurnoAgenda; aviso?: string }) 
   const detalle = [
     turno.clase === "turno" ? turno.tipo : null,
     `${horaCorta(turno.inicio)}–${horaCorta(turno.fin)}`,
-    turno.clase === "turno" && turno.estado !== "agendado" ? NOMBRE_ESTADO_TURNO[turno.estado] : null,
+    textoEstado(turno),
     aviso,
   ].filter(Boolean);
   return (
@@ -188,9 +188,7 @@ function CeldaSemana({ dia, hora, alElegir }: { dia: Dia; hora: string; alElegir
         turnos.map((t) => (
           <span key={t.id} className={cn("flex min-h-12 flex-col justify-center rounded-md border px-1.5 py-1", colorTurno(t))}>
             <span className="line-clamp-2 text-xs font-medium leading-tight">{textoTurno(t)}</span>
-            {t.clase === "turno" && t.estado !== "agendado" && (
-              <span className="text-[0.65rem] leading-tight opacity-80">{NOMBRE_ESTADO_TURNO[t.estado]}</span>
-            )}
+            {textoEstado(t) && <span className="text-[0.65rem] leading-tight opacity-80">{textoEstado(t)}</span>}
           </span>
         ))
       )}

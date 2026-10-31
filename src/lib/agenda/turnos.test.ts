@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Tramo } from "./bloques";
-import { aHoraLocal, armarDia, inicioDelDiaUtc, liberaBloque, textoTurno, type TurnoAgenda } from "./turnos";
+import { aHoraLocal, armarDia, inicioDelDiaUtc, liberaBloque, textoEstado, textoTurno, type TurnoAgenda } from "./turnos";
 
 const HORARIO: Tramo[] = [1, 2, 3, 4, 5].flatMap((d) => [
   { dia_semana: d, desde: "09:00", hasta: "11:15" },
@@ -25,6 +25,7 @@ const turno = (inicio: string, datos: Partial<TurnoAgenda> = {}): TurnoAgenda =>
     tipoId: null,
     pacienteId: null,
     modalidad: "consultorio",
+    porcentajeManual: null,
     ...datos,
   };
 };
@@ -120,5 +121,19 @@ describe("textoTurno", () => {
     expect(textoTurno({ clase: "turno", titulo: "Ana" })).toBe("Ana");
     expect(textoTurno({ clase: "reservado", titulo: "Fulano" })).toBe("Reservado: Fulano");
     expect(textoTurno({ clase: "ocupado", titulo: "Reunión" })).toBe("Ocupado: Reunión");
+  });
+});
+
+describe("textoEstado", () => {
+  it("agendado o sin paciente: nada", () => {
+    expect(textoEstado(turno("09:00"))).toBeNull();
+    expect(textoEstado(turno("09:00", { clase: "ocupado", estado: "presente" }))).toBeNull();
+  });
+  it("marcado: el nombre del estado", () => {
+    expect(textoEstado(turno("09:00", { estado: "ausente_sin_aviso" }))).toBe("No vino");
+  });
+  it("con excepción se ve el porcentaje (también 0%)", () => {
+    expect(textoEstado(turno("09:00", { estado: "ausente_sin_aviso", porcentajeManual: 0 }))).toBe("No vino · Excepción 0%");
+    expect(textoEstado(turno("09:00", { estado: "aviso_tardio", porcentajeManual: 50 }))).toBe("Canceló tarde · Excepción 50%");
   });
 });

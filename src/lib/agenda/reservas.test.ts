@@ -16,6 +16,7 @@ const turno = (inicio: string, fin: string, datos: Partial<TurnoAgenda> = {}): T
   tipoId: null,
   pacienteId: null,
   modalidad: "consultorio",
+  porcentajeManual: null,
   ...datos,
 });
 const nuevo = (inicio: string, fin: string, modalidad: string | null = "consultorio") => ({ fecha: FECHA, inicio, fin, modalidad });

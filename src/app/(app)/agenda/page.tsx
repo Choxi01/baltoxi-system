@@ -7,6 +7,7 @@ import {
   crearSerie,
   finalizarSerie,
   libresDelDia,
+  marcarAsistencia,
   moverTurno,
   quitarTurno,
 } from "@/lib/agenda/acciones-turnos";
@@ -28,7 +29,7 @@ function fechaValida(valor: unknown): string | null {
   return r.ok ? r.fecha : null;
 }
 
-// Agenda (A2b + A3a reservar + A3b mover, cancelar y reponer + A3c turnos fijos).
+// Agenda (A2b + A3a reservar + A3b mover, cancelar y reponer + A3c turnos fijos + B3 asistencia).
 export default async function Pagina({ searchParams }: PageProps<"/agenda">) {
   const parametros = await searchParams;
   const { duracion, tramos, bloqueos } = await obtenerHorario();
@@ -59,7 +60,12 @@ export default async function Pagina({ searchParams }: PageProps<"/agenda">) {
         bloqueos={bloqueos}
         turnos={turnos}
         paraReponer={paraReponer}
-        datosPanel={{ ...paraReservar, hoy, agendar, acciones: { libresDelDia, moverTurno, cancelarTurno, quitarTurno, crearSerie, finalizarSerie } }}
+        datosPanel={{
+          ...paraReservar,
+          hoy,
+          agendar,
+          acciones: { libresDelDia, moverTurno, cancelarTurno, quitarTurno, marcarAsistencia, crearSerie, finalizarSerie },
+        }}
       />
     </div>
   );

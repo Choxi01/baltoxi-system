@@ -1,7 +1,6 @@
 "use client";
 
-import { ArrowRightLeft, Ban, ExternalLink, Repeat, Trash2, UserPlus, X } from "lucide-react";
-import Link from "next/link";
+import { Repeat, X } from "lucide-react";
 import { useState, useTransition } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -13,10 +12,11 @@ import { horaCorta } from "@/lib/agenda/bloques";
 import { tituloDia } from "@/lib/agenda/calendario";
 import { avisosAlAgendar, horaFin, textosAvisos } from "@/lib/agenda/reservas";
 import { fechasParaHasta } from "@/lib/agenda/series";
-import { textoTurno, type FilaDia, type TurnoAgenda } from "@/lib/agenda/turnos";
+import { type FilaDia, type TurnoAgenda } from "@/lib/agenda/turnos";
 import { filtrarPacientes } from "@/lib/pacientes/busqueda";
 import { cn } from "@/lib/utils";
-import { FormularioCancelar, FormularioMover, type AccionesDeTurno } from "./acciones-turno";
+import { AccionesTurno, FormularioTurno, useAccionesTurno } from "./acciones-de-turno";
+import type { AccionesDeTurno } from "./acciones-turno";
 
 export type PacienteParaReservar = { id: string; nombre: string; apellido: string | null };
 export type TipoParaReservar = { id: string; nombre: string; modalidad: string; requiere_paciente: boolean };
@@ -41,7 +41,7 @@ function diasDeLaSemana(fecha: string): string {
   return dia.endsWith("s") ? dia : `${dia}s`;
 }
 
-type Modo = "menu" | "reservar" | "fijo" | "ocupado" | { accion: "mover" | "cancelar"; turno: TurnoAgenda };
+type Modo = "menu" | "reservar" | "fijo" | "ocupado";
 
 // Acciones de una fila de la agenda (se abre debajo del bloque, sin ventanas).
 export function PanelFila({
@@ -63,31 +63,10 @@ export function PanelFila({
   alGuardar: (aviso: string) => void;
 }) {
   const turnos = fila.tipo === "fuera" ? [fila.turno] : fila.turnos;
+  // Los cancelados de este horario también se muestran: a "Canceló tarde" se le puede poner excepción.
+  const liberados = fila.tipo === "bloque" ? fila.liberados.filter((t) => t.clase === "turno") : [];
   const [modo, setModo] = useState<Modo>(reponiendo && turnos.length === 0 ? "reservar" : "menu");
-  const [error, setError] = useState<string | null>(null);
-  const [quitando, iniciarQuitar] = useTransition();
-
-  function finalizar(t: TurnoAgenda) {
-    if (!t.serieId) return;
-    const dia = tituloDia(t.fecha).split(" ")[0].toLowerCase();
-    if (!window.confirm(`¿Finalizar el turno fijo de ${t.titulo} (${dia} ${horaCorta(t.inicio)})? Se borran sus turnos futuros agendados; los pasados quedan.`)) return;
-    setError(null);
-    iniciarQuitar(async () => {
-      const r = await datos.acciones.finalizarSerie(t.serieId!);
-      if (r.ok) alGuardar("Turno fijo finalizado ✓");
-      else setError(r.error);
-    });
-  }
-
-  function quitar(t: TurnoAgenda) {
-    if (!window.confirm(`¿Quitar «${textoTurno(t)}»? El horario queda libre.`)) return;
-    setError(null);
-    iniciarQuitar(async () => {
-      const r = await datos.acciones.quitarTurno(t.id);
-      if (r.ok) alGuardar("Quitado ✓");
-      else setError(r.error);
-    });
-  }
+  const { abierto, cerrar, error, guardando, alAccion, finalizarSerie } = useAccionesTurno({ acciones: datos.acciones, alGuardar });
 
   return (
     <div className="flex flex-col gap-3 rounded-lg border bg-muted/40 p-3">
@@ -101,17 +80,26 @@ export function PanelFila({
         </Button>
       </div>
 
-      {modo === "menu" && (
+      {abierto && (
+        <FormularioTurno
+          abierto={abierto}
+          hoy={datos.hoy}
+          horasAvisoMinimas={datos.horasAvisoMinimas}
+          acciones={datos.acciones}
+          alVolver={cerrar}
+          alGuardar={alGuardar}
+        />
+      )}
+      {!abierto && modo === "menu" && (
         <>
-          {turnos.map((t) => (
+          {[...turnos, ...liberados].map((t) => (
             <AccionesTurno
               key={t.id}
               turno={t}
-              ocupado={quitando}
-              alMover={() => setModo({ accion: "mover", turno: t })}
-              alCancelar={() => setModo({ accion: "cancelar", turno: t })}
-              alQuitar={() => quitar(t)}
-              alFinalizar={() => finalizar(t)}
+              hoy={datos.hoy}
+              ocupado={guardando}
+              alAccion={(a) => alAccion(t, a)}
+              alFinalizarSerie={() => finalizarSerie(t)}
             />
           ))}
           {error && (
@@ -134,20 +122,7 @@ export function PanelFila({
           </div>
         </>
       )}
-      {typeof modo === "object" && modo.accion === "mover" && (
-        <FormularioMover turno={modo.turno} hoy={datos.hoy} acciones={datos.acciones} alVolver={() => setModo("menu")} alGuardar={alGuardar} />
-      )}
-      {typeof modo === "object" && modo.accion === "cancelar" && (
-        <FormularioCancelar
-          turno={modo.turno}
-          hoy={datos.hoy}
-          horasAvisoMinimas={datos.horasAvisoMinimas}
-          acciones={datos.acciones}
-          alVolver={() => setModo("menu")}
-          alGuardar={alGuardar}
-        />
-      )}
-      {(modo === "reservar" || modo === "fijo" || modo === "ocupado") && (
+      {!abierto && (modo === "reservar" || modo === "fijo" || modo === "ocupado") && (
         <FormularioAgendar
           modo={modo}
           reponiendo={modo === "reservar" ? reponiendo : null}
@@ -158,69 +133,6 @@ export function PanelFila({
           alVolver={() => setModo("menu")}
           alGuardar={alGuardar}
         />
-      )}
-    </div>
-  );
-}
-
-function AccionesTurno({
-  turno,
-  ocupado,
-  alMover,
-  alCancelar,
-  alQuitar,
-  alFinalizar,
-}: {
-  turno: TurnoAgenda;
-  ocupado: boolean;
-  alMover: () => void;
-  alCancelar: () => void;
-  alQuitar: () => void;
-  alFinalizar: () => void;
-}) {
-  const agendado = turno.estado === "agendado";
-  return (
-    <div className="flex flex-col gap-2 rounded-lg border bg-background p-2">
-      <p className="px-1 text-sm font-medium">{textoTurno(turno)}</p>
-      {turno.serieId && (
-        <p className="flex items-center gap-1 px-1 text-xs text-muted-foreground">
-          <Repeat className="size-3" /> Turno fijo: {tituloDia(turno.fecha).split(" ")[0].toLowerCase()} {horaCorta(turno.inicio)}
-        </p>
-      )}
-      {turno.clase === "turno" && turno.pacienteId && (
-        <Button asChild variant="outline" className="h-12 justify-start">
-          <Link href={`/pacientes/${turno.pacienteId}`}>
-            <ExternalLink /> Ver expediente
-          </Link>
-        </Button>
-      )}
-      {turno.clase === "reservado" && (
-        <Button asChild variant="outline" className="h-12 justify-start">
-          <Link href={`/pacientes/nuevo?reserva=${turno.id}`}>
-            <UserPlus /> Crear ficha
-          </Link>
-        </Button>
-      )}
-      {agendado && (
-        <div className="grid grid-cols-2 gap-2">
-          <Button variant="outline" className="h-12" onClick={alMover} disabled={ocupado}>
-            <ArrowRightLeft /> Mover
-          </Button>
-          {turno.clase === "turno" ? (
-            <Button variant="outline" className="h-12 text-destructive" onClick={alCancelar} disabled={ocupado}>
-              <Ban /> Cancelar
-            </Button>
-          ) : (
-            <Button variant="outline" className="h-12 text-destructive" onClick={alQuitar} disabled={ocupado}>
-              <Trash2 /> Quitar
-            </Button>
-          )}
-        </div>
-      )}
-      {turno.serieId && (
-        <Button variant="ghost" className="h-12 text-destructive" onClick={alFinalizar} disabled={ocupado}>
-          Finalizar turno fijo
-        </Button>
       )}
     </div>
   );
