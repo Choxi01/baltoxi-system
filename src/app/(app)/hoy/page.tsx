@@ -10,9 +10,10 @@ import {
   quitarTurno,
 } from "@/lib/agenda/acciones-turnos";
 import { tituloDia } from "@/lib/agenda/calendario";
-import { listarTurnos, obtenerDatosParaReservar } from "@/lib/agenda/datos";
+import { listarTurnosConCobro, obtenerDatosParaReservar } from "@/lib/agenda/datos";
 import { resumenHoy, textoResumenHoy } from "@/lib/agenda/hoy";
 import { materializarSeries } from "@/lib/agenda/series-servidor";
+import { registrarPago } from "@/lib/cobro/acciones-pagos";
 import { hoyEnAsuncion } from "@/lib/fechas";
 import { ListaHoy } from "./lista-hoy";
 
@@ -24,7 +25,7 @@ export default async function Pagina() {
   const hoy = hoyEnAsuncion();
   // Igual que la Agenda: crear los turnos fijos que falten (después del login se entra acá).
   await materializarSeries(hoy);
-  const [turnos, { horasAvisoMinimas }] = await Promise.all([listarTurnos(hoy, hoy), obtenerDatosParaReservar()]);
+  const [turnos, { horasAvisoMinimas }] = await Promise.all([listarTurnosConCobro(hoy, hoy), obtenerDatosParaReservar()]);
   const resumen = textoResumenHoy(resumenHoy(turnos));
 
   return (
@@ -40,7 +41,7 @@ export default async function Pagina() {
         hoy={hoy}
         turnos={turnos}
         horasAvisoMinimas={horasAvisoMinimas}
-        acciones={{ libresDelDia, moverTurno, cancelarTurno, quitarTurno, marcarAsistencia, crearSerie, finalizarSerie }}
+        acciones={{ libresDelDia, moverTurno, cancelarTurno, quitarTurno, marcarAsistencia, crearSerie, finalizarSerie, registrarPago }}
       />
     </div>
   );

@@ -11,8 +11,9 @@ import {
   moverTurno,
   quitarTurno,
 } from "@/lib/agenda/acciones-turnos";
-import { listarParaReponer, listarTurnos, obtenerDatosParaReservar, obtenerHorario } from "@/lib/agenda/datos";
+import { listarParaReponer, listarTurnosConCobro, obtenerDatosParaReservar, obtenerHorario } from "@/lib/agenda/datos";
 import { materializarSeries } from "@/lib/agenda/series-servidor";
+import { registrarPago } from "@/lib/cobro/acciones-pagos";
 import { hoyEnAsuncion } from "@/lib/fechas";
 import { armarFecha, partirFecha } from "@/lib/pacientes/fecha";
 import { Agenda } from "./agenda";
@@ -42,7 +43,7 @@ export default async function Pagina({ searchParams }: PageProps<"/agenda">) {
   // Turnos fijos: que estén creadas las próximas 8 semanas (no duplica).
   await materializarSeries(hoy);
   const [turnos, paraReservar, paraReponer] = await Promise.all([
-    listarTurnos(rango.desde, rango.hasta),
+    listarTurnosConCobro(rango.desde, rango.hasta),
     obtenerDatosParaReservar(),
     listarParaReponer(hoy),
   ]);
@@ -64,7 +65,7 @@ export default async function Pagina({ searchParams }: PageProps<"/agenda">) {
           ...paraReservar,
           hoy,
           agendar,
-          acciones: { libresDelDia, moverTurno, cancelarTurno, quitarTurno, marcarAsistencia, crearSerie, finalizarSerie },
+          acciones: { libresDelDia, moverTurno, cancelarTurno, quitarTurno, marcarAsistencia, crearSerie, finalizarSerie, registrarPago },
         }}
       />
     </div>

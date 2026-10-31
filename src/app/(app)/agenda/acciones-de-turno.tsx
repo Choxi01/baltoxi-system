@@ -1,13 +1,15 @@
 "use client";
 
-import { ArrowRightLeft, Ban, Check, ExternalLink, Percent, Repeat, Trash2, Undo2, UserPlus, UserX, X, type LucideIcon } from "lucide-react";
+import { ArrowRightLeft, Ban, Banknote, Check, ExternalLink, Percent, Repeat, Trash2, Undo2, UserPlus, UserX, X, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { useState, useTransition } from "react";
 
+import { FormularioPago } from "@/components/app/formulario-pago";
 import { Button } from "@/components/ui/button";
 import { accionesDelTurno, type AccionAsistencia, type AccionTurno } from "@/lib/agenda/asistencia";
 import { horaCorta } from "@/lib/agenda/bloques";
 import { tituloDia } from "@/lib/agenda/calendario";
+import { formatoGs } from "@/lib/cobro/formato";
 import { NOMBRE_ESTADO_TURNO, textoEstado, textoTurno, type TurnoAgenda } from "@/lib/agenda/turnos";
 import { cn } from "@/lib/utils";
 import { FormularioCancelar, FormularioExcepcion, FormularioMover, type AccionesDeTurno } from "./acciones-turno";
@@ -23,7 +25,10 @@ const BOTONES: Record<AccionTurno, { texto: string; icono: LucideIcon; peligro?:
   quitar: { texto: "Quitar", icono: Trash2, peligro: true },
 };
 
-/** Un turno con sus acciones (agenda y, en la B3b, la pantalla Hoy). */
+/** Lo que se puede tocar en la tarjeta: las acciones del turno y "Cobrar ahora" (B4). */
+export type AccionTarjeta = AccionTurno | "cobrar";
+
+/** Un turno con sus acciones (agenda y pantalla Hoy). */
 export function AccionesTurno({
   turno,
   hoy,
@@ -34,7 +39,7 @@ export function AccionesTurno({
   turno: TurnoAgenda;
   hoy: string;
   ocupado: boolean;
-  alAccion: (accion: AccionTurno) => void;
+  alAccion: (accion: AccionTarjeta) => void;
   /** Si viene, un turno fijo muestra "Finalizar turno fijo" (en la agenda sí, en Hoy no). */
   alFinalizarSerie?: () => void;
 }) {
@@ -65,6 +70,11 @@ export function AccionesTurno({
           </Link>
         </Button>
       )}
+      {turno.cobro && (
+        <Button className="h-12" onClick={() => alAccion("cobrar")} disabled={ocupado}>
+          <Banknote /> Cobrar ahora · {formatoGs(turno.cobro.pendiente)}
+        </Button>
+      )}
       {acciones.length > 0 && (
         <div className="grid grid-cols-2 gap-2">
           {acciones.map((a) => {
@@ -92,8 +102,8 @@ export function AccionesTurno({
   );
 }
 
-/** Un turno con un formulario abierto (Mover, Cancelar o Excepción). */
-export type TurnoAbierto = { accion: "mover" | "cancelar" | "excepcion"; turno: TurnoAgenda };
+/** Un turno con un formulario abierto (Mover, Cancelar, Excepción o Cobrar ahora). */
+export type TurnoAbierto = { accion: "mover" | "cancelar" | "excepcion" | "cobrar"; turno: TurnoAgenda };
 
 const LISTO: Record<Exclude<AccionAsistencia, "excepcion">, string> = {
   vino: "Vino ✓",
@@ -104,7 +114,7 @@ const LISTO: Record<Exclude<AccionAsistencia, "excepcion">, string> = {
 
 /**
  * Qué pasa al tocar un botón de AccionesTurno (lo usan la agenda y Hoy):
- * Mover / Cancelar / Excepción abren su formulario; Vino, No vino, Volver a agendado,
+ * Mover / Cancelar / Excepción / Cobrar ahora abren su formulario; Vino, No vino, Volver a agendado,
  * Quitar excepción y Quitar se guardan directo.
  */
 export function useAccionesTurno({ acciones, alGuardar }: { acciones: AccionesDeTurno; alGuardar: (aviso: string) => void }) {
@@ -132,9 +142,9 @@ export function useAccionesTurno({ acciones, alGuardar }: { acciones: AccionesDe
     });
   }
 
-  function alAccion(t: TurnoAgenda, accion: AccionTurno) {
+  function alAccion(t: TurnoAgenda, accion: AccionTarjeta) {
     setError(null);
-    if (accion === "mover" || accion === "cancelar" || accion === "excepcion") setAbierto({ accion, turno: t });
+    if (accion === "mover" || accion === "cancelar" || accion === "excepcion" || accion === "cobrar") setAbierto({ accion, turno: t });
     else if (accion === "quitar") quitar(t);
     else marcar(t, accion);
   }
@@ -172,6 +182,21 @@ export function FormularioTurno({
   alGuardar: (aviso: string) => void;
 }) {
   const { accion, turno } = abierto;
+  if (accion === "cobrar") {
+    if (!turno.cobro) return null;
+    return (
+      <FormularioPago
+        hoy={hoy}
+        titulo={`Cobrar ahora: ${turno.titulo}${turno.tipo ? ` · ${turno.tipo}` : ""}`}
+        tutor={{ id: turno.cobro.tutorId, nombre: turno.cobro.tutorNombre }}
+        montoInicial={turno.cobro.pendiente}
+        deudaAnterior={turno.cobro.deudaAnterior}
+        registrarPago={acciones.registrarPago}
+        alVolver={alVolver}
+        alGuardar={alGuardar}
+      />
+    );
+  }
   if (accion === "mover") return <FormularioMover turno={turno} hoy={hoy} acciones={acciones} alVolver={alVolver} alGuardar={alGuardar} />;
   if (accion === "cancelar") {
     return (
