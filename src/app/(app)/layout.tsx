@@ -1,6 +1,7 @@
 import { connection } from "next/server";
 import { Suspense } from "react";
 
+import { Cargando } from "@/components/app/cargando";
 import { Menu, MenuConRuta } from "@/components/app/menu";
 import { exigirConsultorio } from "@/lib/auth/servidor";
 import { contarPendientes } from "@/lib/mensajes/datos";
@@ -14,7 +15,7 @@ export default function LayoutApp({ children }: LayoutProps<"/">) {
         <MenuConContador />
       </Suspense>
       <main className="flex-1 px-4 pb-[calc(5rem+env(safe-area-inset-bottom))] pt-[max(1.5rem,env(safe-area-inset-top))] md:px-8 md:pb-8">
-        <Suspense fallback={<p className="text-muted-foreground">Cargando…</p>}>
+        <Suspense fallback={<Cargando />}>
           <Verificar>{children}</Verificar>
         </Suspense>
       </main>

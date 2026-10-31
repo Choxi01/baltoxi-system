@@ -10,7 +10,7 @@ import { opcionesCookie } from "./cookies";
 import { codigoReciente, COOKIE_DISPOSITIVO, COOKIE_SESION_CONFIANZA, DURACION_DISPOSITIVO_MS } from "./dispositivo";
 import { recordarDispositivo } from "./dispositivo-servidor";
 import { COOKIE_ULTIMO_USO, momentosDeIngreso } from "./inactividad";
-import { buscarConsultorio, exigirSesionCompleta } from "./servidor";
+import { exigirSesionCompleta, leerConsultorio } from "./servidor";
 
 // Cierra la sesión en el servidor. Quien la llama recarga la página entera
 // (ver BotonSalir) para no dejar datos de la sesión en memoria.
@@ -53,8 +53,9 @@ export async function crearConsultorio(
   if (!validacion.ok) return { error: validacion.error };
 
   const { supabase } = await exigirSesionCompleta();
-  // Si ya tiene uno (ej. tocó dos veces el botón), no crear otro.
-  if (!(await buscarConsultorio())) {
+  // Si ya tiene uno (ej. tocó dos veces el botón), no crear otro. Sin caché: justo
+  // después se crea, y la pantalla siguiente tiene que ver el consultorio nuevo.
+  if (!(await leerConsultorio())) {
     const { error } = await supabase.rpc("crear_consultorio", { p_nombre: validacion.nombre });
     if (error) return { error: "No se pudo crear el consultorio. Probá de nuevo." };
   }

@@ -11,9 +11,10 @@ import {
   quitarTurno,
 } from "@/lib/agenda/acciones-turnos";
 import { tituloDia } from "@/lib/agenda/calendario";
-import { listarTurnos, obtenerDatosParaReservar } from "@/lib/agenda/datos";
+import { listarTurnosConCobro, obtenerDatosParaReservar } from "@/lib/agenda/datos";
 import { resumenHoy, textoResumenHoy } from "@/lib/agenda/hoy";
 import { materializarSeries } from "@/lib/agenda/series-servidor";
+import { registrarPago } from "@/lib/cobro/acciones-pagos";
 import { hoyEnAsuncion } from "@/lib/fechas";
 import { ListaHoy } from "./lista-hoy";
 
@@ -22,12 +23,15 @@ export const metadata: Metadata = { title: "Hoy · Consultorio" };
 // Hoy (B3b): los turnos del día, también los cancelados, con las mismas acciones que la agenda.
 // Solo datos administrativos (regla de oro 7): nombre, tipo de turno, hora y estado.
 export default async function Pagina() {
-  // "Hoy" se calcula en cada visita, no al compilar (si no, Next 16 frena el build).
+  // La fecha de hoy es de cada pedido: no se arma la página de antemano (si no, falla `next build`).
   await connection();
   const hoy = hoyEnAsuncion();
   // Igual que la Agenda: crear los turnos fijos que falten (después del login se entra acá).
-  await materializarSeries(hoy);
-  const [turnos, { horasAvisoMinimas }] = await Promise.all([listarTurnos(hoy, hoy), obtenerDatosParaReservar()]);
+  // Solo los turnos esperan a eso; lo demás se pide a la vez.
+  const [turnos, { horasAvisoMinimas }] = await Promise.all([
+    materializarSeries(hoy).then(() => listarTurnosConCobro(hoy, hoy)),
+    obtenerDatosParaReservar(),
+  ]);
   const resumen = textoResumenHoy(resumenHoy(turnos));
 
   return (
@@ -43,7 +47,7 @@ export default async function Pagina() {
         hoy={hoy}
         turnos={turnos}
         horasAvisoMinimas={horasAvisoMinimas}
-        acciones={{ libresDelDia, moverTurno, cancelarTurno, quitarTurno, marcarAsistencia, crearSerie, finalizarSerie }}
+        acciones={{ libresDelDia, moverTurno, cancelarTurno, quitarTurno, marcarAsistencia, crearSerie, finalizarSerie, registrarPago }}
       />
     </div>
   );

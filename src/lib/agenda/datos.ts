@@ -1,6 +1,10 @@
 import "server-only";
 
 import { exigirConsultorio } from "@/lib/auth/servidor";
+import { cobroDelCargo, puedeCobrarAhora } from "@/lib/cobro/pago";
+import { imputarPagos } from "@/lib/cobro/saldo";
+import type { PlanCobro } from "@/lib/cobro/tipos";
+import { leerTodo } from "@/lib/supabase/paginar";
 import { crearClienteServidor } from "@/lib/supabase/servidor";
 import { finDeMes, inicioDeMes, sumarDias } from "./calendario";
 import { pendientesDeReponer } from "./cancelacion";
@@ -63,6 +67,79 @@ export async function listarTurnos(desde: string, hasta: string): Promise<TurnoA
       modalidad: t.tipos_turno?.modalidad ?? null,
       porcentajeManual: t.porcentaje_manual,
     };
+  });
+}
+
+/**
+ * Como `listarTurnos`, pero a cada turno que lleva "Cobrar ahora" (B4) le agrega `cobro`:
+ * tipo que cobra en el momento o plan por sesión, y algo pendiente después de imputar los pagos (FIFO).
+ * La usan las pantallas Agenda y Hoy; las acciones de servidor siguen con `listarTurnos`.
+ */
+export async function listarTurnosConCobro(desde: string, hasta: string): Promise<TurnoAgenda[]> {
+  const consultorio = await exigirConsultorio();
+  const supabase = await crearClienteServidor();
+
+  // Los turnos y los cargos del rango se piden a la vez: no dependen uno del otro.
+  // Cargos por fecha, no por lista de ids: el rango puede tener cientos de turnos.
+  const [turnos, cargosRango] = await Promise.all([
+    listarTurnos(desde, hasta),
+    leerTodo((de, a) =>
+      supabase
+        .from("cargos")
+        .select(
+          "id, turno_id, tutor_id, pacientes!cargos_consultorio_id_paciente_id_fkey(plan_cobro), turnos!cargos_consultorio_id_turno_id_fkey(tipos_turno!turnos_consultorio_id_tipo_turno_id_fkey(cobra_en_el_momento))",
+        )
+        .eq("consultorio_id", consultorio.id)
+        .not("turno_id", "is", null)
+        .gte("fecha", desde)
+        .lte("fecha", hasta)
+        .order("id")
+        .range(de, a),
+    ),
+  ]);
+
+  // Primero sin mirar lo pendiente: solo los que podrían llevar el botón.
+  const candidatos = new Map(
+    cargosRango
+      .filter((c) => c.turno_id)
+      .map((c) => ({
+        cargoId: c.id,
+        turnoId: c.turno_id!,
+        tutorId: c.tutor_id,
+        plan: (c.pacientes?.plan_cobro ?? "mensual") as PlanCobro,
+        cobraEnElMomento: c.turnos?.tipos_turno?.cobra_en_el_momento ?? false,
+      }))
+      .filter((c) => c.cobraEnElMomento || c.plan === "por_sesion")
+      .map((c) => [c.turnoId, c]),
+  );
+  if (candidatos.size === 0) return turnos;
+
+  const tutorIds = [...new Set([...candidatos.values()].map((c) => c.tutorId))];
+  const [cargos, pagos, { data: tutores, error }] = await Promise.all([
+    leerTodo((de, a) =>
+      supabase.from("cargos").select("id, tutor_id, fecha, monto_gs").eq("consultorio_id", consultorio.id).in("tutor_id", tutorIds).order("id").range(de, a),
+    ),
+    leerTodo((de, a) =>
+      supabase.from("pagos").select("id, tutor_id, fecha, monto_gs").eq("consultorio_id", consultorio.id).in("tutor_id", tutorIds).order("id").range(de, a),
+    ),
+    supabase.from("tutores").select("id, nombre, apellido").eq("consultorio_id", consultorio.id).in("id", tutorIds),
+  ]);
+  if (error) throw new Error("No se pudieron leer los cobros");
+
+  const imputaciones = new Map(
+    tutorIds.map((id) => [
+      id,
+      imputarPagos({ cargos: cargos.filter((c) => c.tutor_id === id), pagos: pagos.filter((p) => p.tutor_id === id) }),
+    ]),
+  );
+  const nombres = new Map((tutores ?? []).map((t) => [t.id, `${t.nombre} ${t.apellido ?? ""}`.trim()]));
+
+  return turnos.map((t) => {
+    const c = candidatos.get(t.id);
+    if (!c) return t;
+    const cobro = cobroDelCargo(c.cargoId, imputaciones.get(c.tutorId) ?? []);
+    if (!cobro || !puedeCobrarAhora({ ...t, cobraEnElMomento: c.cobraEnElMomento, plan: c.plan, pendiente: cobro.pendiente })) return t;
+    return { ...t, cobro: { tutorId: c.tutorId, tutorNombre: nombres.get(c.tutorId) ?? "", ...cobro } };
   });
 }
 

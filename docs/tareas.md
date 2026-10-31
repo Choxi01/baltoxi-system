@@ -118,10 +118,17 @@ Todas las tareas asumen que Claude Code leyó `CLAUDE.md`. Si no, empezá con "L
 > **B3b**: pantalla Hoy con los turnos del día (también cancelados) y las mismas acciones
 > (`useAccionesTurno` en `agenda/acciones-de-turno.tsx`). "Cobrar ahora" pasa a la B4 (necesita registrar pagos)._
 
-#### [ ] B4 Pagos y quién debe
+#### [x] B4 Pagos y quién debe
 > Registrar pago (tutor, fecha, monto, efectivo/transferencia, referencia). Pantalla Cobros: lista de
 > saldos (`saldos_tutores`) con atraso según `docs/reglas-cobro.md` sección 5; cuenta de cada tutor con
 > cargos, pagos, imputación y saldo acumulado. Saldo a favor visible.
+
+> _Hecha en dos commits (un PR). **B4a**: `validarPago` (sin fechas futuras), `registrarPago` / `borrarPago`
+> (`src/lib/cobro/acciones-pagos.ts`) y "Cobrar ahora" en la tarjeta del turno (agenda y Hoy) con aviso de
+> deuda anterior por FIFO (`listarTurnosConCobro` en `agenda/datos.ts`). **B4b**: pantalla Cobros con
+> "quién debe" (`quienDebe`) y cuenta del tutor (`cuentaTutor` en `src/lib/cobro/cuenta.ts`) con
+> imputación, saldo acumulado, saldo a favor y "Borrar pago" (solo sin factura). Medios: efectivo y
+> transferencia; los demás de la base quedan para cuando se pidan._
 
 ---
 

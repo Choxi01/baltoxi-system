@@ -2,7 +2,8 @@
 
 Proyectos: `pruebas` (ref `onwdydztprleaijfnycr`, ya tiene las migraciones 0001 a 0007).
 Para confirmarlo: `npx supabase migration list` (columnas Local y Remote iguales).
-`produccion` se crea en la semana 8 (región São Paulo, `sa-east-1`, plan Pro).
+`pruebas` está en la región Oregón (`us-west-2`). `produccion` se crea en la semana 8 en la región
+**Ohio (`us-east-2`)**, plan Pro: la misma región que las funciones de Netlify (ver sección 6).
 
 ## 1. Variables en tu compu (`.env.local`)
 Copiá `.env.example` a `.env.local` (Git lo ignora) y completá desde
@@ -26,6 +27,16 @@ Después: Deploys > Trigger deploy > Deploy site.
   las copias y los dispositivos de confianza (`src/lib/auth/dispositivo-servidor.ts`: esas tablas
   no tienen políticas, así nadie las lee desde el navegador). Si se importa en el navegador, el build falla.
 - `src/proxy.ts` renueva la sesión en cada pedido (usa `actualizarSesion` de `sesion.ts`).
+
+### Medir la velocidad
+`MEDIR_SUPABASE=1 npm run dev` anota en la terminal cada consulta a Supabase con lo que tardó, por
+ejemplo `[supabase] GET turnos 200 · 182 ms`. Muestra solo el método y la tabla, nunca filtros ni
+datos (regla de oro 7). Funciona solo en desarrollo (`src/lib/supabase/medir.ts`).
+Reglas para que las pantallas sean rápidas:
+- Pedir **a la vez** (`Promise.all`) todo lo que no depende de otra consulta: cada espera en fila
+  suma un viaje completo a la base.
+- `exigirConsultorio()` se puede llamar en cada lectura: se verifica una sola vez por pedido.
+- Cada página nueva que lee datos lleva su `loading.tsx` en la misma carpeta.
 
 ## 4. CLI de Supabase (una vez por compu)
 ```bash
@@ -52,6 +63,22 @@ npm run db:push
 npx supabase link --project-ref onwdydztprleaijfnycr
 ```
 (El último paso vuelve a dejar vinculado `pruebas`.)
+
+### Región de producción: Ohio (`us-east-2`), decidido el 31/10/2026
+- **La regla:** el servidor de la app (las funciones de Netlify) y la base tienen que estar en la
+  **misma región**. Cada pantalla hace de 10 a 20 consultas a la base, una detrás de otra; si están
+  lejos, cada consulta suma ese viaje. La distancia entre el iPhone y el servidor pesa una sola vez
+  por pantalla.
+- Netlify corre las funciones en Ohio (`us-east-2`) por defecto, y en nuestro panel no aparece la
+  opción para elegir otra región (seguramente por el plan). Por eso producción va en Ohio y **no en São Paulo** (con Netlify en Ohio y la
+  base en São Paulo, cada consulta cruzaría el continente: ~120 ms cada una).
+- Los datos quedan guardados en Estados Unidos. Si algún día hace falta tenerlos en Sudamérica, hay
+  que mover **las dos cosas juntas**: Netlify a São Paulo (plan pago o pedido a soporte) y la base a
+  `sa-east-1` (proyecto nuevo, porque la región de un proyecto no se cambia).
+- `pruebas` queda en Oregón (`us-west-2`): no vale la pena moverla. Por eso `npm run dev` desde
+  Paraguay es más lento que la app publicada (cada consulta va de Asunción a Oregón y vuelve).
+- Claves JWT: `pruebas` ya firma con **ECC (P-256)** (Settings > JWT Keys), así la sesión se verifica
+  en el servidor sin consultar a Supabase. Crear `produccion` directamente con claves nuevas.
 
 ## 7. Ingreso (tarea 0.3)
 Configuración en Supabase > Authentication (en cada proyecto):
