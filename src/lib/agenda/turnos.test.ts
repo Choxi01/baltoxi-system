@@ -21,6 +21,7 @@ const turno = (inicio: string, datos: Partial<TurnoAgenda> = {}): TurnoAgenda =>
     fin: `${String(Math.floor(fin / 60)).padStart(2, "0")}:${String(fin % 60).padStart(2, "0")}`,
     titulo: "Paciente Prueba",
     tipo: "Sesión",
+    serieId: null,
     tipoId: null,
     pacienteId: null,
     modalidad: "consultorio",

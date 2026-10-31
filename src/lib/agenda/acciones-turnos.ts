@@ -4,10 +4,14 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import { exigirConsultorio } from "@/lib/auth/servidor";
+import { hoyEnAsuncion } from "@/lib/fechas";
 import { crearClienteServidor } from "@/lib/supabase/servidor";
+import { diaSemana } from "./bloques";
 import { datosCancelacion, pendientesDeReponer } from "./cancelacion";
 import { listarTurnos, obtenerHorario } from "./datos";
 import { avisosAlAgendar, horaFin, instanteUtc, textosAvisos, validarReserva } from "./reservas";
+import { fechasDeSerie } from "./series";
+import { materializarSeries } from "./series-servidor";
 import { armarDia } from "./turnos";
 
 export type ResultadoAgendar =
@@ -209,6 +213,122 @@ export async function quitarTurno(id: string): Promise<ResultadoSimple> {
   if (!turno || turno.clase === "turno") return { ok: false, error: "Ese turno no se puede quitar: cancelalo." };
   const { error } = await supabase.from("turnos").delete().eq("consultorio_id", consultorio.id).eq("id", id);
   if (error) return { ok: false, error: NO_SE_PUDO };
+  revalidatePath("/agenda");
+  return { ok: true };
+}
+
+// ---------------------------------------------------------------------
+// Turnos fijos (A3c)
+// ---------------------------------------------------------------------
+
+const esquemaSerie = z.object({
+  paciente_id: esId,
+  tipo_turno_id: esId,
+  /** Primer día de la serie (el del bloque tocado): define el día de la semana. */
+  fecha: esFecha,
+  inicio: esHora,
+  hasta: esFecha.nullable(),
+  confirmado: z.boolean(),
+});
+
+/** Crea un turno fijo semanal y sus turnos de las próximas 8 semanas. */
+export async function crearSerie(entrada: unknown): Promise<ResultadoAgendar> {
+  const r = esquemaSerie.safeParse(entrada);
+  if (!r.success) return { ok: false, error: "Faltan datos para el turno fijo." };
+  const datos = r.data;
+  if (datos.hasta && datos.hasta < datos.fecha) return { ok: false, error: "El “hasta” tiene que ser después del primer día." };
+
+  const consultorio = await exigirConsultorio();
+  const supabase = await crearClienteServidor();
+  const [{ data: paciente }, { data: tipo }, { data: config }, { bloqueos }] = await Promise.all([
+    supabase.from("pacientes").select("id").eq("consultorio_id", consultorio.id).eq("id", datos.paciente_id).maybeSingle(),
+    supabase
+      .from("tipos_turno")
+      .select("modalidad")
+      .eq("consultorio_id", consultorio.id)
+      .eq("id", datos.tipo_turno_id)
+      .eq("activo", true)
+      .maybeSingle(),
+    supabase.from("consultorios").select("duracion_bloque_min, traslado_domicilio_min").eq("id", consultorio.id).single(),
+    obtenerHorario(),
+  ]);
+  if (!paciente) return { ok: false, error: "Paciente no encontrado." };
+  if (!tipo) return { ok: false, error: "Elegí un tipo de turno." };
+  if (!config) return { ok: false, error: NO_SE_PUDO };
+  const fin = horaFin(datos.inicio, config.duracion_bloque_min);
+
+  // ¿Choca con algo en las próximas 8 semanas? Se avisa con las fechas.
+  const hoy = hoyEnAsuncion();
+  const serie = { dia_semana: diaSemana(datos.fecha), desde: datos.fecha, hasta: datos.hasta };
+  const fechas = fechasDeSerie(serie, hoy, bloqueos);
+  if (!datos.confirmado && fechas.length > 0) {
+    const turnos = await listarTurnos(fechas[0], fechas.at(-1)!);
+    const choques = fechas.filter(
+      (fecha) =>
+        avisosAlAgendar({ fecha, inicio: datos.inicio, fin, modalidad: tipo.modalidad }, turnos, config.traslado_domicilio_min)
+          .superpuestos.length > 0,
+    );
+    if (choques.length > 0) {
+      const dias = choques.map((f) => f.slice(8, 10).replace(/^0/, "") + "/" + f.slice(5, 7).replace(/^0/, "")).join(", ");
+      return { ok: false, confirmar: `Ese horario ya está ocupado el ${dias}. ¿Crear el turno fijo igual?` };
+    }
+  }
+
+  const { data: nueva, error } = await supabase
+    .from("series_turnos")
+    .insert({
+      consultorio_id: consultorio.id,
+      paciente_id: datos.paciente_id,
+      tipo_turno_id: datos.tipo_turno_id,
+      dia_semana: serie.dia_semana,
+      hora: datos.inicio,
+      duracion_min: config.duracion_bloque_min,
+      desde: datos.fecha,
+      hasta: datos.hasta,
+    })
+    .select("id")
+    .single();
+  if (error || !nueva) return { ok: false, error: NO_SE_PUDO };
+  const materializado = await materializarSeries(hoy, nueva.id);
+  if (materializado.error) return { ok: false, error: materializado.error };
+  revalidatePath("/agenda");
+  return { ok: true };
+}
+
+/**
+ * Finalizar un turno fijo: la serie queda 'finalizada' y se borran solo sus
+ * turnos futuros que siguen 'agendado'. Los pasados y los ya marcados quedan.
+ */
+export async function finalizarSerie(serieId: string): Promise<ResultadoSimple> {
+  if (!esId.safeParse(serieId).success) return { ok: false, error: "Turno fijo no encontrado." };
+  const consultorio = await exigirConsultorio();
+  const supabase = await crearClienteServidor();
+  const { data: serie } = await supabase
+    .from("series_turnos")
+    .select("id, desde")
+    .eq("consultorio_id", consultorio.id)
+    .eq("id", serieId)
+    .eq("estado", "activa")
+    .maybeSingle();
+  if (!serie) return { ok: false, error: "Ese turno fijo ya está finalizado." };
+
+  const hoy = hoyEnAsuncion();
+  const { error } = await supabase
+    .from("series_turnos")
+    // hasta >= desde (lo pide la base): si la serie todavía no empezó, termina el día que empezaba.
+    .update({ estado: "finalizada", hasta: serie.desde > hoy ? serie.desde : hoy })
+    .eq("consultorio_id", consultorio.id)
+    .eq("id", serieId);
+  if (error) return { ok: false, error: NO_SE_PUDO };
+
+  const { error: errorBorrar } = await supabase
+    .from("turnos")
+    .delete()
+    .eq("consultorio_id", consultorio.id)
+    .eq("serie_id", serieId)
+    .eq("estado", "agendado")
+    .gte("inicio", new Date().toISOString());
+  if (errorBorrar) return { ok: false, error: NO_SE_PUDO };
   revalidatePath("/agenda");
   return { ok: true };
 }
