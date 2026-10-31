@@ -3,25 +3,38 @@ import type { Metadata } from "next";
 import { Pestanas } from "@/components/app/pestanas";
 import { agregarBloqueo, borrarBloqueo, guardarHorario } from "@/lib/agenda/acciones";
 import { obtenerHorario } from "@/lib/agenda/datos";
-import { actualizarConsultorio, actualizarTarifa, cambiarActivaTarifa, crearTarifa } from "@/lib/config/acciones";
-import { listarTodasLasTarifas, obtenerConsultorio } from "@/lib/config/datos";
+import {
+  actualizarConsultorio,
+  actualizarTarifa,
+  actualizarTipoTurno,
+  agregarExcepcion,
+  cambiarActivaTarifa,
+  cambiarActivoTipoTurno,
+  crearTarifa,
+  crearTipoTurno,
+  guardarReglas,
+  quitarExcepcion,
+} from "@/lib/config/acciones";
+import { listarTiposTurno, listarTodasLasTarifas, obtenerConsultorio, obtenerReglas } from "@/lib/config/datos";
 import { hoyEnAsuncion } from "@/lib/fechas";
 import { Feriados } from "./feriados";
 import { Horario } from "./horario";
 import { TabConsultorio } from "./tab-consultorio";
+import { TabReglas } from "./tab-reglas";
 import { TabTarifas } from "./tab-tarifas";
+import { TabTiposTurno } from "./tab-tipos-turno";
 
 export const metadata: Metadata = { title: "Configuración · Consultorio" };
 
 export default async function Pagina({ searchParams }: PageProps<"/config">) {
   const { pestana } = await searchParams;
-  const [consultorio, tarifas, { duracion, tramos, bloqueos }] = await Promise.all([
+  const [consultorio, tarifas, { duracion, tramos, bloqueos }, tipos, reglas] = await Promise.all([
     obtenerConsultorio(),
     listarTodasLasTarifas(),
     obtenerHorario(),
+    listarTiposTurno(),
+    obtenerReglas(),
   ]);
-
-  const proximamente = (tarea: string) => <p className="pt-4 text-muted-foreground">Próximamente (tarea {tarea}).</p>;
 
   return (
     <div className="flex flex-col gap-4">
@@ -62,8 +75,34 @@ export default async function Pagina({ searchParams }: PageProps<"/config">) {
               </div>
             ),
           },
-          { id: "tipos", titulo: "Tipos de turno", contenido: proximamente("B1b") },
-          { id: "reglas", titulo: "Reglas de cobro", contenido: proximamente("B1b") },
+          {
+            id: "tipos",
+            titulo: "Tipos de turno",
+            contenido: (
+              <TabTiposTurno
+                tipos={tipos}
+                tarifas={tarifas}
+                crear={crearTipoTurno}
+                actualizar={actualizarTipoTurno}
+                cambiarActivo={cambiarActivoTipoTurno}
+              />
+            ),
+          },
+          {
+            id: "reglas",
+            titulo: "Reglas de cobro",
+            contenido: (
+              <TabReglas
+                generales={reglas.generales}
+                excepciones={reglas.excepciones}
+                pacientes={reglas.pacientes}
+                horasAviso={consultorio.horas_aviso_minimas}
+                guardar={guardarReglas}
+                agregarExcepcion={agregarExcepcion}
+                quitarExcepcion={quitarExcepcion}
+              />
+            ),
+          },
         ]}
       />
     </div>

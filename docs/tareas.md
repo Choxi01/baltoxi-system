@@ -76,7 +76,7 @@ Todas las tareas asumen que Claude Code leyó `CLAUDE.md`. Si no, empezá con "L
 > datos de pago, horas mínimas de aviso, plazo de pago, concepto de factura) y Tarifas (formato
 > Gs. 290.000; agregar, editar, desactivar/activar — no se borran).
 
-#### [ ] B1b Configuración: Tipos de turno y Reglas de cobro
+#### [x] B1b Configuración: Tipos de turno y Reglas de cobro
 > En `/config`, completá las pestañas Tipos de turno (tarifa, cobra en el momento, genera cobro;
 > agregar, editar, desactivar/activar) y Reglas de cobro (porcentaje por estado; excepciones por
 > paciente: agregar y quitar). Validá con zod y tests en `src/lib/config/`.

@@ -5,7 +5,16 @@ import { revalidatePath } from "next/cache";
 import { exigirConsultorio } from "@/lib/auth/servidor";
 import { esIdValido } from "@/lib/pacientes/datos";
 import { crearClienteServidor } from "@/lib/supabase/servidor";
-import { validarConsultorio, validarTarifa, type ErroresFormulario } from "./validacion";
+import {
+  ERROR_EXCEPCION_REPETIDA,
+  ESTADOS_CON_REGLA,
+  validarConsultorio,
+  validarExcepcion,
+  validarReglas,
+  validarTarifa,
+  validarTipoTurno,
+  type ErroresFormulario,
+} from "./validacion";
 
 export type EstadoFormularioConfig = {
   errores: ErroresFormulario;
@@ -95,5 +104,121 @@ export async function cambiarActivaTarifa(id: string, activa: boolean): Promise<
     .eq("id", id);
   if (error) return { error: "No se pudo guardar. Probá de nuevo." };
   tarifasCambiaron();
+  return { error: null };
+}
+
+function tiposCambiaron() {
+  revalidatePath("/config");
+  // La agenda usa los tipos de turno al reservar.
+  revalidatePath("/agenda", "layout");
+}
+
+export async function crearTipoTurno(_anterior: EstadoFormularioConfig, formulario: FormData): Promise<EstadoFormularioConfig> {
+  const validacion = validarTipoTurno(formulario);
+  if (!validacion.ok) return conError(validacion.errores, formulario);
+
+  const consultorio = await exigirConsultorio();
+  const supabase = await crearClienteServidor();
+  const { error } = await supabase.from("tipos_turno").insert({ ...validacion.datos, consultorio_id: consultorio.id });
+  if (error) return conError(ERROR_GENERAL, formulario);
+  tiposCambiaron();
+  return listo();
+}
+
+export async function actualizarTipoTurno(
+  id: string,
+  _anterior: EstadoFormularioConfig,
+  formulario: FormData,
+): Promise<EstadoFormularioConfig> {
+  if (!esIdValido(id)) return conError({ general: "Tipo de turno no encontrado." }, formulario);
+  const validacion = validarTipoTurno(formulario);
+  if (!validacion.ok) return conError(validacion.errores, formulario);
+
+  const consultorio = await exigirConsultorio();
+  const supabase = await crearClienteServidor();
+  // Los cargos ya creados guardan su snapshot: cambiar el tipo no los toca.
+  const { error } = await supabase
+    .from("tipos_turno")
+    .update(validacion.datos)
+    .eq("consultorio_id", consultorio.id)
+    .eq("id", id);
+  if (error) return conError(ERROR_GENERAL, formulario);
+  tiposCambiaron();
+  return listo();
+}
+
+/** Los tipos de turno no se borran (los usan turnos y series): se desactivan. */
+export async function cambiarActivoTipoTurno(id: string, activo: boolean): Promise<{ error: string | null }> {
+  if (!esIdValido(id)) return { error: "Tipo de turno no encontrado." };
+  const consultorio = await exigirConsultorio();
+  const supabase = await crearClienteServidor();
+  const { error } = await supabase
+    .from("tipos_turno")
+    .update({ activo })
+    .eq("consultorio_id", consultorio.id)
+    .eq("id", id);
+  if (error) return { error: "No se pudo guardar. Probá de nuevo." };
+  tiposCambiaron();
+  return { error: null };
+}
+
+/** Porcentajes generales (sin paciente). No toca los cargos ya hechos. */
+export async function guardarReglas(_anterior: EstadoFormularioConfig, formulario: FormData): Promise<EstadoFormularioConfig> {
+  const validacion = validarReglas(formulario);
+  if (!validacion.ok) return conError(validacion.errores, formulario);
+
+  const consultorio = await exigirConsultorio();
+  const supabase = await crearClienteServidor();
+  // Las 6 reglas generales ya existen (las crea crear_consultorio): se actualiza cada una.
+  const resultados = await Promise.all(
+    ESTADOS_CON_REGLA.map((estado) =>
+      supabase
+        .from("reglas_cobro")
+        .update({ porcentaje: validacion.datos[estado] })
+        .eq("consultorio_id", consultorio.id)
+        .eq("estado", estado)
+        .is("paciente_id", null),
+    ),
+  );
+  if (resultados.some((r) => r.error)) return conError(ERROR_GENERAL, formulario);
+  revalidatePath("/config");
+  return listo();
+}
+
+export async function agregarExcepcion(_anterior: EstadoFormularioConfig, formulario: FormData): Promise<EstadoFormularioConfig> {
+  const consultorio = await exigirConsultorio();
+  const supabase = await crearClienteServidor();
+  const { data: existentes } = await supabase
+    .from("reglas_cobro")
+    .select("paciente_id, estado")
+    .eq("consultorio_id", consultorio.id)
+    .not("paciente_id", "is", null);
+  const validacion = validarExcepcion(
+    formulario,
+    (existentes ?? []).map((x) => ({ paciente_id: x.paciente_id ?? "", estado: x.estado })),
+  );
+  if (!validacion.ok) return conError(validacion.errores, formulario);
+
+  const { error } = await supabase.from("reglas_cobro").insert({ ...validacion.datos, consultorio_id: consultorio.id });
+  // 23505: otra pestaña la agregó recién (la base no deja repetir).
+  if (error?.code === "23505") return conError({ estado: ERROR_EXCEPCION_REPETIDA }, formulario);
+  if (error) return conError(ERROR_GENERAL, formulario);
+  revalidatePath("/config");
+  return listo();
+}
+
+/** Quita una excepción. Nunca borra una regla general (sin paciente). */
+export async function quitarExcepcion(id: string): Promise<{ error: string | null }> {
+  if (!esIdValido(id)) return { error: "Excepción no encontrada." };
+  const consultorio = await exigirConsultorio();
+  const supabase = await crearClienteServidor();
+  const { error } = await supabase
+    .from("reglas_cobro")
+    .delete()
+    .eq("consultorio_id", consultorio.id)
+    .eq("id", id)
+    .not("paciente_id", "is", null);
+  if (error) return { error: "No se pudo quitar. Probá de nuevo." };
+  revalidatePath("/config");
   return { error: null };
 }

@@ -68,6 +68,71 @@ const esquemaTarifa = z.object({
 
 export type DatosTarifa = z.output<typeof esquemaTarifa>;
 
+// Los 4 valores del check de tipos_turno.modalidad.
+export const MODALIDADES = ["consultorio", "domicilio", "online", "colegio"] as const;
+export type Modalidad = (typeof MODALIDADES)[number];
+
+export const NOMBRE_MODALIDAD: Record<Modalidad, string> = {
+  consultorio: "En el consultorio",
+  domicilio: "A domicilio",
+  online: "Online",
+  colegio: "En el colegio",
+};
+
+// Checkbox de un formulario: viene "on" si está marcado y "" si no.
+const marcado = z.string().transform((v) => v === "on");
+
+const esquemaTipoTurno = z
+  .object({
+    nombre: z.string().trim().min(1, "Escribí el nombre del tipo de turno.").max(60, "Nombre: hasta 60 letras."),
+    modalidad: z.enum(MODALIDADES, "Elegí dónde se hace."),
+    // "" = usa la tarifa del paciente.
+    tarifa_id: z
+      .string()
+      .transform((v) => (v === "" ? null : v))
+      .refine((v) => v === null || z.uuid().safeParse(v).success, "Elegí una tarifa de la lista."),
+    cobra_en_el_momento: marcado,
+    genera_cobro: marcado,
+    requiere_paciente: marcado,
+  })
+  .superRefine((datos, ctx) => {
+    if (!datos.requiere_paciente && datos.genera_cobro) {
+      ctx.addIssue({ code: "custom", path: ["genera_cobro"], message: "Un tipo sin paciente no puede generar cobro." });
+    }
+    if (datos.cobra_en_el_momento && !datos.genera_cobro) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["cobra_en_el_momento"],
+        message: "Para cobrar en el momento, el tipo tiene que generar cobro.",
+      });
+    }
+  });
+
+export type DatosTipoTurno = z.output<typeof esquemaTipoTurno>;
+
+// Estados con regla de cobro (los del check de reglas_cobro.estado; "agendado" no tiene).
+export const ESTADOS_CON_REGLA = [
+  "presente", "ausente_con_aviso", "aviso_tardio",
+  "ausente_sin_aviso", "cancelado_profesional", "reprogramado",
+] as const;
+export type EstadoConRegla = (typeof ESTADOS_CON_REGLA)[number];
+
+const porcentaje = entero(0, 100, "Porcentaje entero de 0 a 100.");
+
+const esquemaReglas = z.object(
+  Object.fromEntries(ESTADOS_CON_REGLA.map((e) => [e, porcentaje])) as Record<EstadoConRegla, typeof porcentaje>,
+);
+
+export type DatosReglas = z.output<typeof esquemaReglas>;
+
+const esquemaExcepcion = z.object({
+  paciente_id: z.string().refine((v) => z.uuid().safeParse(v).success, "Elegí un paciente."),
+  estado: z.enum(ESTADOS_CON_REGLA, "Elegí un estado."),
+  porcentaje,
+});
+
+export type DatosExcepcion = z.output<typeof esquemaExcepcion>;
+
 const CAMPOS_CONSULTORIO = [
   "nombre", "profesional", "ruc", "dv", "razon_social", "direccion", "datos_pago",
   "horas_aviso_minimas", "dia_limite_pago", "concepto_factura",
@@ -88,4 +153,27 @@ export function validarConsultorio(formulario: FormData) {
 
 export function validarTarifa(formulario: FormData) {
   return validar(esquemaTarifa, ["nombre", "monto_gs"], formulario);
+}
+
+export function validarTipoTurno(formulario: FormData) {
+  return validar(
+    esquemaTipoTurno,
+    ["nombre", "modalidad", "tarifa_id", "cobra_en_el_momento", "genera_cobro", "requiere_paciente"],
+    formulario,
+  );
+}
+
+export function validarReglas(formulario: FormData) {
+  return validar(esquemaReglas, ESTADOS_CON_REGLA, formulario);
+}
+
+export const ERROR_EXCEPCION_REPETIDA = "Ese paciente ya tiene una excepción para ese estado.";
+
+/** `existentes`: las excepciones que ya tiene el consultorio, para no repetir paciente + estado. */
+export function validarExcepcion(formulario: FormData, existentes: { paciente_id: string; estado: string }[]) {
+  const r = validar(esquemaExcepcion, ["paciente_id", "estado", "porcentaje"], formulario);
+  if (r.ok && existentes.some((x) => x.paciente_id === r.datos.paciente_id && x.estado === r.datos.estado)) {
+    return { ok: false as const, errores: { estado: ERROR_EXCEPCION_REPETIDA } as ErroresFormulario };
+  }
+  return r;
 }
