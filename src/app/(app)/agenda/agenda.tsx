@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Copy } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 
@@ -22,6 +22,7 @@ import {
 import { diaSemana, horaCorta } from "@/lib/agenda/bloques";
 import { armarDia, type TurnoAgenda } from "@/lib/agenda/turnos";
 import { cn } from "@/lib/utils";
+import { CopiarLibres } from "./copiar-libres";
 import { PanelFila, type DatosPanel, type Reposicion } from "./panel";
 import { VistaDia, VistaMes, VistaSemana } from "./vistas";
 
@@ -47,6 +48,7 @@ export function Agenda({
   bloqueos,
   turnos,
   paraReponer,
+  plantillaLibres,
   datosPanel,
 }: {
   hoy: string;
@@ -60,6 +62,8 @@ export function Agenda({
   turnos: TurnoAgenda[];
   /** Sesiones que canceló la profesional este mes y todavía no tienen otro turno. */
   paraReponer: (Reposicion & { fecha: string; inicio: string })[];
+  /** Plantilla `horarios_libres` del consultorio. */
+  plantillaLibres: string;
   /** Pacientes, tipos de turno y acciones (sin duracion: va la del horario). */
   datosPanel: Omit<DatosPanel, "duracion">;
 }) {
@@ -71,6 +75,7 @@ export function Agenda({
   const [abierta, setAbierta] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
   const [reponiendo, setReponiendo] = useState<Reposicion | null>(null);
+  const [copiando, setCopiando] = useState(false);
 
   // Todos los días cargados, armados una sola vez: cambiar de vista o de día es instantáneo.
   const dias = useMemo(() => {
@@ -154,6 +159,16 @@ export function Agenda({
           ))}
         </div>
       </div>
+
+      {copiando ? (
+        listo && !cargando && (
+          <CopiarLibres fecha={fecha} dias={dias} visibles={visibles} plantilla={plantillaLibres} alCerrar={() => setCopiando(false)} />
+        )
+      ) : (
+        <Button variant="outline" className="h-12 self-start" onClick={() => setCopiando(true)}>
+          <Copy /> Copiar libres
+        </Button>
+      )}
 
       {paraReponer.length > 0 && !reponiendo && (
         <section className="flex flex-col gap-2 rounded-lg border border-amber-300 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-950">

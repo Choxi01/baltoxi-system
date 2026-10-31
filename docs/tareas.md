@@ -101,7 +101,7 @@ Todas las tareas asumen que Claude Code leyó `CLAUDE.md`. Si no, empezá con "L
 > hasta la B3), Quitar y "Para reponer este mes". **A3c**: Turno fijo (series + 8 semanas al abrir la agenda, salteando
 > feriados; `fechasDeSerie` con tests) y Finalizar turno fijo._
 
-#### [ ] A4 Copiar libres
+#### [x] A4 Copiar libres
 > Botones Copiar libres de hoy / semana / mes con filtros (mañana, tarde, desde mañana), usando
 > `textoLibres` (función pura con tests) y la plantilla `horarios_libres`. Copiar al portapapeles con
 > aviso "Copiado"; en iPhone, también botón Compartir (share sheet del sistema).
