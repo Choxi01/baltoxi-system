@@ -33,6 +33,11 @@ export function imputarPagos({
   cargos: Pick<Cargo, "id" | "fecha" | "monto_gs">[];
   pagos: Pick<Pago, "id" | "fecha" | "monto_gs">[];
 }): Imputacion[] {
+  // Un pago es siempre un entero positivo (la base lo exige). Si llegara otro valor, el bucle de
+  // abajo no avanzaría nunca: mejor cortar con un error claro.
+  for (const p of pagos) {
+    if (!Number.isSafeInteger(p.monto_gs) || p.monto_gs <= 0) throw new Error("Un pago tiene que ser un monto entero mayor a 0");
+  }
   const aCubrir = cargos.filter((c) => c.monto_gs >= 0).sort(porFecha);
   const creditos = [
     ...pagos.map((p) => ({ id: p.id, fecha: p.fecha, resto: p.monto_gs })),

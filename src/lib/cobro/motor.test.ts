@@ -105,6 +105,13 @@ describe("saldo e imputación", () => {
     });
     expect(filas).toEqual([{ cargo_id: "c1", pagado: 40000, pendiente: 250000, pagos: [{ pago_id: "aj", monto: 40000 }] }]);
   });
+
+  it.each([0, -1000, 10.5])("rechaza un pago de %s en vez de trabarse", (monto) => {
+    const cargos = [{ id: "c1", fecha: "2026-11-03", monto_gs: 290000 }];
+    expect(() => imputarPagos({ cargos, pagos: [{ id: "p1", fecha: "2026-11-04", monto_gs: monto }] })).toThrow(
+      "Un pago tiene que ser un monto entero mayor a 0",
+    );
+  });
 });
 
 describe("vencimiento y atraso", () => {
