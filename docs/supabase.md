@@ -1,6 +1,7 @@
 # Supabase: variables, migraciones y tipos
 
-Proyectos: `pruebas` (ref `onwdydztprleaijfnycr`, ya tiene las migraciones 0001 a 0006).
+Proyectos: `pruebas` (ref `onwdydztprleaijfnycr`, ya tiene las migraciones 0001 a 0007).
+Para confirmarlo: `npx supabase migration list` (columnas Local y Remote iguales).
 `produccion` se crea en la semana 8 (región São Paulo, `sa-east-1`, plan Pro).
 
 ## 1. Variables en tu compu (`.env.local`)
@@ -21,9 +22,10 @@ Después: Deploys > Trigger deploy > Deploy site.
 ## 3. Clientes en el código (`src/lib/supabase/`)
 - `navegador.ts` → `crearClienteNavegador()` en componentes `"use client"`.
 - `servidor.ts` → `await crearClienteServidor()` en páginas, acciones y rutas del servidor.
-- `admin.ts` → `crearClienteAdmin()`: saltea RLS. Solo servidor y solo para la ficha pública
-  y las copias. Si se importa en el navegador, el build falla.
-- `src/proxy.ts` renueva la sesión en cada pedido.
+- `admin.ts` → `crearClienteAdmin()`: saltea RLS. Solo servidor y solo para la ficha pública,
+  las copias y los dispositivos de confianza (`src/lib/auth/dispositivo-servidor.ts`: esas tablas
+  no tienen políticas, así nadie las lee desde el navegador). Si se importa en el navegador, el build falla.
+- `src/proxy.ts` renueva la sesión en cada pedido (usa `actualizarSesion` de `sesion.ts`).
 
 ## 4. CLI de Supabase (una vez por compu)
 ```bash
@@ -36,6 +38,12 @@ npx supabase link --project-ref onwdydztprleaijfnycr
 2. `npm run db:push` → la aplica en el proyecto vinculado.
 3. `npm run gen:types` → regenera `src/lib/supabase/types.ts`. Commitear los dos.
 4. Avisar en el PR que hay migración nueva.
+5. Confirmar con `npx supabase migration list` que quedó aplicada en `pruebas` y actualizar el número de arriba.
+
+Si alguna vez se aplica sin el CLI (SQL Editor del panel o una herramienta de IA), registrarla
+con el mismo número del archivo, por ejemplo `0007`, en `supabase_migrations.schema_migrations`.
+Si queda con otro número (las herramientas suelen poner la fecha, tipo `20261031…`), `db:push`
+la ve como una migración desconocida y deja de funcionar.
 
 ## 6. Cuando exista producción
 ```bash
