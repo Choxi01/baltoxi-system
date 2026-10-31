@@ -46,9 +46,9 @@ export function Feriados({
           accion={agregar}
           hoy={hoy}
           alCancelar={() => setAgregando(false)}
-          alGuardar={() => {
+          alGuardar={(r) => {
             setAgregando(false);
-            setAviso("Guardado ✓");
+            setAviso(textoGuardado(r));
           }}
         />
       ) : (
@@ -107,6 +107,18 @@ export function Feriados({
 
 const inicial: EstadoFormularioBloqueo = { errores: {}, guardadoEn: null };
 
+/** "Guardado ✓", más lo que pasó con los turnos que ya estaban en esos días. */
+function textoGuardado(r: EstadoFormularioBloqueo): string {
+  const partes = ["Guardado ✓"];
+  const fijos = r.turnosFijosQuitados ?? 0;
+  const aMano = r.turnosAMano ?? 0;
+  if (fijos > 0) partes.push(`Se quitaron ${fijos} ${fijos === 1 ? "turno fijo" : "turnos fijos"} de esos días.`);
+  if (aMano > 0) {
+    partes.push(`Ojo: ${aMano === 1 ? "queda 1 turno agendado" : `quedan ${aMano} turnos agendados`} a mano esos días; revisalos en la agenda.`);
+  }
+  return partes.join(" ");
+}
+
 function FormularioBloqueo({
   accion,
   hoy,
@@ -116,11 +128,11 @@ function FormularioBloqueo({
   accion: AccionForm;
   hoy: string;
   alCancelar: () => void;
-  alGuardar: () => void;
+  alGuardar: (resultado: EstadoFormularioBloqueo) => void;
 }) {
   async function guardar(anterior: EstadoFormularioBloqueo, formulario: FormData) {
     const r = await accion(anterior, formulario);
-    if (r.guardadoEn) alGuardar();
+    if (r.guardadoEn) alGuardar(r);
     return r;
   }
   const [estado, enviar, enviando] = useActionState(guardar, inicial);
