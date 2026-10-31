@@ -8,13 +8,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import type { ResultadoAgendar } from "@/lib/agenda/acciones-turnos";
-import type { AccionAsistencia, AccionTurno } from "@/lib/agenda/asistencia";
 import { horaCorta } from "@/lib/agenda/bloques";
 import { avisosAlAgendar, horaFin, textosAvisos } from "@/lib/agenda/reservas";
-import { textoTurno, type FilaDia, type TurnoAgenda } from "@/lib/agenda/turnos";
+import { type FilaDia, type TurnoAgenda } from "@/lib/agenda/turnos";
 import { filtrarPacientes } from "@/lib/pacientes/busqueda";
-import { AccionesTurno } from "./acciones-de-turno";
-import { FormularioCancelar, FormularioExcepcion, FormularioMover, type AccionesDeTurno } from "./acciones-turno";
+import { AccionesTurno, FormularioTurno, useAccionesTurno } from "./acciones-de-turno";
+import type { AccionesDeTurno } from "./acciones-turno";
 
 export type PacienteParaReservar = { id: string; nombre: string; apellido: string | null };
 export type TipoParaReservar = { id: string; nombre: string; modalidad: string; requiere_paciente: boolean };
@@ -33,14 +32,7 @@ export type DatosPanel = {
 /** Sesión cancelada por la profesional que se está reponiendo ("Para reponer este mes"). */
 export type Reposicion = { id: string; pacienteId: string | null; tipoId: string | null; titulo: string };
 
-type Modo = "menu" | "reservar" | "ocupado" | { accion: "mover" | "cancelar" | "excepcion"; turno: TurnoAgenda };
-
-const LISTO: Record<Exclude<AccionAsistencia, "excepcion">, string> = {
-  vino: "Vino ✓",
-  no_vino: "No vino ✓",
-  agendado: "Volvió a agendado ✓",
-  quitar_excepcion: "Excepción quitada ✓",
-};
+type Modo = "menu" | "reservar" | "ocupado";
 
 // Acciones de una fila de la agenda (se abre debajo del bloque, sin ventanas).
 export function PanelFila({
@@ -65,34 +57,7 @@ export function PanelFila({
   // Los cancelados de este horario también se muestran: a "Canceló tarde" se le puede poner excepción.
   const liberados = fila.tipo === "bloque" ? fila.liberados.filter((t) => t.clase === "turno") : [];
   const [modo, setModo] = useState<Modo>(reponiendo && turnos.length === 0 ? "reservar" : "menu");
-  const [error, setError] = useState<string | null>(null);
-  const [guardando, iniciar] = useTransition();
-
-  function quitar(t: TurnoAgenda) {
-    if (!window.confirm(`¿Quitar «${textoTurno(t)}»? El horario queda libre.`)) return;
-    setError(null);
-    iniciar(async () => {
-      const r = await datos.acciones.quitarTurno(t.id);
-      if (r.ok) alGuardar("Quitado ✓");
-      else setError(r.error);
-    });
-  }
-
-  function marcar(t: TurnoAgenda, accion: Exclude<AccionAsistencia, "excepcion">) {
-    if (accion === "agendado" && !window.confirm(`¿Volver «${textoTurno(t)}» a agendado? Se borra su cobro.`)) return;
-    setError(null);
-    iniciar(async () => {
-      const r = await datos.acciones.marcarAsistencia(t.id, accion);
-      if (r.ok) alGuardar(LISTO[accion]);
-      else setError(r.error);
-    });
-  }
-
-  function alAccion(t: TurnoAgenda, accion: AccionTurno) {
-    if (accion === "mover" || accion === "cancelar" || accion === "excepcion") setModo({ accion, turno: t });
-    else if (accion === "quitar") quitar(t);
-    else marcar(t, accion);
-  }
+  const { abierto, cerrar, error, guardando, alAccion } = useAccionesTurno({ acciones: datos.acciones, alGuardar });
 
   return (
     <div className="flex flex-col gap-3 rounded-lg border bg-muted/40 p-3">
@@ -106,7 +71,17 @@ export function PanelFila({
         </Button>
       </div>
 
-      {modo === "menu" && (
+      {abierto && (
+        <FormularioTurno
+          abierto={abierto}
+          hoy={datos.hoy}
+          horasAvisoMinimas={datos.horasAvisoMinimas}
+          acciones={datos.acciones}
+          alVolver={cerrar}
+          alGuardar={alGuardar}
+        />
+      )}
+      {!abierto && modo === "menu" && (
         <>
           {[...turnos, ...liberados].map((t) => (
             <AccionesTurno key={t.id} turno={t} hoy={datos.hoy} ocupado={guardando} alAccion={(a) => alAccion(t, a)} />
@@ -126,23 +101,7 @@ export function PanelFila({
           </div>
         </>
       )}
-      {typeof modo === "object" && modo.accion === "mover" && (
-        <FormularioMover turno={modo.turno} hoy={datos.hoy} acciones={datos.acciones} alVolver={() => setModo("menu")} alGuardar={alGuardar} />
-      )}
-      {typeof modo === "object" && modo.accion === "cancelar" && (
-        <FormularioCancelar
-          turno={modo.turno}
-          hoy={datos.hoy}
-          horasAvisoMinimas={datos.horasAvisoMinimas}
-          acciones={datos.acciones}
-          alVolver={() => setModo("menu")}
-          alGuardar={alGuardar}
-        />
-      )}
-      {typeof modo === "object" && modo.accion === "excepcion" && (
-        <FormularioExcepcion turno={modo.turno} acciones={datos.acciones} alVolver={() => setModo("menu")} alGuardar={alGuardar} />
-      )}
-      {(modo === "reservar" || modo === "ocupado") && (
+      {!abierto && (modo === "reservar" || modo === "ocupado") && (
         <FormularioAgendar
           modo={modo}
           reponiendo={modo === "reservar" ? reponiendo : null}

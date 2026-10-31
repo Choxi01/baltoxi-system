@@ -106,17 +106,17 @@ Todas las tareas asumen que Claude Code leyó `CLAUDE.md`. Si no, empezá con "L
 > `textoLibres` (función pura con tests) y la plantilla `horarios_libres`. Copiar al portapapeles con
 > aviso "Copiado"; en iPhone, también botón Compartir (share sheet del sistema).
 
-#### [ ] B3 Asistencia
+#### [x] B3 Asistencia
 > Pantalla Hoy (turnos del día) y acción en la agenda: Vino / Canceló (pide cuándo avisó; usa
 > `clasificarCancelacion`) / No vino / Cancelé yo / Excepción (porcentaje + motivo). Una acción de
 > servidor `aplicarEstadoTurno()` crea o actualiza el cargo con `calcularCargoTurno` y snapshot.
 > Si el tipo cobra en el momento o el plan es por sesión: botón "Cobrar ahora". Mes cerrado: avisar.
 
-> _Dividida. **B3a hecha**: `aplicarEstadoTurno` (`src/lib/cobro/aplicar-estado.ts`) crea, actualiza o borra
-> el cargo con snapshot; enganchada en cancelar, mover (el original reprogramado lleva cargo de Gs. 0) y en
-> Vino / No vino / Volver a agendado / Excepción de la agenda. Mes cerrado: no se cambia nada del turno.
-> **Falta B3b**: pantalla Hoy (reusa `AccionesTurno` de `agenda/acciones-de-turno.tsx`).
-> "Cobrar ahora" pasa a la B4 (necesita registrar pagos)._
+> _Hecha en dos partes (PR #19). **B3a**: `aplicarEstadoTurno` (`src/lib/cobro/aplicar-estado.ts`) crea,
+> actualiza o borra el cargo con snapshot; enganchada en cancelar, mover (el original reprogramado lleva
+> cargo de Gs. 0) y en Vino / No vino / Volver a agendado / Excepción. Mes cerrado: no se cambia nada del turno.
+> **B3b**: pantalla Hoy con los turnos del día (también cancelados) y las mismas acciones
+> (`useAccionesTurno` en `agenda/acciones-de-turno.tsx`). "Cobrar ahora" pasa a la B4 (necesita registrar pagos)._
 
 #### [ ] B4 Pagos y quién debe
 > Registrar pago (tutor, fecha, monto, efectivo/transferencia, referencia). Pantalla Cobros: lista de
