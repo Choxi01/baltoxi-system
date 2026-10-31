@@ -19,10 +19,10 @@ import {
   tituloSemana,
   type Vista,
 } from "@/lib/agenda/calendario";
-import { diaSemana } from "@/lib/agenda/bloques";
+import { diaSemana, horaCorta } from "@/lib/agenda/bloques";
 import { armarDia, type TurnoAgenda } from "@/lib/agenda/turnos";
 import { cn } from "@/lib/utils";
-import { PanelFila, type DatosPanel } from "./panel";
+import { PanelFila, type DatosPanel, type Reposicion } from "./panel";
 import { VistaDia, VistaMes, VistaSemana } from "./vistas";
 
 /** "auto" = Día en iPhone y Semana en iPad y Mac (se resuelve con CSS, sin parpadeo). */
@@ -46,6 +46,7 @@ export function Agenda({
   tramos,
   bloqueos,
   turnos,
+  paraReponer,
   datosPanel,
 }: {
   hoy: string;
@@ -57,7 +58,9 @@ export function Agenda({
   tramos: Tramo[];
   bloqueos: Bloqueo[];
   turnos: TurnoAgenda[];
-  /** Pacientes, tipos de turno y la acción para reservar (sin duracion: va la del horario). */
+  /** Sesiones que canceló la profesional este mes y todavía no tienen otro turno. */
+  paraReponer: (Reposicion & { fecha: string; inicio: string })[];
+  /** Pacientes, tipos de turno y acciones (sin duracion: va la del horario). */
   datosPanel: Omit<DatosPanel, "duracion">;
 }) {
   const router = useRouter();
@@ -67,6 +70,7 @@ export function Agenda({
   // Fila de la vista Día con el panel de acciones abierto, y el último aviso ("Agendado ✓").
   const [abierta, setAbierta] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
+  const [reponiendo, setReponiendo] = useState<Reposicion | null>(null);
 
   // Todos los días cargados, armados una sola vez: cambiar de vista o de día es instantáneo.
   const dias = useMemo(() => {
@@ -151,6 +155,39 @@ export function Agenda({
         </div>
       </div>
 
+      {paraReponer.length > 0 && !reponiendo && (
+        <section className="flex flex-col gap-2 rounded-lg border border-amber-300 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-950">
+          <h2 className="text-sm font-semibold">Para reponer este mes ({paraReponer.length})</h2>
+          <ul className="flex flex-col gap-1">
+            {paraReponer.map((r) => (
+              <li key={r.id} className="flex items-center justify-between gap-2">
+                <span className="text-sm">
+                  {r.titulo} · <span className="text-muted-foreground">{tituloDia(r.fecha)}, {horaCorta(r.inicio)}</span>
+                </span>
+                <Button
+                  variant="outline"
+                  className="h-10 shrink-0"
+                  onClick={() => {
+                    setAviso(null);
+                    setAbierta(null);
+                    setReponiendo(r);
+                  }}
+                >
+                  Reponer
+                </Button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+      {reponiendo && (
+        <div role="status" className="flex items-center justify-between gap-2 rounded-lg bg-primary px-3 py-2 text-sm text-primary-foreground">
+          <span>Tocá un horario libre para reponer la sesión de {reponiendo.titulo}.</span>
+          <Button variant="secondary" className="h-10 shrink-0" onClick={() => setReponiendo(null)}>
+            Cancelar
+          </Button>
+        </div>
+      )}
       {aviso && (
         <p role="status" className="text-center text-sm text-muted-foreground">
           {aviso}
@@ -175,10 +212,12 @@ export function Agenda({
                     fila={fila}
                     turnosDelDia={turnos.filter((t) => t.fecha === dia.fecha)}
                     datos={{ ...datosPanel, duracion }}
+                    reponiendo={reponiendo}
                     alCerrar={() => setAbierta(null)}
                     alGuardar={(texto) => {
                       setAbierta(null);
                       setAviso(texto);
+                      setReponiendo(null);
                     }}
                   />
                 )}

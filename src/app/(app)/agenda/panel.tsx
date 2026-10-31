@@ -1,6 +1,6 @@
 "use client";
 
-import { ExternalLink, UserPlus, X } from "lucide-react";
+import { ArrowRightLeft, Ban, ExternalLink, Trash2, UserPlus, X } from "lucide-react";
 import Link from "next/link";
 import { useState, useTransition } from "react";
 
@@ -13,6 +13,7 @@ import { horaCorta } from "@/lib/agenda/bloques";
 import { avisosAlAgendar, horaFin, textosAvisos } from "@/lib/agenda/reservas";
 import { textoTurno, type FilaDia, type TurnoAgenda } from "@/lib/agenda/turnos";
 import { filtrarPacientes } from "@/lib/pacientes/busqueda";
+import { FormularioCancelar, FormularioMover, type AccionesDeTurno } from "./acciones-turno";
 
 export type PacienteParaReservar = { id: string; nombre: string; apellido: string | null };
 export type TipoParaReservar = { id: string; nombre: string; modalidad: string; requiere_paciente: boolean };
@@ -22,10 +23,16 @@ export type DatosPanel = {
   tipos: TipoParaReservar[];
   trasladoMin: number;
   duracion: number;
+  hoy: string;
+  horasAvisoMinimas: number;
   agendar: (entrada: unknown) => Promise<ResultadoAgendar>;
+  acciones: AccionesDeTurno;
 };
 
-type Modo = "menu" | "reservar" | "ocupado";
+/** Sesión cancelada por la profesional que se está reponiendo ("Para reponer este mes"). */
+export type Reposicion = { id: string; pacienteId: string | null; tipoId: string | null; titulo: string };
+
+type Modo = "menu" | "reservar" | "ocupado" | { accion: "mover" | "cancelar"; turno: TurnoAgenda };
 
 // Acciones de una fila de la agenda (se abre debajo del bloque, sin ventanas).
 export function PanelFila({
@@ -33,6 +40,7 @@ export function PanelFila({
   fila,
   turnosDelDia,
   datos,
+  reponiendo,
   alCerrar,
   alGuardar,
 }: {
@@ -40,11 +48,25 @@ export function PanelFila({
   fila: FilaDia;
   turnosDelDia: TurnoAgenda[];
   datos: DatosPanel;
+  /** Si se está reponiendo una sesión: un bloque libre abre directo el formulario con ese paciente. */
+  reponiendo?: Reposicion | null;
   alCerrar: () => void;
   alGuardar: (aviso: string) => void;
 }) {
   const turnos = fila.tipo === "fuera" ? [fila.turno] : fila.turnos;
-  const [modo, setModo] = useState<Modo>("menu");
+  const [modo, setModo] = useState<Modo>(reponiendo && turnos.length === 0 ? "reservar" : "menu");
+  const [error, setError] = useState<string | null>(null);
+  const [quitando, iniciarQuitar] = useTransition();
+
+  function quitar(t: TurnoAgenda) {
+    if (!window.confirm(`¿Quitar «${textoTurno(t)}»? El horario queda libre.`)) return;
+    setError(null);
+    iniciarQuitar(async () => {
+      const r = await datos.acciones.quitarTurno(t.id);
+      if (r.ok) alGuardar("Quitado ✓");
+      else setError(r.error);
+    });
+  }
 
   return (
     <div className="flex flex-col gap-3 rounded-lg border bg-muted/40 p-3">
@@ -61,8 +83,20 @@ export function PanelFila({
       {modo === "menu" && (
         <>
           {turnos.map((t) => (
-            <AccionesTurno key={t.id} turno={t} />
+            <AccionesTurno
+              key={t.id}
+              turno={t}
+              ocupado={quitando}
+              alMover={() => setModo({ accion: "mover", turno: t })}
+              alCancelar={() => setModo({ accion: "cancelar", turno: t })}
+              alQuitar={() => quitar(t)}
+            />
           ))}
+          {error && (
+            <p role="alert" className="text-sm text-destructive">
+              {error}
+            </p>
+          )}
           <div className="grid grid-cols-2 gap-2">
             <Button variant="outline" className="h-12" onClick={() => setModo("reservar")}>
               {turnos.length === 0 ? "Reservar" : "Agregar otro acá"}
@@ -73,9 +107,23 @@ export function PanelFila({
           </div>
         </>
       )}
-      {modo !== "menu" && (
+      {typeof modo === "object" && modo.accion === "mover" && (
+        <FormularioMover turno={modo.turno} hoy={datos.hoy} acciones={datos.acciones} alVolver={() => setModo("menu")} alGuardar={alGuardar} />
+      )}
+      {typeof modo === "object" && modo.accion === "cancelar" && (
+        <FormularioCancelar
+          turno={modo.turno}
+          hoy={datos.hoy}
+          horasAvisoMinimas={datos.horasAvisoMinimas}
+          acciones={datos.acciones}
+          alVolver={() => setModo("menu")}
+          alGuardar={alGuardar}
+        />
+      )}
+      {(modo === "reservar" || modo === "ocupado") && (
         <FormularioAgendar
           modo={modo}
+          reponiendo={modo === "reservar" ? reponiendo : null}
           fecha={fecha}
           inicio={fila.inicio}
           turnosDelDia={turnosDelDia}
@@ -88,30 +136,60 @@ export function PanelFila({
   );
 }
 
-function AccionesTurno({ turno }: { turno: TurnoAgenda }) {
-  if (turno.clase === "turno" && turno.pacienteId) {
-    return (
-      <Button asChild variant="outline" className="h-12 justify-start">
-        <Link href={`/pacientes/${turno.pacienteId}`}>
-          <ExternalLink /> Ver expediente de {turno.titulo}
-        </Link>
-      </Button>
-    );
-  }
-  if (turno.clase === "reservado") {
-    return (
-      <Button asChild variant="outline" className="h-12 justify-start">
-        <Link href={`/pacientes/nuevo?reserva=${turno.id}`}>
-          <UserPlus /> Crear ficha de {turno.titulo}
-        </Link>
-      </Button>
-    );
-  }
-  return <p className="text-sm text-muted-foreground">{textoTurno(turno)}</p>;
+function AccionesTurno({
+  turno,
+  ocupado,
+  alMover,
+  alCancelar,
+  alQuitar,
+}: {
+  turno: TurnoAgenda;
+  ocupado: boolean;
+  alMover: () => void;
+  alCancelar: () => void;
+  alQuitar: () => void;
+}) {
+  const agendado = turno.estado === "agendado";
+  return (
+    <div className="flex flex-col gap-2 rounded-lg border bg-background p-2">
+      <p className="px-1 text-sm font-medium">{textoTurno(turno)}</p>
+      {turno.clase === "turno" && turno.pacienteId && (
+        <Button asChild variant="outline" className="h-12 justify-start">
+          <Link href={`/pacientes/${turno.pacienteId}`}>
+            <ExternalLink /> Ver expediente
+          </Link>
+        </Button>
+      )}
+      {turno.clase === "reservado" && (
+        <Button asChild variant="outline" className="h-12 justify-start">
+          <Link href={`/pacientes/nuevo?reserva=${turno.id}`}>
+            <UserPlus /> Crear ficha
+          </Link>
+        </Button>
+      )}
+      {agendado && (
+        <div className="grid grid-cols-2 gap-2">
+          <Button variant="outline" className="h-12" onClick={alMover} disabled={ocupado}>
+            <ArrowRightLeft /> Mover
+          </Button>
+          {turno.clase === "turno" ? (
+            <Button variant="outline" className="h-12 text-destructive" onClick={alCancelar} disabled={ocupado}>
+              <Ban /> Cancelar
+            </Button>
+          ) : (
+            <Button variant="outline" className="h-12 text-destructive" onClick={alQuitar} disabled={ocupado}>
+              <Trash2 /> Quitar
+            </Button>
+          )}
+        </div>
+      )}
+    </div>
+  );
 }
 
 function FormularioAgendar({
   modo,
+  reponiendo,
   fecha,
   inicio,
   turnosDelDia,
@@ -120,6 +198,7 @@ function FormularioAgendar({
   alGuardar,
 }: {
   modo: "reservar" | "ocupado";
+  reponiendo?: Reposicion | null;
   fecha: string;
   inicio: string;
   turnosDelDia: TurnoAgenda[];
@@ -129,9 +208,16 @@ function FormularioAgendar({
 }) {
   const tiposPaciente = datos.tipos.filter((t) => t.requiere_paciente);
   const [busqueda, setBusqueda] = useState("");
-  const [paciente, setPaciente] = useState<PacienteParaReservar | null>(null);
+  const [paciente, setPaciente] = useState<PacienteParaReservar | null>(
+    () => (reponiendo && datos.pacientes.find((p) => p.id === reponiendo.pacienteId)) || null,
+  );
   const [nombreSuelto, setNombreSuelto] = useState<string | null>(null);
-  const [tipoId, setTipoId] = useState(tiposPaciente.find((t) => t.nombre === "Sesión")?.id ?? tiposPaciente[0]?.id ?? "");
+  const [tipoId, setTipoId] = useState(
+    (reponiendo && tiposPaciente.find((t) => t.id === reponiendo.tipoId)?.id) ??
+      tiposPaciente.find((t) => t.nombre === "Sesión")?.id ??
+      tiposPaciente[0]?.id ??
+      "",
+  );
   const [motivo, setMotivo] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [confirmarServidor, setConfirmarServidor] = useState<string | null>(null);
@@ -154,11 +240,11 @@ function FormularioAgendar({
       modo === "ocupado"
         ? { ...base, clase: "ocupado", motivo_ocupado: motivo }
         : paciente
-          ? { ...base, clase: "turno", paciente_id: paciente.id, tipo_turno_id: tipoId }
+          ? { ...base, clase: "turno", paciente_id: paciente.id, tipo_turno_id: tipoId, repone_a: reponiendo?.id ?? null }
           : { ...base, clase: "reservado", nombre_reserva: nombreSuelto ?? "", tipo_turno_id: tipoId || null };
     iniciar(async () => {
       const r = await datos.agendar(entrada);
-      if (r.ok) alGuardar(modo === "ocupado" ? "Marcado como ocupado ✓" : "Agendado ✓");
+      if (r.ok) alGuardar(modo === "ocupado" ? "Marcado como ocupado ✓" : reponiendo ? "Sesión repuesta ✓" : "Agendado ✓");
       else if ("confirmar" in r) setConfirmarServidor(r.confirmar);
       else setError(r.error);
     });
@@ -215,18 +301,21 @@ function FormularioAgendar({
         <>
           <div className="flex items-center justify-between gap-2 rounded-lg border bg-background px-3 py-2">
             <span>
+              {reponiendo && "Reponer: "}
               {paciente ? `${paciente.nombre} ${paciente.apellido ?? ""}` : `Reservado: ${nombreSuelto}`}
             </span>
-            <Button
-              variant="ghost"
-              className="h-10"
-              onClick={() => {
-                setPaciente(null);
-                setNombreSuelto(null);
-              }}
-            >
-              Cambiar
-            </Button>
+            {!reponiendo && (
+              <Button
+                variant="ghost"
+                className="h-10"
+                onClick={() => {
+                  setPaciente(null);
+                  setNombreSuelto(null);
+                }}
+              >
+                Cambiar
+              </Button>
+            )}
           </div>
           <div className="flex flex-col gap-2">
             <Label htmlFor="tipo-turno">Tipo de turno</Label>

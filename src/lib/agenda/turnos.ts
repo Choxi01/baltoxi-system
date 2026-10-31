@@ -45,6 +45,8 @@ export type TurnoAgenda = {
   titulo: string;
   /** Tipo de turno (ej. "Sesión a domicilio"), si tiene. */
   tipo: string | null;
+  /** Para reponer con el mismo tipo de turno. */
+  tipoId: string | null;
   /** Paciente con ficha (para "Ver expediente"). */
   pacienteId: string | null;
   /** Modalidad del tipo de turno (para el aviso de traslado). Sin tipo = consultorio. */

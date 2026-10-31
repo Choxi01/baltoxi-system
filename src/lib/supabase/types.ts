@@ -1383,6 +1383,10 @@ export type Database = {
     Functions: {
       crear_consultorio: { Args: { p_nombre: string }; Returns: string }
       mis_consultorios: { Args: never; Returns: string[] }
+      mover_turno: {
+        Args: { p_fin: string; p_inicio: string; p_turno: string }
+        Returns: string
+      }
       sesion_verificada: { Args: never; Returns: boolean }
     }
     Enums: {
