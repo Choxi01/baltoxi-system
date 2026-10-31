@@ -16,7 +16,7 @@ Variables: `{tutor}` (nombre de pila), `{paciente}` (nombre de pila; si son dos 
 |---|---|
 | `recordatorio_sesion` | Turnos `agendado` del próximo día de atención (según `horarios_atencion`, salteando feriados: el viernes, los del lunes), uno por tutor responsable. El texto usa `{cuando}`, nunca "mañana" fijo. |
 | `monto_periodo` | Plan mensual: el día del ÚLTIMO turno del mes de ese paciente (si tiene hermanos, el último de cualquiera de ellos). Plan semanal: el último turno de la semana. |
-| `recordatorio_pago` | Desde el día `dia_limite_pago + 1`, a tutores con saldo de meses anteriores > 0 (una vez por semana como máximo) |
+| `recordatorio_pago` | Tutores en atraso según `vencimiento` + `atraso` (`docs/reglas-cobro.md` sección 5; en plan mensual es desde el día `dia_limite_pago + 1`). Como máximo uno cada 7 días por tutor: si se mandó uno en los 6 días anteriores, no se sugiere. |
 | `cambio_turno` / `cancelacion_turno` | Al mover o cancelar (no va a la bandeja: se ofrece en el momento) |
 | `horarios_libres` | Desde la agenda (botones Copiar libres) |
 | `bienvenida` | Pacientes nuevos y, una sola vez, a todas las familias al empezar a usar el sistema |
@@ -29,6 +29,9 @@ Variables: `{tutor}` (nombre de pila), `{paciente}` (nombre de pila; si son dos 
   ```
 - Total = cargos del período del tutor (todos sus hijos) − pagos ya imputados a ese período.
 - Si el total es 0 o negativo, no se sugiere el mensaje.
+- El total sale de los cargos que ya existen: si ese día quedan turnos de la familia sin marcar, la fila avisa
+  "Marcá la asistencia de hoy antes de mandarlo".
+- No cuentan como "último turno" los `reprogramado`, `cancelado_profesional` ni `ausente_con_aviso`.
 
 ## Bandeja "Mensajes de hoy"
 Pantalla con tres grupos (Recordatorios de mañana, Montos de hoy, Pagos atrasados). Cada fila:

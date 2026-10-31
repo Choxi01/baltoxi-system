@@ -3,9 +3,17 @@ import "server-only";
 // Lecturas de mensajes. Pasan por RLS y además se filtran por el consultorio.
 // No es "use server": son funciones del servidor que no puede llamar el navegador.
 
-import { aHoraLocal } from "@/lib/agenda/turnos";
+import { unstable_rethrow } from "next/navigation";
+
+import { proximoDiaDeAtencion } from "@/lib/agenda/atencion";
+import { sumarDias } from "@/lib/agenda/calendario";
+import { obtenerHorario } from "@/lib/agenda/datos";
+import { aHoraLocal, inicioDelDiaUtc } from "@/lib/agenda/turnos";
 import { exigirConsultorio } from "@/lib/auth/servidor";
+import { hoyEnAsuncion } from "@/lib/fechas";
+import type { PlanCobro } from "@/lib/cobro/tipos";
 import { crearClienteServidor } from "@/lib/supabase/servidor";
+import { DIAS_ENTRE_RECORDATORIOS_PAGO, cantidadSinEnviar, pendientesDelDia, rangoDeTurnos, type DatosPendientes } from "./pendientes";
 import { CLAVES, PLANTILLAS_POR_DEFECTO, esClave, type Clave } from "./plantillas";
 import type { MensajeListo } from "./tipos";
 import { textoMensajeTurno } from "./turno";
@@ -71,3 +79,107 @@ export async function mensajeParaTurno(
   };
 }
 
+
+/** De a cuántas filas se lee (PostgREST corta en 1000). */
+const PAGINA = 1000;
+
+/** Lee todas las filas de una consulta, de a páginas (cargos y pagos crecen con los años). */
+async function todas<T>(pedir: (desde: number, hasta: number) => PromiseLike<{ data: T[] | null; error: unknown }>): Promise<T[]> {
+  const filas: T[] = [];
+  for (let desde = 0; ; desde += PAGINA) {
+    const { data, error } = await pedir(desde, desde + PAGINA - 1);
+    if (error) throw new Error("No se pudieron leer los datos de los mensajes");
+    filas.push(...(data ?? []));
+    if (!data || data.length < PAGINA) return filas;
+  }
+}
+
+/**
+ * Todo lo que necesita pendientesDelDia (Mensajes de hoy). Solo datos administrativos:
+ * nombres, teléfonos, turnos, cargos y pagos. Nada clínico (regla de oro 7).
+ */
+export async function obtenerDatosPendientes(hoy: string): Promise<DatosPendientes> {
+  const consultorio = await exigirConsultorio();
+  const supabase = await crearClienteServidor();
+  const { tramos, bloqueos } = await obtenerHorario();
+  const rango = rangoDeTurnos(hoy, proximoDiaDeAtencion(hoy, tramos, bloqueos));
+  // Lo enviado desde el comienzo del rango (o la última semana, para los recordatorios de pago).
+  const desdeEnviados = [rango.desde, sumarDias(hoy, -DIAS_ENTRE_RECORDATORIOS_PAGO)].sort()[0];
+  const id = consultorio.id;
+
+  const [{ data: config, error: errorConfig }, plantillas, tutores, pacientes, turnos, cargos, pagos, enviados] = await Promise.all([
+    supabase.from("consultorios").select("datos_pago, dia_limite_pago").eq("id", id).single(),
+    textosDePlantillas(supabase, id),
+    todas((a, b) => supabase.from("tutores").select("id, nombre, apellido, telefono_wa").eq("consultorio_id", id).order("id").range(a, b)),
+    todas((a, b) =>
+      supabase.from("pacientes").select("id, nombre, responsable_pago_id, plan_cobro").eq("consultorio_id", id).order("id").range(a, b),
+    ),
+    todas((a, b) =>
+      supabase
+        .from("turnos")
+        .select("id, clase, estado, paciente_id, inicio")
+        .eq("consultorio_id", id)
+        .gte("inicio", inicioDelDiaUtc(rango.desde))
+        .lt("inicio", inicioDelDiaUtc(sumarDias(rango.hasta, 1)))
+        .order("id")
+        .range(a, b),
+    ),
+    todas((a, b) =>
+      supabase
+        .from("cargos")
+        .select(
+          "id, tutor_id, paciente_id, fecha, monto_gs, turnos!cargos_consultorio_id_turno_id_fkey(tipos_turno!turnos_consultorio_id_tipo_turno_id_fkey(cobra_en_el_momento))",
+        )
+        .eq("consultorio_id", id)
+        .order("id")
+        .range(a, b),
+    ),
+    todas((a, b) => supabase.from("pagos").select("id, tutor_id, fecha, monto_gs").eq("consultorio_id", id).order("id").range(a, b)),
+    todas((a, b) =>
+      supabase
+        .from("mensajes_enviados")
+        .select("clave, referencia, tutor_id, enviado_en")
+        .eq("consultorio_id", id)
+        .gte("enviado_en", inicioDelDiaUtc(desdeEnviados))
+        .order("id")
+        .range(a, b),
+    ),
+  ]);
+  if (errorConfig || !config) throw new Error("No se pudo leer el consultorio");
+
+  return {
+    plantillas,
+    datosPago: config.datos_pago,
+    diaLimitePago: config.dia_limite_pago,
+    tramos,
+    bloqueos,
+    tutores,
+    pacientes: pacientes.map((p) => ({ ...p, plan_cobro: p.plan_cobro as PlanCobro })),
+    turnos: turnos.map((t) => {
+      const local = aHoraLocal(t.inicio);
+      return { id: t.id, clase: t.clase, estado: t.estado, paciente_id: t.paciente_id, fecha: local.fecha, hora: local.hora };
+    }),
+    cargos: cargos.map((c) => ({
+      id: c.id,
+      tutor_id: c.tutor_id,
+      paciente_id: c.paciente_id,
+      fecha: c.fecha,
+      monto_gs: Number(c.monto_gs),
+      cobra_en_el_momento: c.turnos?.tipos_turno?.cobra_en_el_momento ?? false,
+    })),
+    pagos: pagos.map((p) => ({ ...p, monto_gs: Number(p.monto_gs) })),
+    enviados: enviados.map((e) => ({ clave: e.clave, referencia: e.referencia, tutor_id: e.tutor_id, fecha: aHoraLocal(e.enviado_en).fecha })),
+  };
+}
+
+/** Mensajes de hoy sin mandar, para el contador del menú. Si algo falla, 0 (no rompe el menú). */
+export async function contarPendientes(): Promise<number> {
+  try {
+    const hoy = hoyEnAsuncion();
+    return cantidadSinEnviar(pendientesDelDia(hoy, await obtenerDatosPendientes(hoy)));
+  } catch (e) {
+    // Lo propio de Next (redirecciones, render dinámico) sigue su camino; lo demás solo esconde el contador.
+    unstable_rethrow(e);
+    return 0;
+  }
+}

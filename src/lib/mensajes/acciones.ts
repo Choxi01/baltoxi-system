@@ -69,6 +69,7 @@ export async function registrarEnvio(entrada: {
     { onConflict: "consultorio_id,clave,referencia,tutor_id", ignoreDuplicates: true },
   );
   if (error) return { ok: false, error: "No se pudo anotar el envío." };
-  revalidatePath("/mensajes");
+  // El contador del menú está en el layout: se refresca todo.
+  revalidatePath("/", "layout");
   return { ok: true };
 }
