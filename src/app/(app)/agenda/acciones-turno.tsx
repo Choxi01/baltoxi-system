@@ -13,6 +13,7 @@ import { fechasEntre, sumarDias, tituloDia } from "@/lib/agenda/calendario";
 import { type QuienCancela } from "@/lib/agenda/cancelacion";
 import { instanteUtc } from "@/lib/agenda/reservas";
 import { aHoraLocal, NOMBRE_ESTADO_TURNO, textoTurno, type TurnoAgenda } from "@/lib/agenda/turnos";
+import type { ResultadoPago } from "@/lib/cobro/acciones-pagos";
 import { clasificarCancelacion } from "@/lib/cobro/cancelacion";
 import { cn } from "@/lib/utils";
 
@@ -24,6 +25,7 @@ export type AccionesDeTurno = {
   marcarAsistencia: (id: string, accion: AccionAsistencia, excepcion?: Excepcion | null) => Promise<ResultadoSimple>;
   crearSerie: (entrada: unknown) => Promise<ResultadoAgendar>;
   finalizarSerie: (serieId: string) => Promise<ResultadoSimple>;
+  registrarPago: (entrada: unknown) => Promise<ResultadoPago>;
 };
 
 // Una sola rueda con los días (más cómoda en el iPhone que un calendario).

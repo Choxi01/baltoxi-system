@@ -5,10 +5,9 @@ import Link from "next/link";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import type { AccionTurno } from "@/lib/agenda/asistencia";
 import { horaCorta } from "@/lib/agenda/bloques";
 import type { TurnoAgenda } from "@/lib/agenda/turnos";
-import { AccionesTurno, FormularioTurno, useAccionesTurno } from "../agenda/acciones-de-turno";
+import { AccionesTurno, FormularioTurno, useAccionesTurno, type AccionTarjeta } from "../agenda/acciones-de-turno";
 import type { AccionesDeTurno } from "../agenda/acciones-turno";
 
 // Turnos de hoy con las mismas acciones que la agenda, siempre a mano (sin tener que abrir el bloque).
@@ -33,7 +32,7 @@ export function ListaHoy({
     setAviso(texto);
   }
 
-  function alAccion(t: TurnoAgenda, accion: AccionTurno) {
+  function alAccion(t: TurnoAgenda, accion: AccionTarjeta) {
     setUltimo(t.id);
     setAviso(null);
     turno.alAccion(t, accion);
