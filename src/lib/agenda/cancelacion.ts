@@ -1,12 +1,13 @@
 // Cancelar y reponer turnos (docs/agenda.md y docs/reglas-cobro.md sección 1).
-// Funciones puras con tests. La regla de las 48 h es la del motor de cobro (B2).
+// Funciones puras con tests.
+// La clasificación de la cancelación viene del motor de cobro (src/lib/cobro).
 
 import { clasificarCancelacion } from "@/lib/cobro/cancelacion";
 import { liberaBloque } from "./turnos";
 
 export type QuienCancela = "familia" | "profesional";
 
-/** Qué se guarda en el turno al cancelar. Sin cargos: eso lo hace la B3. */
+/** Qué se guarda en el turno al cancelar. El cargo lo crea después aplicarEstadoTurno (B3). */
 export function datosCancelacion(
   quien: QuienCancela,
   turno: { inicio: Date },

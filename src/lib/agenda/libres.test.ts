@@ -34,6 +34,7 @@ const turno = (fecha: string, inicio: string, estado: TurnoAgenda["estado"] = "a
   tipoId: null,
   pacienteId: null,
   modalidad: "consultorio",
+  porcentajeManual: null,
 });
 const dia = (fecha: string, turnos: TurnoAgenda[] = [], bloqueos: Bloqueo[] = []) => armarDia(fecha, HORARIO, 45, bloqueos, turnos);
 

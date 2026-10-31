@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { datosCancelacion, pendientesDeReponer } from "./cancelacion";
 
-// La regla de las 48 h (casos 2 a 5) se prueba en src/lib/cobro/casos.test.ts.
+// Los casos de clasificarCancelacion (2 a 5) están en src/lib/cobro/casos.test.ts.
 const INICIO = new Date("2026-11-05T12:00:00Z");
 const horasAntes = (h: number) => new Date(INICIO.getTime() - h * 3_600_000);
 
