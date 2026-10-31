@@ -11,7 +11,7 @@ import {
   moverTurno,
   quitarTurno,
 } from "@/lib/agenda/acciones-turnos";
-import { listarParaReponer, listarTurnosConCobro, obtenerDatosParaReservar, obtenerHorario } from "@/lib/agenda/datos";
+import { listarParaReponer, listarTurnosConCobro, obtenerDatosParaReservar, obtenerHorario, obtenerPlantillaLibres } from "@/lib/agenda/datos";
 import { materializarSeries } from "@/lib/agenda/series-servidor";
 import { registrarPago } from "@/lib/cobro/acciones-pagos";
 import { hoyEnAsuncion } from "@/lib/fechas";
@@ -30,7 +30,7 @@ function fechaValida(valor: unknown): string | null {
   return r.ok ? r.fecha : null;
 }
 
-// Agenda (A2b + A3a reservar + A3b mover, cancelar y reponer + A3c turnos fijos + B3 asistencia).
+// Agenda (A2b + A3a reservar + A3b mover, cancelar y reponer + A3c turnos fijos + B3 asistencia + A4 copiar libres).
 export default async function Pagina({ searchParams }: PageProps<"/agenda">) {
   const parametros = await searchParams;
   const { duracion, tramos, bloqueos } = await obtenerHorario();
@@ -42,10 +42,11 @@ export default async function Pagina({ searchParams }: PageProps<"/agenda">) {
   const rango = rangoParaCargar(fecha);
   // Turnos fijos: que estén creadas las próximas 8 semanas (no duplica).
   await materializarSeries(hoy);
-  const [turnos, paraReservar, paraReponer] = await Promise.all([
+  const [turnos, paraReservar, paraReponer, plantillaLibres] = await Promise.all([
     listarTurnosConCobro(rango.desde, rango.hasta),
     obtenerDatosParaReservar(),
     listarParaReponer(hoy),
+    obtenerPlantillaLibres(),
   ]);
 
   return (
@@ -61,6 +62,7 @@ export default async function Pagina({ searchParams }: PageProps<"/agenda">) {
         bloqueos={bloqueos}
         turnos={turnos}
         paraReponer={paraReponer}
+        plantillaLibres={plantillaLibres}
         datosPanel={{
           ...paraReservar,
           hoy,

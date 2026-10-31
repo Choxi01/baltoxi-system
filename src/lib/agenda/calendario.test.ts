@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   cubre,
   diaCorto,
+  diaYFecha,
   diasDeLaSemana,
   diasVisibles,
   fechasEntre,
@@ -96,5 +97,12 @@ describe("títulos", () => {
     expect(tituloSemana(["2026-11-30", "2026-12-04"])).toBe("30 de noviembre al 4 de diciembre");
     expect(tituloMes("2026-11-02")).toBe("Noviembre 2026");
     expect(diaCorto("2026-11-02")).toBe("lun 2");
+  });
+});
+
+describe("diaYFecha", () => {
+  it("'Lunes 2/11'", () => {
+    expect(diaYFecha("2026-11-02")).toBe("Lunes 2/11");
+    expect(diaYFecha("2026-01-07")).toBe("Miércoles 7/1");
   });
 });
