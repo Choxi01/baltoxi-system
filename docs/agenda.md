@@ -56,6 +56,12 @@ Horarios disponibles esta semana:
 ```
 - Días sin libres no aparecen. Si no hay ninguno: "No tengo horarios libres {rango}".
 - Función pura con tests: `src/lib/agenda/textoLibres(bloquesLibresPorDia, rango, plantilla)`.
+- "Mañana" = bloques que **empiezan antes de las 12:00**; "tarde" = desde las 12:00.
+- Hoy / semana / mes son los del día que se está mirando en la agenda. `{rango}`: "hoy", "esta semana",
+  "este mes" si es el período actual; si no, "el jueves 5/11", "la semana del 9 al 13/11", "en diciembre".
+- Lo que ya pasó nunca se ofrece (días anteriores ni horarios de hoy que ya empezaron).
+- Código: `src/lib/agenda/libres.ts` (`libresPorDia`, `textoLibres`, `textoRango`) y el panel
+  `src/app/(app)/agenda/copiar-libres.tsx`.
 
 ## Turnos fijos
 - `series_turnos` con día, hora, tipo y desde/hasta. Se materializan las próximas 8 semanas (job diario

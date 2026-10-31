@@ -5,6 +5,7 @@ import { crearClienteServidor } from "@/lib/supabase/servidor";
 import { finDeMes, inicioDeMes, sumarDias } from "./calendario";
 import { pendientesDeReponer } from "./cancelacion";
 import { horaDeBase } from "./horario";
+import { PLANTILLA_LIBRES_POR_DEFECTO } from "./libres";
 import { aHoraLocal, inicioDelDiaUtc, type ClaseTurno, type EstadoTurno, type TurnoAgenda } from "./turnos";
 
 // Lecturas del horario de atención y de los feriados/vacaciones.
@@ -124,4 +125,17 @@ export async function listarParaReponer(hoy: string) {
       titulo: t.pacientes ? `${t.pacientes.nombre} ${t.pacientes.apellido ?? ""}`.trim() : "",
     };
   });
+}
+
+/** Plantilla `horarios_libres` del consultorio (para "Copiar libres"). Si no está, la de por defecto. */
+export async function obtenerPlantillaLibres(): Promise<string> {
+  const consultorio = await exigirConsultorio();
+  const supabase = await crearClienteServidor();
+  const { data } = await supabase
+    .from("plantillas_mensaje")
+    .select("texto")
+    .eq("consultorio_id", consultorio.id)
+    .eq("clave", "horarios_libres")
+    .maybeSingle();
+  return data?.texto?.trim() ? data.texto : PLANTILLA_LIBRES_POR_DEFECTO;
 }

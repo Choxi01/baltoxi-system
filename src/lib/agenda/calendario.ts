@@ -133,3 +133,9 @@ export function numeroDia(fecha: string): number {
 export function nombreCortoDia(numero: number): string {
   return DIAS_CORTOS[numero];
 }
+
+/** "Lunes 3/11": como se escribe un día en los mensajes. */
+export function diaYFecha(fecha: string): string {
+  const [, m, d] = partes(fecha);
+  return `${DIAS_LARGOS[diaSemana(fecha)]} ${d}/${m}`;
+}

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { connection } from "next/server";
 
 import {
   cancelarTurno,
@@ -21,6 +22,8 @@ export const metadata: Metadata = { title: "Hoy · Consultorio" };
 // Hoy (B3b): los turnos del día, también los cancelados, con las mismas acciones que la agenda.
 // Solo datos administrativos (regla de oro 7): nombre, tipo de turno, hora y estado.
 export default async function Pagina() {
+  // "Hoy" se calcula en cada visita, no al compilar (si no, Next 16 frena el build).
+  await connection();
   const hoy = hoyEnAsuncion();
   // Igual que la Agenda: crear los turnos fijos que falten (después del login se entra acá).
   await materializarSeries(hoy);
