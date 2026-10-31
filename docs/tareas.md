@@ -81,7 +81,7 @@ Todas las tareas asumen que Claude Code leyó `CLAUDE.md`. Si no, empezá con "L
 > agregar, editar, desactivar/activar) y Reglas de cobro (porcentaje por estado; excepciones por
 > paciente: agregar y quitar). Validá con zod y tests en `src/lib/config/`.
 
-#### [ ] B2 Motor de cobro
+#### [x] B2 Motor de cobro
 > Implementá en `src/lib/cobro/` las funciones de `docs/reglas-cobro.md` secciones 1 a 8, más
 > `formatoGs` e `iva10`. Puras, sin Supabase. Un test por cada caso de la tabla (22). No avances si
 > alguno falla.

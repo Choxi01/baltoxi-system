@@ -17,3 +17,9 @@ export function leerGs(texto: string): number | null {
   const monto = Number(limpio.replace(/\./g, ""));
   return Number.isSafeInteger(monto) ? monto : null;
 }
+
+/** IVA 10% incluido en el monto (regla de oro 1): Math.round(monto / 11). */
+export function iva10(monto: number): number {
+  if (!Number.isSafeInteger(monto)) throw new Error("El monto en guaraníes tiene que ser un entero");
+  return Math.round(monto / 11);
+}
