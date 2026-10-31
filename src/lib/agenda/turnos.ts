@@ -45,6 +45,8 @@ export type TurnoAgenda = {
   titulo: string;
   /** Tipo de turno (ej. "Sesión a domicilio"), si tiene. */
   tipo: string | null;
+  /** Turno fijo: la serie que lo creó (para "Finalizar turno fijo"). */
+  serieId: string | null;
   /** Para reponer con el mismo tipo de turno. */
   tipoId: string | null;
   /** Paciente con ficha (para "Ver expediente"). */

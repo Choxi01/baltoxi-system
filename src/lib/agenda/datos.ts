@@ -36,7 +36,7 @@ export async function listarTurnos(desde: string, hasta: string): Promise<TurnoA
   const { data, error } = await supabase
     .from("turnos")
     .select(
-      "id, clase, estado, inicio, fin, paciente_id, tipo_turno_id, nombre_reserva, motivo_ocupado, porcentaje_manual, pacientes!turnos_consultorio_id_paciente_id_fkey(nombre, apellido), tipos_turno!turnos_consultorio_id_tipo_turno_id_fkey(nombre, modalidad)",
+      "id, clase, estado, inicio, fin, paciente_id, tipo_turno_id, serie_id, nombre_reserva, motivo_ocupado, porcentaje_manual, pacientes!turnos_consultorio_id_paciente_id_fkey(nombre, apellido), tipos_turno!turnos_consultorio_id_tipo_turno_id_fkey(nombre, modalidad)",
     )
     .eq("consultorio_id", consultorio.id)
     .gte("inicio", inicioDelDiaUtc(desde))
@@ -56,6 +56,7 @@ export async function listarTurnos(desde: string, hasta: string): Promise<TurnoA
       fin: aHoraLocal(t.fin).hora,
       titulo: (t.clase === "turno" ? paciente : t.clase === "reservado" ? t.nombre_reserva : t.motivo_ocupado) ?? "",
       tipo: t.tipos_turno?.nombre ?? null,
+      serieId: t.serie_id,
       tipoId: t.tipo_turno_id,
       pacienteId: t.paciente_id,
       modalidad: t.tipos_turno?.modalidad ?? null,

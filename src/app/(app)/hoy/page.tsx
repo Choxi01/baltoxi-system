@@ -1,9 +1,18 @@
 import type { Metadata } from "next";
 
-import { cancelarTurno, libresDelDia, marcarAsistencia, moverTurno, quitarTurno } from "@/lib/agenda/acciones-turnos";
+import {
+  cancelarTurno,
+  crearSerie,
+  finalizarSerie,
+  libresDelDia,
+  marcarAsistencia,
+  moverTurno,
+  quitarTurno,
+} from "@/lib/agenda/acciones-turnos";
 import { tituloDia } from "@/lib/agenda/calendario";
 import { listarTurnos, obtenerDatosParaReservar } from "@/lib/agenda/datos";
 import { resumenHoy, textoResumenHoy } from "@/lib/agenda/hoy";
+import { materializarSeries } from "@/lib/agenda/series-servidor";
 import { hoyEnAsuncion } from "@/lib/fechas";
 import { ListaHoy } from "./lista-hoy";
 
@@ -13,6 +22,8 @@ export const metadata: Metadata = { title: "Hoy · Consultorio" };
 // Solo datos administrativos (regla de oro 7): nombre, tipo de turno, hora y estado.
 export default async function Pagina() {
   const hoy = hoyEnAsuncion();
+  // Igual que la Agenda: crear los turnos fijos que falten (después del login se entra acá).
+  await materializarSeries(hoy);
   const [turnos, { horasAvisoMinimas }] = await Promise.all([listarTurnos(hoy, hoy), obtenerDatosParaReservar()]);
   const resumen = textoResumenHoy(resumenHoy(turnos));
 
@@ -29,7 +40,7 @@ export default async function Pagina() {
         hoy={hoy}
         turnos={turnos}
         horasAvisoMinimas={horasAvisoMinimas}
-        acciones={{ libresDelDia, moverTurno, cancelarTurno, quitarTurno, marcarAsistencia }}
+        acciones={{ libresDelDia, moverTurno, cancelarTurno, quitarTurno, marcarAsistencia, crearSerie, finalizarSerie }}
       />
     </div>
   );

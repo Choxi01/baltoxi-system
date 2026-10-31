@@ -90,16 +90,16 @@ Todas las tareas asumen que Claude Code leyó `CLAUDE.md`. Si no, empezá con "L
 
 ## Semana 4 — Turnos y cobros (prioridad 1)
 
-#### [ ] A3 Agenda completa
+#### [x] A3 Agenda completa
 > Según `docs/agenda.md`: en un bloque libre, Reservar (paciente o nombre suelto), Marcar ocupado,
 > Turno fijo (series + materialización de 8 semanas, con tests). En un turno: Mover, Cancelar (quién y
 > cuándo avisó), Ver expediente. Confirmación si hay superposición; aviso de traslado entre domicilios.
 > "Reservado: Fulano" → botón Crear ficha que lo convierte en turno. Lista "Para reponer este mes".
 
-> _Dividida en tres PRs. **A3a hecha**: Reservar (paciente o nombre suelto), Marcar ocupado, Ver expediente,
-> Crear ficha desde un reservado, confirmación de superposición y aviso de traslado (`avisosAlAgendar` con tests).
-> **A3b hecha**: Mover (migración 0007 `mover_turno`), Cancelar (familia con cuándo avisó, o profesional → reponer;
-> sin cargos hasta la B3), Quitar reservado/ocupado y "Para reponer este mes". **Falta A3c** (Turnos fijos)._
+> _Dividida en tres PRs. **A3a**: Reservar (paciente o nombre suelto), Marcar ocupado, Ver expediente, Crear ficha
+> desde un reservado, superposición y traslado. **A3b**: Mover (migración 0007 `mover_turno`), Cancelar (sin cargos
+> hasta la B3), Quitar y "Para reponer este mes". **A3c**: Turno fijo (series + 8 semanas al abrir la agenda, salteando
+> feriados; `fechasDeSerie` con tests) y Finalizar turno fijo._
 
 #### [ ] A4 Copiar libres
 > Botones Copiar libres de hoy / semana / mes con filtros (mañana, tarde, desde mañana), usando

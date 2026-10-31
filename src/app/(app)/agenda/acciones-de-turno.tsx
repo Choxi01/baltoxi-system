@@ -1,11 +1,13 @@
 "use client";
 
-import { ArrowRightLeft, Ban, Check, ExternalLink, Percent, Trash2, Undo2, UserPlus, UserX, X, type LucideIcon } from "lucide-react";
+import { ArrowRightLeft, Ban, Check, ExternalLink, Percent, Repeat, Trash2, Undo2, UserPlus, UserX, X, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { useState, useTransition } from "react";
 
 import { Button } from "@/components/ui/button";
 import { accionesDelTurno, type AccionAsistencia, type AccionTurno } from "@/lib/agenda/asistencia";
+import { horaCorta } from "@/lib/agenda/bloques";
+import { tituloDia } from "@/lib/agenda/calendario";
 import { NOMBRE_ESTADO_TURNO, textoEstado, textoTurno, type TurnoAgenda } from "@/lib/agenda/turnos";
 import { cn } from "@/lib/utils";
 import { FormularioCancelar, FormularioExcepcion, FormularioMover, type AccionesDeTurno } from "./acciones-turno";
@@ -27,11 +29,14 @@ export function AccionesTurno({
   hoy,
   ocupado,
   alAccion,
+  alFinalizarSerie,
 }: {
   turno: TurnoAgenda;
   hoy: string;
   ocupado: boolean;
   alAccion: (accion: AccionTurno) => void;
+  /** Si viene, un turno fijo muestra "Finalizar turno fijo" (en la agenda sí, en Hoy no). */
+  alFinalizarSerie?: () => void;
 }) {
   const acciones = accionesDelTurno(turno, hoy);
   const estado = textoEstado(turno);
@@ -40,6 +45,11 @@ export function AccionesTurno({
       <div className="px-1">
         <p className="text-sm font-medium">{textoTurno(turno)}</p>
         {estado && <p className="text-sm text-muted-foreground">{estado}</p>}
+        {turno.serieId && (
+          <p className="flex items-center gap-1 text-xs text-muted-foreground">
+            <Repeat className="size-3" /> Turno fijo: {tituloDia(turno.fecha).split(" ")[0].toLowerCase()} {horaCorta(turno.inicio)}
+          </p>
+        )}
       </div>
       {turno.clase === "turno" && turno.pacienteId && (
         <Button asChild variant="outline" className="h-12 justify-start">
@@ -72,6 +82,11 @@ export function AccionesTurno({
             );
           })}
         </div>
+      )}
+      {turno.serieId && alFinalizarSerie && (
+        <Button variant="ghost" className="h-12 text-destructive" onClick={alFinalizarSerie} disabled={ocupado}>
+          Finalizar turno fijo
+        </Button>
       )}
     </div>
   );
@@ -124,7 +139,20 @@ export function useAccionesTurno({ acciones, alGuardar }: { acciones: AccionesDe
     else marcar(t, accion);
   }
 
-  return { abierto, cerrar: () => setAbierto(null), error, guardando, alAccion };
+  /** Turno fijo (A3c): la serie termina y se borran sus turnos futuros agendados. */
+  function finalizarSerie(t: TurnoAgenda) {
+    if (!t.serieId) return;
+    const dia = tituloDia(t.fecha).split(" ")[0].toLowerCase();
+    if (!window.confirm(`¿Finalizar el turno fijo de ${t.titulo} (${dia} ${horaCorta(t.inicio)})? Se borran sus turnos futuros agendados; los pasados quedan.`)) return;
+    setError(null);
+    iniciar(async () => {
+      const r = await acciones.finalizarSerie(t.serieId!);
+      if (r.ok) alGuardar("Turno fijo finalizado ✓");
+      else setError(r.error);
+    });
+  }
+
+  return { abierto, cerrar: () => setAbierto(null), error, guardando, alAccion, finalizarSerie };
 }
 
 /** El formulario del turno abierto. */

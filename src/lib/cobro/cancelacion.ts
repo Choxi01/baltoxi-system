@@ -1,5 +1,5 @@
 // Clasificar una cancelación de la familia (docs/reglas-cobro.md sección 1).
-// Reemplaza a la provisoria de src/lib/agenda/cancelacion.ts: misma firma y mismo resultado.
+// La usa también la agenda (src/lib/agenda/cancelacion.ts) al cancelar un turno.
 
 /**
  * Cancelación de la familia: con `horasAvisoMinimas` (48 h) o más de aviso es

@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
-import type { ResultadoSimple } from "@/lib/agenda/acciones-turnos";
+import type { ResultadoAgendar, ResultadoSimple } from "@/lib/agenda/acciones-turnos";
 import { validarExcepcion, type AccionAsistencia, type Excepcion } from "@/lib/agenda/asistencia";
 import { aHora, aMinutos, horaCorta } from "@/lib/agenda/bloques";
 import { fechasEntre, sumarDias, tituloDia } from "@/lib/agenda/calendario";
@@ -22,6 +22,8 @@ export type AccionesDeTurno = {
   cancelarTurno: (id: string, quien: QuienCancela, aviso: { fecha: string; hora: string } | null) => Promise<ResultadoSimple>;
   quitarTurno: (id: string) => Promise<ResultadoSimple>;
   marcarAsistencia: (id: string, accion: AccionAsistencia, excepcion?: Excepcion | null) => Promise<ResultadoSimple>;
+  crearSerie: (entrada: unknown) => Promise<ResultadoAgendar>;
+  finalizarSerie: (serieId: string) => Promise<ResultadoSimple>;
 };
 
 // Una sola rueda con los días (más cómoda en el iPhone que un calendario).
