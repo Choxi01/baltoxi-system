@@ -13,6 +13,7 @@ import { tituloDia } from "@/lib/agenda/calendario";
 import { avisosAlAgendar, horaFin, textosAvisos } from "@/lib/agenda/reservas";
 import { fechasParaHasta } from "@/lib/agenda/series";
 import { type FilaDia, type TurnoAgenda } from "@/lib/agenda/turnos";
+import type { MensajeListo } from "@/lib/mensajes/tipos";
 import { filtrarPacientes } from "@/lib/pacientes/busqueda";
 import { cn } from "@/lib/utils";
 import { AccionesTurno, FormularioTurno, useAccionesTurno } from "./acciones-de-turno";
@@ -60,7 +61,7 @@ export function PanelFila({
   /** Si se está reponiendo una sesión: un bloque libre abre directo el formulario con ese paciente. */
   reponiendo?: Reposicion | null;
   alCerrar: () => void;
-  alGuardar: (aviso: string) => void;
+  alGuardar: (aviso: string, mensaje?: MensajeListo) => void;
 }) {
   const turnos = fila.tipo === "fuera" ? [fila.turno] : fila.turnos;
   // Los cancelados de este horario también se muestran: a "Canceló tarde" se le puede poner excepción.

@@ -32,14 +32,15 @@ const ICONOS: Record<string, LucideIcon> = {
 
 // Lee la ruta actual para marcar la sección activa. Next.js pide que esto
 // vaya dentro de <Suspense> (ver el layout de (app)).
-export function MenuConRuta() {
-  return <Menu ruta={usePathname()} />;
+export function MenuConRuta({ pendientes = 0 }: { pendientes?: number }) {
+  return <Menu ruta={usePathname()} pendientes={pendientes} />;
 }
 
 // iPhone: barra fija abajo con 4 secciones + "Más".
 // iPad y Mac (pantallas medianas en adelante): menú lateral con todo.
 // Sin `ruta` (mientras carga) se muestra sin ninguna sección marcada.
-export function Menu({ ruta = "" }: { ruta?: string }) {
+// `pendientes`: mensajes de hoy sin mandar (contador junto a "Mensajes" y a "Más").
+export function Menu({ ruta = "", pendientes = 0 }: { ruta?: string; pendientes?: number }) {
 
   return (
     <>
@@ -58,6 +59,7 @@ export function Menu({ ruta = "" }: { ruta?: string }) {
               href="/mas"
               titulo="Más"
               icono={IconoMas}
+              contador={pendientes}
               activo={
                 seccionActiva(ruta, "/mas") ||
                 SECCIONES.some((s) => !s.principal && seccionActiva(ruta, s.href))
@@ -84,6 +86,7 @@ export function Menu({ ruta = "" }: { ruta?: string }) {
                 >
                   <Icono className="size-5" />
                   {s.titulo}
+                  {s.href === "/mensajes" && <Contador cantidad={pendientes} className="ml-auto" />}
                 </Link>
               </li>
             );
@@ -95,16 +98,31 @@ export function Menu({ ruta = "" }: { ruta?: string }) {
   );
 }
 
+/** Globito con la cantidad (nada si es 0). */
+export function Contador({ cantidad, className }: { cantidad: number; className?: string }) {
+  if (cantidad <= 0) return null;
+  return (
+    <span
+      aria-label={`${cantidad} sin mandar`}
+      className={cn("min-w-5 rounded-full bg-primary px-1.5 text-center text-xs font-semibold leading-5 text-primary-foreground", className)}
+    >
+      {cantidad > 99 ? "99+" : cantidad}
+    </span>
+  );
+}
+
 function ItemBarra({
   href,
   titulo,
   icono: Icono,
   activo,
+  contador = 0,
 }: {
   href: string;
   titulo: string;
   icono: LucideIcon;
   activo: boolean;
+  contador?: number;
 }) {
   return (
     <Link
@@ -115,7 +133,10 @@ function ItemBarra({
         activo ? "text-foreground" : "text-muted-foreground",
       )}
     >
-      <Icono className="size-6" />
+      <span className="relative">
+        <Icono className="size-6" />
+        <Contador cantidad={contador} className="absolute -top-1.5 left-4" />
+      </span>
       {titulo}
     </Link>
   );

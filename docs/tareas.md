@@ -143,11 +143,19 @@ Todas las tareas asumen que Claude Code leyó `CLAUDE.md`. Si no, empezá con "L
 > generado con guardado automático; copia la estructura al crear. Te paso el Word de ejemplo: armá con
 > él la primera plantilla en formato JSON (sin datos de pacientes) y cargala en el seed.
 
-#### [ ] B5 Plantillas y bandeja de mensajes
+#### [x] B5 Plantillas y bandeja de mensajes
 > Según `docs/mensajes.md`: editor de plantillas con variables y vista previa; función pura
 > `pendientesDelDia` con tests (recordatorios de mañana, monto del período en el último turno, atrasos);
 > pantalla "Mensajes de hoy" con Copiar / Abrir WhatsApp, registro en `mensajes_enviados` y tachado.
 > Mensajes de cambio y cancelación ofrecidos al mover o cancelar un turno.
+
+> _Hecha en dos commits. **B5a**: `src/lib/mensajes/plantillas.ts` (variables, `rellenar`, vista previa),
+> Configuración → Mensajes, `BotonesMensaje` (Copiar / WhatsApp, anota en `mensajes_enviados`) y el mensaje
+> que se ofrece al mover o cancelar. Migración 0008: el recordatorio usa `{cuando}` ("mañana" o "el lunes 2/11").
+> **B5b**: `pendientesDelDia` (`src/lib/mensajes/pendientes.ts`): recordatorios del próximo día de atención
+> (`proximoDiaDeAtencion`, salteando feriados), monto del período el día del último turno (aviso si quedan turnos
+> de hoy sin marcar) y pagos atrasados con `vencimiento` + `atraso` (máximo uno cada 7 días por tutor).
+> Pantalla Mensajes de hoy y contador en el menú. Para la B6 queda el detalle por sesión y la cuenta del tutor._
 
 ---
 
