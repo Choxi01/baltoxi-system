@@ -51,6 +51,8 @@ export type TurnoAgenda = {
   pacienteId: string | null;
   /** Modalidad del tipo de turno (para el aviso de traslado). Sin tipo = consultorio. */
   modalidad: string | null;
+  /** Excepción "a criterio" del cobro (0 a 100), si tiene. */
+  porcentajeManual: number | null;
 };
 
 /** timestamptz de la base → fecha y hora en Asunción (regla de oro 6). */
@@ -70,6 +72,13 @@ export function textoTurno(t: Pick<TurnoAgenda, "clase" | "titulo">): string {
   if (t.clase === "reservado") return `Reservado: ${t.titulo}`;
   if (t.clase === "ocupado") return `Ocupado: ${t.titulo}`;
   return t.titulo;
+}
+
+/** Estado de un turno con paciente para mostrar: "No vino · Excepción 0%". Agendado: null. */
+export function textoEstado(t: Pick<TurnoAgenda, "clase" | "estado" | "porcentajeManual">): string | null {
+  if (t.clase !== "turno" || t.estado === "agendado") return null;
+  const estado = NOMBRE_ESTADO_TURNO[t.estado];
+  return t.porcentajeManual != null ? `${estado} · Excepción ${t.porcentajeManual}%` : estado;
 }
 
 const seSuperponen = (a: { inicio: string; fin: string }, b: { inicio: string; fin: string }) =>

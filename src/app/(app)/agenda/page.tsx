@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 import { rangoParaCargar, type Vista } from "@/lib/agenda/calendario";
-import { agendar, cancelarTurno, libresDelDia, moverTurno, quitarTurno } from "@/lib/agenda/acciones-turnos";
+import { agendar, cancelarTurno, libresDelDia, marcarAsistencia, moverTurno, quitarTurno } from "@/lib/agenda/acciones-turnos";
 import { listarParaReponer, listarTurnos, obtenerDatosParaReservar, obtenerHorario } from "@/lib/agenda/datos";
 import { hoyEnAsuncion } from "@/lib/fechas";
 import { armarFecha, partirFecha } from "@/lib/pacientes/fecha";
@@ -19,7 +19,7 @@ function fechaValida(valor: unknown): string | null {
   return r.ok ? r.fecha : null;
 }
 
-// Agenda (A2b + A3a reservar + A3b mover, cancelar y reponer). Turnos fijos: A3c.
+// Agenda (A2b + A3a reservar + A3b mover, cancelar y reponer + B3 asistencia). Turnos fijos: A3c.
 export default async function Pagina({ searchParams }: PageProps<"/agenda">) {
   const parametros = await searchParams;
   const { duracion, tramos, bloqueos } = await obtenerHorario();
@@ -48,7 +48,7 @@ export default async function Pagina({ searchParams }: PageProps<"/agenda">) {
         bloqueos={bloqueos}
         turnos={turnos}
         paraReponer={paraReponer}
-        datosPanel={{ ...paraReservar, hoy, agendar, acciones: { libresDelDia, moverTurno, cancelarTurno, quitarTurno } }}
+        datosPanel={{ ...paraReservar, hoy, agendar, acciones: { libresDelDia, moverTurno, cancelarTurno, quitarTurno, marcarAsistencia } }}
       />
     </div>
   );

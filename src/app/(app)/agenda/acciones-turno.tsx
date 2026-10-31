@@ -3,14 +3,17 @@
 import { useState, useTransition } from "react";
 
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import type { ResultadoSimple } from "@/lib/agenda/acciones-turnos";
+import { validarExcepcion, type AccionAsistencia, type Excepcion } from "@/lib/agenda/asistencia";
 import { aHora, aMinutos, horaCorta } from "@/lib/agenda/bloques";
 import { fechasEntre, sumarDias, tituloDia } from "@/lib/agenda/calendario";
-import { clasificarCancelacion, type QuienCancela } from "@/lib/agenda/cancelacion";
+import { type QuienCancela } from "@/lib/agenda/cancelacion";
 import { instanteUtc } from "@/lib/agenda/reservas";
-import { aHoraLocal, textoTurno, type TurnoAgenda } from "@/lib/agenda/turnos";
+import { aHoraLocal, NOMBRE_ESTADO_TURNO, textoTurno, type TurnoAgenda } from "@/lib/agenda/turnos";
+import { clasificarCancelacion } from "@/lib/cobro/cancelacion";
 import { cn } from "@/lib/utils";
 
 export type AccionesDeTurno = {
@@ -18,6 +21,7 @@ export type AccionesDeTurno = {
   moverTurno: (id: string, fecha: string, inicio: string) => Promise<ResultadoSimple>;
   cancelarTurno: (id: string, quien: QuienCancela, aviso: { fecha: string; hora: string } | null) => Promise<ResultadoSimple>;
   quitarTurno: (id: string) => Promise<ResultadoSimple>;
+  marcarAsistencia: (id: string, accion: AccionAsistencia, excepcion?: Excepcion | null) => Promise<ResultadoSimple>;
 };
 
 // Una sola rueda con los días (más cómoda en el iPhone que un calendario).
@@ -74,7 +78,7 @@ export function FormularioMover({
     if (!elegido) return;
     iniciar(async () => {
       const r = await acciones.moverTurno(turno.id, fecha, elegido);
-      if (r.ok) alGuardar(`Movido al ${tituloDia(fecha).toLowerCase()} a las ${horaCorta(elegido)} ✓`);
+      if (r.ok) alGuardar(r.aviso ?? `Movido al ${tituloDia(fecha).toLowerCase()} a las ${horaCorta(elegido)} ✓`);
       else setError(r.error);
     });
   }
@@ -249,6 +253,94 @@ export function FormularioCancelar({
             {enviando ? "Cancelando…" : "Confirmar cancelación"}
           </Button>
         )}
+        <Button variant="ghost" onClick={alVolver} disabled={enviando}>
+          Volver
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+/** Excepción "a criterio": otro porcentaje para este turno, con motivo (docs/reglas-cobro.md sección 3). */
+export function FormularioExcepcion({
+  turno,
+  acciones,
+  alVolver,
+  alGuardar,
+}: {
+  turno: TurnoAgenda;
+  acciones: AccionesDeTurno;
+  alVolver: () => void;
+  alGuardar: (aviso: string) => void;
+}) {
+  const [porcentaje, setPorcentaje] = useState(turno.porcentajeManual != null ? String(turno.porcentajeManual) : "");
+  const [motivo, setMotivo] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [enviando, iniciar] = useTransition();
+
+  function guardar() {
+    setError(null);
+    const v = validarExcepcion({ porcentaje: porcentaje.trim() === "" ? Number.NaN : Number(porcentaje), motivo });
+    if (!v.ok) return setError(v.error);
+    iniciar(async () => {
+      const r = await acciones.marcarAsistencia(turno.id, "excepcion", v.datos);
+      if (r.ok) alGuardar(`Excepción ${v.datos.porcentaje}% ✓`);
+      else setError(r.error);
+    });
+  }
+
+  return (
+    <div className="flex flex-col gap-3">
+      <p className="text-sm">
+        Excepción para <strong>{turno.titulo}</strong> ({NOMBRE_ESTADO_TURNO[turno.estado]}): ¿qué porcentaje se cobra?
+      </p>
+      <div className="grid grid-cols-3 gap-2" role="group" aria-label="Porcentajes rápidos">
+        {["0", "50", "100"].map((p) => (
+          <button
+            key={p}
+            type="button"
+            aria-pressed={porcentaje === p}
+            onClick={() => setPorcentaje(p)}
+            className={cn("h-12 rounded-lg border text-sm active:bg-accent", porcentaje === p && "border-primary bg-primary text-primary-foreground")}
+          >
+            {p}%
+          </button>
+        ))}
+      </div>
+      <div className="flex flex-col gap-2">
+        <Label htmlFor="excepcion-porcentaje">Porcentaje</Label>
+        <Input
+          id="excepcion-porcentaje"
+          type="number"
+          inputMode="numeric"
+          min={0}
+          max={100}
+          step={1}
+          value={porcentaje}
+          onChange={(e) => setPorcentaje(e.target.value)}
+        />
+      </div>
+      <div className="flex flex-col gap-2">
+        <Label htmlFor="excepcion-motivo">Motivo</Label>
+        <Input
+          id="excepcion-motivo"
+          value={motivo}
+          onChange={(e) => setMotivo(e.target.value)}
+          placeholder="Ej. Acuerdo con la familia"
+          maxLength={200}
+          autoComplete="off"
+        />
+        <p className="text-xs text-muted-foreground">Sin datos clínicos: este texto se guarda junto al cobro.</p>
+      </div>
+      {error && (
+        <p role="alert" className="text-sm text-destructive">
+          {error}
+        </p>
+      )}
+      <div className="flex flex-col gap-2">
+        <Button size="touch" onClick={guardar} disabled={enviando}>
+          {enviando ? "Guardando…" : "Guardar excepción"}
+        </Button>
         <Button variant="ghost" onClick={alVolver} disabled={enviando}>
           Volver
         </Button>

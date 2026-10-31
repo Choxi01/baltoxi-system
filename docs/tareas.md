@@ -112,6 +112,12 @@ Todas las tareas asumen que Claude Code leyó `CLAUDE.md`. Si no, empezá con "L
 > servidor `aplicarEstadoTurno()` crea o actualiza el cargo con `calcularCargoTurno` y snapshot.
 > Si el tipo cobra en el momento o el plan es por sesión: botón "Cobrar ahora". Mes cerrado: avisar.
 
+> _Dividida. **B3a hecha**: `aplicarEstadoTurno` (`src/lib/cobro/aplicar-estado.ts`) crea, actualiza o borra
+> el cargo con snapshot; enganchada en cancelar, mover (el original reprogramado lleva cargo de Gs. 0) y en
+> Vino / No vino / Volver a agendado / Excepción de la agenda. Mes cerrado: no se cambia nada del turno.
+> **Falta B3b**: pantalla Hoy (reusa `AccionesTurno` de `agenda/acciones-de-turno.tsx`).
+> "Cobrar ahora" pasa a la B4 (necesita registrar pagos)._
+
 #### [ ] B4 Pagos y quién debe
 > Registrar pago (tutor, fecha, monto, efectivo/transferencia, referencia). Pantalla Cobros: lista de
 > saldos (`saldos_tutores`) con atraso según `docs/reglas-cobro.md` sección 5; cuenta de cada tutor con
