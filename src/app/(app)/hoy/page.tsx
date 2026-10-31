@@ -27,8 +27,11 @@ export default async function Pagina() {
   await connection();
   const hoy = hoyEnAsuncion();
   // Igual que la Agenda: crear los turnos fijos que falten (después del login se entra acá).
-  await materializarSeries(hoy);
-  const [turnos, { horasAvisoMinimas }] = await Promise.all([listarTurnosConCobro(hoy, hoy), obtenerDatosParaReservar()]);
+  // Solo los turnos esperan a eso; lo demás se pide a la vez.
+  const [turnos, { horasAvisoMinimas }] = await Promise.all([
+    materializarSeries(hoy).then(() => listarTurnosConCobro(hoy, hoy)),
+    obtenerDatosParaReservar(),
+  ]);
   const resumen = textoResumenHoy(resumenHoy(turnos));
 
   return (

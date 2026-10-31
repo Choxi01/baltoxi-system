@@ -33,17 +33,17 @@ function fechaValida(valor: unknown): string | null {
 // Agenda (A2b + A3a reservar + A3b mover, cancelar y reponer + A3c turnos fijos + B3 asistencia + A4 copiar libres).
 export default async function Pagina({ searchParams }: PageProps<"/agenda">) {
   const parametros = await searchParams;
-  const { duracion, tramos, bloqueos } = await obtenerHorario();
   const hoy = hoyEnAsuncion();
   const fecha = fechaValida(parametros.fecha) ?? hoy;
   const vista = VISTAS.find((v) => v === parametros.vista) ?? null;
 
   // Se trae del mes anterior al siguiente: moverse por la agenda no vuelve a pedir datos.
   const rango = rangoParaCargar(fecha);
-  // Turnos fijos: que estén creadas las próximas 8 semanas (no duplica).
-  await materializarSeries(hoy);
-  const [turnos, paraReservar, paraReponer, plantillaLibres] = await Promise.all([
-    listarTurnosConCobro(rango.desde, rango.hasta),
+  // Todo a la vez (cada espera de más se nota en el iPhone). Solo los turnos esperan a
+  // que estén creados los de los turnos fijos (próximas 8 semanas, una vez por día).
+  const [{ duracion, tramos, bloqueos }, turnos, paraReservar, paraReponer, plantillaLibres] = await Promise.all([
+    obtenerHorario(),
+    materializarSeries(hoy).then(() => listarTurnosConCobro(rango.desde, rango.hasta)),
     obtenerDatosParaReservar(),
     listarParaReponer(hoy),
     obtenerPlantillaLibres(),

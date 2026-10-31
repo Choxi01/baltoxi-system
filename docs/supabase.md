@@ -28,6 +28,16 @@ Después: Deploys > Trigger deploy > Deploy site.
   no tienen políticas, así nadie las lee desde el navegador). Si se importa en el navegador, el build falla.
 - `src/proxy.ts` renueva la sesión en cada pedido (usa `actualizarSesion` de `sesion.ts`).
 
+### Medir la velocidad
+`MEDIR_SUPABASE=1 npm run dev` anota en la terminal cada consulta a Supabase con lo que tardó, por
+ejemplo `[supabase] GET turnos 200 · 182 ms`. Muestra solo el método y la tabla, nunca filtros ni
+datos (regla de oro 7). Funciona solo en desarrollo (`src/lib/supabase/medir.ts`).
+Reglas para que las pantallas sean rápidas:
+- Pedir **a la vez** (`Promise.all`) todo lo que no depende de otra consulta: cada espera en fila
+  suma un viaje completo a la base.
+- `exigirConsultorio()` se puede llamar en cada lectura: se verifica una sola vez por pedido.
+- Cada página nueva que lee datos lleva su `loading.tsx` en la misma carpeta.
+
 ## 4. CLI de Supabase (una vez por compu)
 ```bash
 npx supabase login
