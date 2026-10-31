@@ -1,6 +1,7 @@
 // Bordes del motor de cobro que no están en la tabla de casos. Datos inventados.
 
 import { describe, expect, it } from "vitest";
+import { clasificarCancelacion } from "./cancelacion";
 import { calcularCargoTurno, montoBase, porcentajeAplicable } from "./cargo";
 import { documentoTutor, textoMeses } from "./facturar";
 import { iva10 } from "./formato";
@@ -182,5 +183,14 @@ describe("reportes", () => {
         { clase: "ocupado", estado: "agendado", ...h("12:00", "13:00"), tipoTurno: null },
       ]),
     ).toBe(2);
+  });
+});
+
+describe("clasificarCancelacion", () => {
+  it("usa las horas mínimas del consultorio", () => {
+    const inicio = new Date("2026-11-05T12:00:00Z");
+    const avisoEn = new Date(inicio.getTime() - 30 * 3_600_000);
+    expect(clasificarCancelacion({ inicio, avisoEn, horasAvisoMinimas: 24 })).toBe("ausente_con_aviso");
+    expect(clasificarCancelacion({ inicio, avisoEn, horasAvisoMinimas: 48 })).toBe("aviso_tardio");
   });
 });
