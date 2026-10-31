@@ -45,9 +45,13 @@ type Reposicion = { repone_a: string | null; estado: string };
 
 /**
  * Turnos cancelados por la profesional que todavía no tienen reposición.
- * Si la reposición también se cancela, el turno vuelve a la lista.
+ * Si la familia cancela la reposición, el turno original vuelve a la lista.
+ * Si la reposición la cancela la profesional, la que queda para reponer es la
+ * reposición (ya tiene `reponer = true`): el original no vuelve, así la misma
+ * sesión no aparece dos veces.
  */
 export function pendientesDeReponer<T extends ParaReponer>(cancelados: T[], reposiciones: Reposicion[]): T[] {
-  const repuestos = new Set(reposiciones.filter((r) => r.repone_a && !liberaBloque(r.estado)).map((r) => r.repone_a));
+  const cuentaComoRepuesto = (estado: string) => !liberaBloque(estado) || estado === "cancelado_profesional";
+  const repuestos = new Set(reposiciones.filter((r) => r.repone_a && cuentaComoRepuesto(r.estado)).map((r) => r.repone_a));
   return cancelados.filter((t) => t.reponer && t.estado === "cancelado_profesional" && !repuestos.has(t.id));
 }

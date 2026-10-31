@@ -94,7 +94,7 @@ export async function obtenerDatosParaReservar() {
 export async function listarParaReponer(hoy: string) {
   const consultorio = await exigirConsultorio();
   const supabase = await crearClienteServidor();
-  const { data: cancelados } = await supabase
+  const { data: cancelados, error } = await supabase
     .from("turnos")
     .select("id, estado, reponer, inicio, paciente_id, tipo_turno_id, pacientes!turnos_consultorio_id_paciente_id_fkey(nombre, apellido)")
     .eq("consultorio_id", consultorio.id)
@@ -103,12 +103,14 @@ export async function listarParaReponer(hoy: string) {
     .gte("inicio", inicioDelDiaUtc(inicioDeMes(hoy)))
     .lt("inicio", inicioDelDiaUtc(sumarDias(finDeMes(hoy), 1)))
     .order("inicio");
+  if (error) throw new Error("No se pudo leer la lista para reponer");
   if (!cancelados?.length) return [];
-  const { data: reposiciones } = await supabase
+  const { data: reposiciones, error: errorReposiciones } = await supabase
     .from("turnos")
     .select("repone_a, estado")
     .eq("consultorio_id", consultorio.id)
     .in("repone_a", cancelados.map((c) => c.id));
+  if (errorReposiciones) throw new Error("No se pudo leer la lista para reponer");
   return pendientesDeReponer(cancelados, reposiciones ?? []).map((t) => {
     const { fecha, hora } = aHoraLocal(t.inicio);
     return {

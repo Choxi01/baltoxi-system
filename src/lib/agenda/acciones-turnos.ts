@@ -5,11 +5,10 @@ import { z } from "zod";
 
 import { exigirConsultorio } from "@/lib/auth/servidor";
 import { crearClienteServidor } from "@/lib/supabase/servidor";
-import { aMinutos } from "./bloques";
-import { datosCancelacion } from "./cancelacion";
+import { datosCancelacion, pendientesDeReponer } from "./cancelacion";
 import { listarTurnos, obtenerHorario } from "./datos";
 import { avisosAlAgendar, horaFin, instanteUtc, textosAvisos, validarReserva } from "./reservas";
-import { aHoraLocal, armarDia } from "./turnos";
+import { armarDia } from "./turnos";
 
 export type ResultadoAgendar =
   | { ok: true }
@@ -51,16 +50,24 @@ export async function agendar(entrada: unknown): Promise<ResultadoAgendar> {
       .maybeSingle();
     if (!paciente) return { ok: false, error: "Paciente no encontrado." };
     // Reponer: tiene que ser una sesión de ese paciente que canceló la profesional.
+    // Y que todavía no tenga otra reposición agendada (no reponer dos veces la misma).
     if (datos.repone_a) {
-      const { data: original } = await supabase
-        .from("turnos")
-        .select("id")
-        .eq("consultorio_id", consultorio.id)
-        .eq("id", datos.repone_a)
-        .eq("paciente_id", datos.paciente_id)
-        .eq("estado", "cancelado_profesional")
-        .maybeSingle();
+      const [{ data: original }, { data: reposiciones, error: errorReposiciones }] = await Promise.all([
+        supabase
+          .from("turnos")
+          .select("id, reponer, estado")
+          .eq("consultorio_id", consultorio.id)
+          .eq("id", datos.repone_a)
+          .eq("paciente_id", datos.paciente_id)
+          .eq("estado", "cancelado_profesional")
+          .maybeSingle(),
+        supabase.from("turnos").select("repone_a, estado").eq("consultorio_id", consultorio.id).eq("repone_a", datos.repone_a),
+      ]);
       if (!original) return { ok: false, error: "No se encontró la sesión a reponer." };
+      if (errorReposiciones) return { ok: false, error: NO_SE_PUDO };
+      if (pendientesDeReponer([original], reposiciones ?? []).length === 0) {
+        return { ok: false, error: "Esa sesión ya tiene una reposición agendada." };
+      }
     }
   }
 
@@ -148,7 +155,8 @@ export async function moverTurno(id: string, fecha: string, inicio: string): Pro
   const { supabase, turno } = await turnoAgendado(id);
   if (!turno) return { ok: false, error: "Ese turno ya no se puede mover." };
 
-  const duracion = aMinutos(aHoraLocal(turno.fin).hora) - aMinutos(aHoraLocal(turno.inicio).hora);
+  // Con las fechas completas (no solo la hora), así no falla si el turno cruza la medianoche.
+  const duracion = Math.round((new Date(turno.fin).getTime() - new Date(turno.inicio).getTime()) / 60_000);
   const fin = horaFin(inicio, duracion > 0 ? duracion : 45);
   const { error } = await supabase.rpc("mover_turno", {
     p_turno: id,

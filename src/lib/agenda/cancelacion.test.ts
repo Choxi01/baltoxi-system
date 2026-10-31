@@ -51,6 +51,16 @@ describe("pendientesDeReponer", () => {
     expect(pendientesDeReponer([cancelado("a")], [{ repone_a: "a", estado: "ausente_sin_aviso" }])).toEqual([]);
   });
 
+  it("si la profesional cancela la reposición, queda una sola para reponer (la reposición)", () => {
+    const reposicion = { id: "r", ...datosCancelacion("profesional", { inicio: INICIO }, horasAntes(1), 48) };
+    const pendientes = pendientesDeReponer([cancelado("a"), reposicion], [{ repone_a: "a", estado: reposicion.estado }]);
+    expect(pendientes.map((t) => t.id)).toEqual(["r"]);
+  });
+
+  it("una reposición agendada bloquea reponer de nuevo la misma sesión", () => {
+    expect(pendientesDeReponer([cancelado("a")], [{ repone_a: "a", estado: "agendado" }])).toEqual([]);
+  });
+
   it("ignora los que no son para reponer", () => {
     expect(pendientesDeReponer([{ id: "x", reponer: false, estado: "cancelado_profesional" }], [])).toEqual([]);
   });
