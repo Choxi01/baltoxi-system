@@ -412,7 +412,7 @@ export async function crearSerie(entrada: unknown): Promise<ResultadoAgendar> {
   if (error || !nueva) return { ok: false, error: NO_SE_PUDO };
   const materializado = await materializarSeries(hoy, nueva.id);
   if (materializado.error) return { ok: false, error: materializado.error };
-  revalidatePath("/agenda");
+  revalidar();
   return { ok: true };
 }
 
@@ -450,6 +450,6 @@ export async function finalizarSerie(serieId: string): Promise<ResultadoSimple> 
     .eq("estado", "agendado")
     .gte("inicio", new Date().toISOString());
   if (errorBorrar) return { ok: false, error: NO_SE_PUDO };
-  revalidatePath("/agenda");
+  revalidar();
   return { ok: true };
 }
