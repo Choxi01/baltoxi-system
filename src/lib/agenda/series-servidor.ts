@@ -7,13 +7,30 @@ import { horaFin, instanteUtc } from "./reservas";
 import { fechasDeSerie } from "./series";
 
 /**
+ * Último día en que este servidor completó todas las series de cada consultorio.
+ * La ventana de 8 semanas avanza un día por día: alcanza con hacerlo una vez por día.
+ * Es solo un atajo en memoria: si el servidor se reinicia (o Netlify usa otro), se
+ * vuelve a hacer una vez, sin problema, porque no duplica. Una serie nueva no espera:
+ * `crearSerie` llama con su `serieId` y eso siempre se hace.
+ */
+const completadoEl = new Map<string, string>();
+
+/**
  * Crea los turnos de las próximas 8 semanas de las series activas (o de una).
- * Se llama al abrir la agenda y al crear una serie. No duplica: si el turno
- * de esa serie a esa hora ya existe (aunque se haya movido o cancelado), no
- * se vuelve a crear (unique (serie_id, inicio)).
+ * Se llama al abrir la agenda y Hoy (una vez por día) y al crear una serie. No
+ * duplica: si el turno de esa serie a esa hora ya existe (aunque se haya movido
+ * o cancelado), no se vuelve a crear (unique (serie_id, inicio)).
  */
 export async function materializarSeries(hoy: string, serieId?: string): Promise<{ error: string | null }> {
   const consultorio = await exigirConsultorio();
+  if (!serieId && completadoEl.get(consultorio.id) === hoy) return { error: null };
+  const resultado = await crearTurnosDeSeries(consultorio.id, hoy, serieId);
+  if (!serieId && !resultado.error) completadoEl.set(consultorio.id, hoy);
+  return resultado;
+}
+
+async function crearTurnosDeSeries(consultorioId: string, hoy: string, serieId?: string): Promise<{ error: string | null }> {
+  const consultorio = { id: consultorioId };
   const supabase = await crearClienteServidor();
   let consulta = supabase
     .from("series_turnos")

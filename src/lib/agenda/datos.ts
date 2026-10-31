@@ -76,24 +76,27 @@ export async function listarTurnos(desde: string, hasta: string): Promise<TurnoA
  * La usan las pantallas Agenda y Hoy; las acciones de servidor siguen con `listarTurnos`.
  */
 export async function listarTurnosConCobro(desde: string, hasta: string): Promise<TurnoAgenda[]> {
-  const turnos = await listarTurnos(desde, hasta);
   const consultorio = await exigirConsultorio();
   const supabase = await crearClienteServidor();
 
-  // Cargos de turnos del rango (por fecha, no por lista de ids: el rango puede tener cientos de turnos).
-  const cargosRango = await leerTodo((de, a) =>
-    supabase
-      .from("cargos")
-      .select(
-        "id, turno_id, tutor_id, pacientes!cargos_consultorio_id_paciente_id_fkey(plan_cobro), turnos!cargos_consultorio_id_turno_id_fkey(tipos_turno!turnos_consultorio_id_tipo_turno_id_fkey(cobra_en_el_momento))",
-      )
-      .eq("consultorio_id", consultorio.id)
-      .not("turno_id", "is", null)
-      .gte("fecha", desde)
-      .lte("fecha", hasta)
-      .order("id")
-      .range(de, a),
-  );
+  // Los turnos y los cargos del rango se piden a la vez: no dependen uno del otro.
+  // Cargos por fecha, no por lista de ids: el rango puede tener cientos de turnos.
+  const [turnos, cargosRango] = await Promise.all([
+    listarTurnos(desde, hasta),
+    leerTodo((de, a) =>
+      supabase
+        .from("cargos")
+        .select(
+          "id, turno_id, tutor_id, pacientes!cargos_consultorio_id_paciente_id_fkey(plan_cobro), turnos!cargos_consultorio_id_turno_id_fkey(tipos_turno!turnos_consultorio_id_tipo_turno_id_fkey(cobra_en_el_momento))",
+        )
+        .eq("consultorio_id", consultorio.id)
+        .not("turno_id", "is", null)
+        .gte("fecha", desde)
+        .lte("fecha", hasta)
+        .order("id")
+        .range(de, a),
+    ),
+  ]);
 
   // Primero sin mirar lo pendiente: solo los que podrían llevar el botón.
   const candidatos = new Map(
