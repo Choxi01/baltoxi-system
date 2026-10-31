@@ -4,10 +4,12 @@ import { CalendarDays } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 
+import { MensajeFamilia } from "@/components/app/mensaje-familia";
 import { Button } from "@/components/ui/button";
 import type { AccionTurno } from "@/lib/agenda/asistencia";
 import { horaCorta } from "@/lib/agenda/bloques";
 import type { TurnoAgenda } from "@/lib/agenda/turnos";
+import type { MensajeListo } from "@/lib/mensajes/tipos";
 import { AccionesTurno, FormularioTurno, useAccionesTurno } from "../agenda/acciones-de-turno";
 import type { AccionesDeTurno } from "../agenda/acciones-turno";
 
@@ -26,16 +28,20 @@ export function ListaHoy({
   // El último turno tocado: ahí se muestra el aviso ("Vino ✓") o el error, a la vista en el iPhone.
   const [ultimo, setUltimo] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
+  // Después de mover o cancelar: el WhatsApp para la familia.
+  const [ofrecido, setOfrecido] = useState<MensajeListo | null>(null);
   const turno = useAccionesTurno({ acciones, alGuardar: guardado });
 
-  function guardado(texto: string) {
+  function guardado(texto: string, mensaje?: MensajeListo) {
     turno.cerrar();
     setAviso(texto);
+    setOfrecido(mensaje ?? null);
   }
 
   function alAccion(t: TurnoAgenda, accion: AccionTurno) {
     setUltimo(t.id);
     setAviso(null);
+    setOfrecido(null);
     turno.alAccion(t, accion);
   }
 
@@ -82,6 +88,9 @@ export function ListaHoy({
                 <p role="status" className="text-sm text-muted-foreground">
                   {aviso}
                 </p>
+              )}
+              {ultimo === t.id && ofrecido && (
+                <MensajeFamilia key={`${ofrecido.clave}-${ofrecido.referencia}`} mensaje={ofrecido} alCerrar={() => setOfrecido(null)} />
               )}
             </div>
           </li>

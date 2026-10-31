@@ -7,6 +7,8 @@ import { exigirConsultorio } from "@/lib/auth/servidor";
 import { MES_CERRADO } from "@/lib/cobro/aplicar";
 import { aplicarEstadoTurno } from "@/lib/cobro/aplicar-estado";
 import { hoyEnAsuncion } from "@/lib/fechas";
+import { mensajeParaTurno } from "@/lib/mensajes/datos";
+import type { MensajeListo } from "@/lib/mensajes/tipos";
 import { crearClienteServidor } from "@/lib/supabase/servidor";
 import { ACCIONES_ASISTENCIA, accionesDelTurno, cambiosAsistencia, validarExcepcion, type AccionAsistencia, type Excepcion } from "./asistencia";
 import { diaSemana } from "./bloques";
@@ -122,8 +124,11 @@ const esFecha = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 const esHora = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/);
 const esId = z.uuid();
 
-/** `aviso`: se guardó, pero hay algo para contarle a la profesional. */
-export type ResultadoSimple = { ok: true; aviso?: string } | { ok: false; error: string };
+/**
+ * `aviso`: se guardó, pero hay algo para contarle a la profesional.
+ * `mensaje`: al mover o cancelar, el WhatsApp para avisarle a la familia (B5).
+ */
+export type ResultadoSimple = { ok: true; aviso?: string; mensaje?: MensajeListo } | { ok: false; error: string };
 
 function revalidar() {
   revalidatePath("/agenda");
@@ -131,6 +136,20 @@ function revalidar() {
 }
 
 type Supabase = Awaited<ReturnType<typeof crearClienteServidor>>;
+
+/** El mensaje para la familia; si no se puede armar, el turno se guardó igual y no se ofrece. */
+async function mensajeOfrecido(
+  supabase: Supabase,
+  consultorioId: string,
+  turnoId: string,
+  clave: "cambio_turno" | "cancelacion_turno",
+): Promise<MensajeListo | undefined> {
+  try {
+    return (await mensajeParaTurno(supabase, consultorioId, turnoId, clave)) ?? undefined;
+  } catch {
+    return undefined;
+  }
+}
 
 /** ¿El mes del turno está cerrado? Entonces no se cambia nada del turno (regla de oro 5). */
 async function mesCerrado(supabase: Supabase, consultorioId: string, inicio: string): Promise<boolean> {
@@ -189,7 +208,7 @@ export async function moverTurno(id: string, fecha: string, inicio: string): Pro
   // Con las fechas completas (no solo la hora), así no falla si el turno cruza la medianoche.
   const duracion = Math.round((new Date(turno.fin).getTime() - new Date(turno.inicio).getTime()) / 60_000);
   const fin = horaFin(inicio, duracion > 0 ? duracion : 45);
-  const { error } = await supabase.rpc("mover_turno", {
+  const { data: nuevoId, error } = await supabase.rpc("mover_turno", {
     p_turno: id,
     p_inicio: instanteUtc(fecha, inicio),
     p_fin: instanteUtc(fecha, fin),
@@ -199,8 +218,13 @@ export async function moverTurno(id: string, fecha: string, inicio: string): Pro
   // El original queda 'reprogramado' con su cargo de Gs. 0 (así aparece en el detalle).
   // Si eso falla, el turno se movió igual: el cobro real es el del turno nuevo.
   if (turno.clase === "turno") {
-    const cargo = await aplicarEstadoTurno(supabase, consultorio.id, id);
-    if (!cargo.ok) return { ok: true, aviso: `Movido ✓ pero no se anotó el cobro de Gs. 0 del original: ${cargo.error}` };
+    const [cargo, mensaje] = await Promise.all([
+      aplicarEstadoTurno(supabase, consultorio.id, id),
+      // El mensaje lleva el día y la hora nuevos (el turno nuevo).
+      nuevoId ? mensajeOfrecido(supabase, consultorio.id, nuevoId, "cambio_turno") : undefined,
+    ]);
+    if (!cargo.ok) return { ok: true, mensaje, aviso: `Movido ✓ pero no se anotó el cobro de Gs. 0 del original: ${cargo.error}` };
+    return { ok: true, mensaje };
   }
   return { ok: true };
 }
@@ -252,7 +276,7 @@ export async function cancelarTurno(
     return { ok: false, error: cargo.error };
   }
   revalidar();
-  return { ok: true };
+  return { ok: true, mensaje: await mensajeOfrecido(supabase, consultorio.id, id, "cancelacion_turno") };
 }
 
 // ---------------------------------------------------------------------

@@ -9,12 +9,12 @@ registra en `mensajes_enviados` (para tachar y no repetir).
 
 ## Plantillas (`plantillas_mensaje`, editables en Configuración)
 Variables: `{tutor}` (nombre de pila), `{paciente}` (nombre de pila; si son dos hijos, "Tomi y Sofi"),
-`{dia}` ("martes 4/11"), `{hora}` ("15:00"), `{periodo}` ("octubre", "la semana del 3 al 7/11"),
+`{cuando}` ("mañana" o "el lunes 2/11"), `{dia}` ("martes 4/11"), `{hora}` ("15:00"), `{periodo}` ("octubre", "la semana del 3 al 7/11"),
 `{total}` ("Gs. 1.160.000"), `{datos_pago}`, `{rango}`, `{libres}`, `{link_ficha}`, `{detalle}`.
 
 | Clave | Cuándo aparece en "Mensajes de hoy" |
 |---|---|
-| `recordatorio_sesion` | Turnos `agendado` de mañana (uno por tutor responsable) |
+| `recordatorio_sesion` | Turnos `agendado` del próximo día de atención (según `horarios_atencion`, salteando feriados: el viernes, los del lunes), uno por tutor responsable. El texto usa `{cuando}`, nunca "mañana" fijo. |
 | `monto_periodo` | Plan mensual: el día del ÚLTIMO turno del mes de ese paciente (si tiene hermanos, el último de cualquiera de ellos). Plan semanal: el último turno de la semana. |
 | `recordatorio_pago` | Desde el día `dia_limite_pago + 1`, a tutores con saldo de meses anteriores > 0 (una vez por semana como máximo) |
 | `cambio_turno` / `cancelacion_turno` | Al mover o cancelar (no va a la bandeja: se ofrece en el momento) |

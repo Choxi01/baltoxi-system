@@ -17,9 +17,12 @@ import {
 } from "@/lib/config/acciones";
 import { listarTiposTurno, listarTodasLasTarifas, obtenerConsultorio, obtenerReglas } from "@/lib/config/datos";
 import { hoyEnAsuncion } from "@/lib/fechas";
+import { guardarPlantilla } from "@/lib/mensajes/acciones";
+import { listarPlantillas } from "@/lib/mensajes/datos";
 import { Feriados } from "./feriados";
 import { Horario } from "./horario";
 import { TabConsultorio } from "./tab-consultorio";
+import { TabMensajes } from "./tab-mensajes";
 import { TabReglas } from "./tab-reglas";
 import { TabTarifas } from "./tab-tarifas";
 import { TabTiposTurno } from "./tab-tipos-turno";
@@ -28,12 +31,13 @@ export const metadata: Metadata = { title: "Configuración · Consultorio" };
 
 export default async function Pagina({ searchParams }: PageProps<"/config">) {
   const { pestana } = await searchParams;
-  const [consultorio, tarifas, { duracion, tramos, bloqueos }, tipos, reglas] = await Promise.all([
+  const [consultorio, tarifas, { duracion, tramos, bloqueos }, tipos, reglas, plantillas] = await Promise.all([
     obtenerConsultorio(),
     listarTodasLasTarifas(),
     obtenerHorario(),
     listarTiposTurno(),
     obtenerReglas(),
+    listarPlantillas(),
   ]);
 
   return (
@@ -102,6 +106,11 @@ export default async function Pagina({ searchParams }: PageProps<"/config">) {
                 quitarExcepcion={quitarExcepcion}
               />
             ),
+          },
+          {
+            id: "mensajes",
+            titulo: "Mensajes",
+            contenido: <TabMensajes plantillas={plantillas} guardar={guardarPlantilla} />,
           },
         ]}
       />

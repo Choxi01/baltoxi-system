@@ -21,6 +21,8 @@ import {
 } from "@/lib/agenda/calendario";
 import { diaSemana, horaCorta } from "@/lib/agenda/bloques";
 import { armarDia, type TurnoAgenda } from "@/lib/agenda/turnos";
+import { MensajeFamilia } from "@/components/app/mensaje-familia";
+import type { MensajeListo } from "@/lib/mensajes/tipos";
 import { cn } from "@/lib/utils";
 import { CopiarLibres } from "./copiar-libres";
 import { PanelFila, type DatosPanel, type Reposicion } from "./panel";
@@ -74,6 +76,8 @@ export function Agenda({
   // Fila de la vista Día con el panel de acciones abierto, y el último aviso ("Agendado ✓").
   const [abierta, setAbierta] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
+  // Después de mover o cancelar: el WhatsApp para la familia.
+  const [ofrecido, setOfrecido] = useState<MensajeListo | null>(null);
   const [reponiendo, setReponiendo] = useState<Reposicion | null>(null);
   const [copiando, setCopiando] = useState(false);
 
@@ -208,6 +212,7 @@ export function Agenda({
           {aviso}
         </p>
       )}
+      {ofrecido && <MensajeFamilia key={`${ofrecido.clave}-${ofrecido.referencia}`} mensaje={ofrecido} alCerrar={() => setOfrecido(null)} />}
       {!listo || cargando ? (
         <p className="text-muted-foreground">Cargando…</p>
       ) : (
@@ -229,9 +234,10 @@ export function Agenda({
                     datos={{ ...datosPanel, duracion }}
                     reponiendo={reponiendo}
                     alCerrar={() => setAbierta(null)}
-                    alGuardar={(texto) => {
+                    alGuardar={(texto, mensaje) => {
                       setAbierta(null);
                       setAviso(texto);
+                      setOfrecido(mensaje ?? null);
                       setReponiendo(null);
                     }}
                   />

@@ -9,6 +9,7 @@ import { accionesDelTurno, type AccionAsistencia, type AccionTurno } from "@/lib
 import { horaCorta } from "@/lib/agenda/bloques";
 import { tituloDia } from "@/lib/agenda/calendario";
 import { NOMBRE_ESTADO_TURNO, textoEstado, textoTurno, type TurnoAgenda } from "@/lib/agenda/turnos";
+import type { MensajeListo } from "@/lib/mensajes/tipos";
 import { cn } from "@/lib/utils";
 import { FormularioCancelar, FormularioExcepcion, FormularioMover, type AccionesDeTurno } from "./acciones-turno";
 
@@ -107,7 +108,7 @@ const LISTO: Record<Exclude<AccionAsistencia, "excepcion">, string> = {
  * Mover / Cancelar / Excepción abren su formulario; Vino, No vino, Volver a agendado,
  * Quitar excepción y Quitar se guardan directo.
  */
-export function useAccionesTurno({ acciones, alGuardar }: { acciones: AccionesDeTurno; alGuardar: (aviso: string) => void }) {
+export function useAccionesTurno({ acciones, alGuardar }: { acciones: AccionesDeTurno; alGuardar: (aviso: string, mensaje?: MensajeListo) => void }) {
   const [abierto, setAbierto] = useState<TurnoAbierto | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [guardando, iniciar] = useTransition();
@@ -169,7 +170,7 @@ export function FormularioTurno({
   horasAvisoMinimas: number;
   acciones: AccionesDeTurno;
   alVolver: () => void;
-  alGuardar: (aviso: string) => void;
+  alGuardar: (aviso: string, mensaje?: MensajeListo) => void;
 }) {
   const { accion, turno } = abierto;
   if (accion === "mover") return <FormularioMover turno={turno} hoy={hoy} acciones={acciones} alVolver={alVolver} alGuardar={alGuardar} />;

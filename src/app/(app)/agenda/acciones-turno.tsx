@@ -14,6 +14,7 @@ import { type QuienCancela } from "@/lib/agenda/cancelacion";
 import { instanteUtc } from "@/lib/agenda/reservas";
 import { aHoraLocal, NOMBRE_ESTADO_TURNO, textoTurno, type TurnoAgenda } from "@/lib/agenda/turnos";
 import { clasificarCancelacion } from "@/lib/cobro/cancelacion";
+import type { MensajeListo } from "@/lib/mensajes/tipos";
 import { cn } from "@/lib/utils";
 
 export type AccionesDeTurno = {
@@ -51,7 +52,7 @@ export function FormularioMover({
   hoy: string;
   acciones: AccionesDeTurno;
   alVolver: () => void;
-  alGuardar: (aviso: string) => void;
+  alGuardar: (aviso: string, mensaje?: MensajeListo) => void;
 }) {
   // De hoy a 3 meses (y el día del turno, si ya pasó).
   const dias = fechasEntre(turno.fecha < hoy ? turno.fecha : hoy, sumarDias(hoy, 90));
@@ -80,7 +81,7 @@ export function FormularioMover({
     if (!elegido) return;
     iniciar(async () => {
       const r = await acciones.moverTurno(turno.id, fecha, elegido);
-      if (r.ok) alGuardar(r.aviso ?? `Movido al ${tituloDia(fecha).toLowerCase()} a las ${horaCorta(elegido)} ✓`);
+      if (r.ok) alGuardar(r.aviso ?? `Movido al ${tituloDia(fecha).toLowerCase()} a las ${horaCorta(elegido)} ✓`, r.mensaje);
       else setError(r.error);
     });
   }
@@ -158,7 +159,7 @@ export function FormularioCancelar({
   horasAvisoMinimas: number;
   acciones: AccionesDeTurno;
   alVolver: () => void;
-  alGuardar: (aviso: string) => void;
+  alGuardar: (aviso: string, mensaje?: MensajeListo) => void;
 }) {
   const [quien, setQuien] = useState<QuienCancela | null>(null);
   // Cuándo avisó: arranca en "ahora" (hora de Asunción, redondeada a 15 minutos).
@@ -185,7 +186,7 @@ export function FormularioCancelar({
     if (!quien) return;
     iniciar(async () => {
       const r = await acciones.cancelarTurno(turno.id, quien, quien === "familia" ? { fecha: avisoFecha, hora: avisoHora } : null);
-      if (r.ok) alGuardar(quien === "profesional" ? "Cancelado ✓ Quedó en «Para reponer»." : "Cancelado ✓");
+      if (r.ok) alGuardar(quien === "profesional" ? "Cancelado ✓ Quedó en «Para reponer»." : "Cancelado ✓", r.mensaje);
       else setError(r.error);
     });
   }
@@ -273,7 +274,7 @@ export function FormularioExcepcion({
   turno: TurnoAgenda;
   acciones: AccionesDeTurno;
   alVolver: () => void;
-  alGuardar: (aviso: string) => void;
+  alGuardar: (aviso: string, mensaje?: MensajeListo) => void;
 }) {
   const [porcentaje, setPorcentaje] = useState(turno.porcentajeManual != null ? String(turno.porcentajeManual) : "");
   const [motivo, setMotivo] = useState("");
