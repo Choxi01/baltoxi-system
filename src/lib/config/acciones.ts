@@ -169,18 +169,18 @@ export async function guardarReglas(_anterior: EstadoFormularioConfig, formulari
 
   const consultorio = await exigirConsultorio();
   const supabase = await crearClienteServidor();
-  // Las 6 reglas generales ya existen (las crea crear_consultorio): se actualiza cada una.
-  const resultados = await Promise.all(
-    ESTADOS_CON_REGLA.map((estado) =>
-      supabase
-        .from("reglas_cobro")
-        .update({ porcentaje: validacion.datos[estado] })
-        .eq("consultorio_id", consultorio.id)
-        .eq("estado", estado)
-        .is("paciente_id", null),
-    ),
+  // Una sola operación para las 6 reglas: se guardan todas o ninguna. Si alguna regla general
+  // faltara, se crea (la base no deja repetir consultorio + estado + paciente, con paciente vacío incluido).
+  const { error } = await supabase.from("reglas_cobro").upsert(
+    ESTADOS_CON_REGLA.map((estado) => ({
+      consultorio_id: consultorio.id,
+      estado,
+      paciente_id: null,
+      porcentaje: validacion.datos[estado],
+    })),
+    { onConflict: "consultorio_id,estado,paciente_id" },
   );
-  if (resultados.some((r) => r.error)) return conError(ERROR_GENERAL, formulario);
+  if (error) return conError(ERROR_GENERAL, formulario);
   revalidatePath("/config");
   return listo();
 }

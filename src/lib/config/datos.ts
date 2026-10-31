@@ -53,11 +53,12 @@ export async function listarTiposTurno() {
 export async function obtenerReglas() {
   const consultorio = await exigirConsultorio();
   const supabase = await crearClienteServidor();
-  const [{ data: reglas, error }, { data: pacientes }] = await Promise.all([
+  const [{ data: reglas, error }, { data: pacientes, error: errorPacientes }] = await Promise.all([
     supabase.from("reglas_cobro").select("id, estado, porcentaje, paciente_id").eq("consultorio_id", consultorio.id),
     supabase.from("pacientes").select("id, nombre, apellido, estado").eq("consultorio_id", consultorio.id).order("nombre"),
   ]);
   if (error) throw new Error("No se pudieron leer las reglas de cobro");
+  if (errorPacientes) throw new Error("No se pudieron leer los pacientes");
 
   const nombre = new Map((pacientes ?? []).map((p) => [p.id, `${p.nombre} ${p.apellido ?? ""}`.trim()]));
   const generales: Record<string, number> = {};
