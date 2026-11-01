@@ -17,6 +17,26 @@ datos inventados (pantalla «Hoy»).
 | B | **Precisión** | Suizo / hospitalario: denso, menú azul noche, números mono | IBM Plex Sans + Plex Mono | Cobalto |
 | C | **Cercano** | Cálido y muy legible, ideal terapia infantil sin ser infantil | Bricolage Grotesque + Atkinson Hyperlegible | Terracota + salvia |
 | D | **Grafito** | Premium, pensado primero para la noche, detalles técnicos | Schibsted Grotesk + JetBrains Mono | Esmeralda |
+| E | **Sereno turquesa** ✅ | Variante de A pedida por la clienta: turquesa y aire clásico (filetes dobles, versalitas) | Newsreader + Public Sans | Turquesa |
+
+## Elegido: E · Sereno turquesa (ya aplicado en la app)
+
+Votación: A «Me encanta»; la clienta pidió turquesa y un estilo más clásico, menos «dashboard».
+Siempre de día, densidad cómoda, esquinas del estilo.
+
+- `src/app/tema-sereno.css` — colores, fuentes y detalles del tema (solo actúa con `data-tema="sereno"`).
+- `src/lib/tema.ts` — **la palabra que elige el tema**.
+- `src/app/layout.tsx` — carga las fuentes (Newsreader y Public Sans con `next/font`) y pone `data-tema`.
+- `src/app/globals.css` — importa el tema; la fuente del texto sale de `--fuente-texto`.
+
+### Cómo volver al estilo anterior (el básico)
+
+1. Abrí `src/lib/tema.ts`.
+2. Cambiá `export const TEMA: Tema = "sereno";` por `export const TEMA: Tema = "basico";`
+3. Guardá, hacé commit y push. Netlify publica la app con el estilo original (blanco y negro).
+
+Para volver al turquesa, poné `"sereno"` de nuevo. Si algún día lo quieren sacar del todo:
+`git revert` del commit «Tema Sereno turquesa».
 
 ## Cómo se pasa a la app (cuando elijan)
 

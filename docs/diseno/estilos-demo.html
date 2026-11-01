@@ -127,6 +127,27 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
   --shadow:none; --glow:none;
 }
 
+
+/* E · SERENO TURQUESA — pedido de la clienta: turquesa, aspecto clásico (no "dashboard") */
+.app[data-estilo=turquesa]{
+  --font-display:"Newsreader",Georgia,serif; --font-body:"Public Sans",system-ui,sans-serif; --font-num:"Newsreader",Georgia,serif;
+  --display-weight:500; --num-size:38px; --radius:8px; --radius-sm:6px; --pad:30px; --gap:20px;
+}
+.app[data-estilo=turquesa][data-modo=dia]{
+  --bg:#F7F5EF; --surface:#FFFFFF; --surface-2:#FAF9F5; --ink:#1C2B2B; --ink-2:#5B6867; --ink-3:#8E9897; --line:#E0DBCF;
+  --accent:#0B7A78; --accent-ink:#fff; --accent-soft:#DDF0EC;
+  --ok:#2F7A4B; --ok-soft:#E3F1E6; --warn:#9A6512; --warn-soft:#F6ECD8; --bad:#A93A2F; --bad-soft:#F6E3E0;
+  --side-bg:#F0EDE4; --side-ink:#1C2B2B; --side-muted:#5B6867; --side-active:#FFFFFF; --side-line:#E0DBCF;
+  --shadow:none; --glow:none;
+}
+.app[data-estilo=turquesa][data-modo=noche]{
+  --bg:#0E1716; --surface:#142120; --surface-2:#182625; --ink:#E9E6DE; --ink-2:#9FAEAB; --ink-3:#6C7A78; --line:#25403E;
+  --accent:#4FC4BD; --accent-ink:#04201F; --accent-soft:#143634;
+  --ok:#7FCB97; --ok-soft:#173022; --warn:#E3B464; --warn-soft:#33291A; --bad:#EE8B7F; --bad-soft:#3A1F1C;
+  --side-bg:#0B1312; --side-ink:#E9E6DE; --side-muted:#9FAEAB; --side-active:#182625; --side-line:#1E2E2D;
+  --shadow:none; --glow:none;
+}
+
 /* B · PRECISIÓN — suizo, denso, cobalto, menú lateral oscuro */
 .app[data-estilo=precision]{
   --font-display:"IBM Plex Sans",system-ui,sans-serif; --font-body:"IBM Plex Sans",system-ui,sans-serif; --font-num:"IBM Plex Mono",ui-monospace,monospace;
@@ -303,6 +324,17 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 .app[data-estilo=sereno] .kpi .lab{text-transform:none}
 .app[data-estilo=sereno] .bloque-h h2{font-size:20px}
 .app[data-estilo=sereno] .turno .hora{font-size:17px}
+/* Sereno turquesa: aire de libro de registro — filetes dobles, versalitas, raya turquesa en el menú */
+.app[data-estilo=turquesa] .cabeza h1 em{font-style:italic;color:var(--accent)}
+.app[data-estilo=turquesa] .cabeza{padding-bottom:16px;border-bottom:3px double var(--line)}
+.app[data-estilo=turquesa] .bloque-h{border-bottom:1px solid var(--line);margin-bottom:6px}
+.app[data-estilo=turquesa] .bloque-h h2{font-size:20px}
+.app[data-estilo=turquesa] .kpi .lab{font-variant:small-caps;text-transform:lowercase;letter-spacing:.06em;font-size:14px}
+.app[data-estilo=turquesa] .kpi{border-top:3px double var(--line)}
+.app[data-estilo=turquesa] .nav a.on{box-shadow:inset 3px 0 0 var(--accent);border-radius:0 var(--radius-sm) var(--radius-sm) 0}
+.app[data-estilo=turquesa] .turno .hora{font-size:17px}
+.app[data-estilo=turquesa] .chip{border-radius:4px}
+.app[data-estilo=turquesa] .marca .logo{border-radius:50%;font-family:var(--font-display);font-style:italic;font-weight:500}
 /* Precisión: etiquetas en versalitas, números monoespaciados, todo más compacto */
 .app[data-estilo=precision] .kpi .lab,.app[data-estilo=precision] .bloque-h h2{text-transform:uppercase;letter-spacing:.07em;font-size:12px;font-weight:600;color:var(--ink-2);font-family:var(--font-body)}
 .app[data-estilo=precision] .cabeza h1{font-size:28px}
@@ -409,6 +441,7 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
       <button data-v="precision">B · Precisión</button>
       <button data-v="cercano">C · Cercano</button>
       <button data-v="grafito">D · Grafito</button>
+      <button data-v="turquesa">E · Sereno turquesa</button>
       <button data-v="comparar">Comparar todos</button>
     </div>
   </div>
@@ -530,6 +563,11 @@ const ESTILOS = {
     fuentes:"Schibsted Grotesk + JetBrains Mono (etiquetas y horas)", forma:"Esquinas medias (12 px), brillos sutiles, bordes de 1 px",
     ideal:"Quien usa la app mucho de noche o quiere una imagen muy actual",
     colores:{dia:["#FAFAF9","#0A8A5F","#0C0D0F","#E7E7E5","#B26B00"],noche:["#0A0B0D","#34D399","#EDEEF0","#16181D","#FBBF5C"]}},
+  turquesa:{letra:"E",nombre:"Sereno turquesa",tag:"Clásico · pedido de la clienta",
+    desc:"Variante de A con el turquesa que le gusta a la clienta y un aire más clásico, menos «dashboard»: filetes dobles como en un libro de registro, etiquetas en versalitas, esquinas más rectas y una raya turquesa en la sección activa. Pensado siempre de día. Es el que ya está aplicado en la app.",
+    fuentes:"Newsreader (títulos y números) + Public Sans (texto)", forma:"Esquinas rectas (8 px), filetes dobles, sin sombras",
+    ideal:"Consultorio con trayectoria, imagen seria y tradicional",
+    colores:{dia:["#F7F5EF","#0B7A78","#DDF0EC","#1C2B2B","#F0EDE4"],noche:["#0E1716","#4FC4BD","#143634","#E9E6DE","#0B1312"]}},
 };
 
 /* ---------- Armado de la pantalla «Hoy» ---------- */
@@ -537,7 +575,7 @@ function spark(){
   return `<svg class="spark" viewBox="0 0 96 34" fill="none"><path d="M1 28 L14 24 L27 26 L40 17 L53 19 L66 11 L79 13 L95 4" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M1 28 L14 24 L27 26 L40 17 L53 19 L66 11 L79 13 L95 4 V34 H1Z" fill="var(--accent)" opacity=".10"/></svg>`;
 }
 function app(estilo, modo){
-  const titulo = estilo === "sereno" ? "Buenas tardes, <em>Andrea</em>" : "Hoy";
+  const titulo = (estilo === "sereno" || estilo === "turquesa") ? "Buenas tardes, <em>Andrea</em>" : "Hoy";
   return `
 <div class="app entra" data-estilo="${estilo}" data-modo="${modo}">
   <aside class="side">
@@ -604,10 +642,10 @@ function app(estilo, modo){
 }
 
 /* ---------- Estado de la demo ---------- */
-const S = {estilo:"sereno", modo:"dia", equipo:"mac"};
+const S = {estilo:"turquesa", modo:"dia", equipo:"mac"};
 try{ Object.assign(S, JSON.parse(localStorage.getItem("baltoxi-demo")||"{}")); }catch(e){}
 const H = location.hash.slice(1);
-if (["sereno","precision","cercano","grafito","comparar"].includes(H)) S.estilo = H;
+if (["sereno","precision","cercano","grafito","turquesa","comparar"].includes(H)) S.estilo = H;
 if (["dia","noche"].includes(new URLSearchParams(location.search).get("modo"))) S.modo = new URLSearchParams(location.search).get("modo");
 if (["mac","ipad","iphone"].includes(new URLSearchParams(location.search).get("equipo"))) S.equipo = new URLSearchParams(location.search).get("equipo");
 
