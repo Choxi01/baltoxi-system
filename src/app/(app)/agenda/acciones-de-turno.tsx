@@ -186,10 +186,10 @@ export function FormularioTurno({
   hoy: string;
   horasAvisoMinimas: number;
   acciones: AccionesDeTurno;
-  /** Mover, Cancelar y Excepción se guardan de forma optimista. */
+  /** Mover, Cancelar, Excepción y Cobrar ahora se guardan de forma optimista. */
   ejecutar: Ejecutar;
   alVolver: () => void;
-  /** Cobrar ahora todavía espera al servidor. */
+  /** Lo que todavía espera al servidor. */
   alGuardar: (aviso: string, mensaje?: MensajeListo) => void;
 }) {
   const { accion, turno } = abierto;
@@ -203,6 +203,16 @@ export function FormularioTurno({
         montoInicial={turno.cobro.pendiente}
         deudaAnterior={turno.cobro.deudaAnterior}
         registrarPago={acciones.registrarPago}
+        enviarOptimista={(entrada, aviso) =>
+          ejecutar(
+            { tipo: "cobrado", id: turno.id },
+            async () => {
+              const r = await acciones.registrarPago(entrada);
+              return r.ok ? { ok: true } : { ok: false, error: r.error };
+            },
+            aviso,
+          )
+        }
         alVolver={alVolver}
         alGuardar={alGuardar}
       />

@@ -10,7 +10,8 @@ import { Select } from "@/components/ui/select";
 import type { ResultadoAgendar } from "@/lib/agenda/acciones-turnos";
 import { horaCorta } from "@/lib/agenda/bloques";
 import { tituloDia } from "@/lib/agenda/calendario";
-import { avisosAlAgendar, horaFin, textosAvisos } from "@/lib/agenda/reservas";
+import { turnoNuevo } from "@/lib/agenda/optimista";
+import { avisosAlAgendar, horaFin, textosAvisos, validarReserva } from "@/lib/agenda/reservas";
 import { fechasParaHasta } from "@/lib/agenda/series";
 import { type FilaDia, type TurnoAgenda } from "@/lib/agenda/turnos";
 import type { MensajeListo } from "@/lib/mensajes/tipos";
@@ -136,6 +137,7 @@ export function PanelFila({
           inicio={fila.inicio}
           turnosDelDia={turnosDelDia}
           datos={datos}
+          ejecutar={ejecutar}
           alVolver={() => setModo("menu")}
           alGuardar={alGuardar}
         />
@@ -151,6 +153,7 @@ function FormularioAgendar({
   inicio,
   turnosDelDia,
   datos,
+  ejecutar,
   alVolver,
   alGuardar,
 }: {
@@ -160,7 +163,10 @@ function FormularioAgendar({
   inicio: string;
   turnosDelDia: TurnoAgenda[];
   datos: DatosPanel;
+  /** Reservar y Marcar ocupado se guardan de forma optimista. */
+  ejecutar: Ejecutar;
   alVolver: () => void;
+  /** El turno fijo todavía espera al servidor (crea 8 semanas de turnos). */
   alGuardar: (aviso: string) => void;
 }) {
   const tiposPaciente = datos.tipos.filter((t) => t.requiere_paciente);
@@ -201,19 +207,42 @@ function FormularioAgendar({
         : paciente
           ? { ...base, clase: "turno", paciente_id: paciente.id, tipo_turno_id: tipoId, repone_a: reponiendo?.id ?? null }
           : { ...base, clase: "reservado", nombre_reserva: nombreSuelto ?? "", tipo_turno_id: tipoId || null };
-    iniciar(async () => {
-      const r =
-        modo === "fijo" && paciente
-          ? await datos.acciones.crearSerie({ ...base, paciente_id: paciente.id, tipo_turno_id: tipoId, hasta: hasta || null })
-          : await datos.agendar(entrada);
-      if (r.ok) {
-        alGuardar(
-          modo === "ocupado" ? "Marcado como ocupado ✓" : modo === "fijo" ? "Turno fijo creado ✓" : reponiendo ? "Sesión repuesta ✓" : "Agendado ✓",
-        );
-      }
-      else if ("confirmar" in r) setConfirmarServidor(r.confirmar);
-      else setError(r.error);
+    if (modo === "fijo") {
+      // El turno fijo espera al servidor: crea los turnos de las próximas 8 semanas.
+      if (!paciente) return;
+      iniciar(async () => {
+        const r = await datos.acciones.crearSerie({ ...base, paciente_id: paciente.id, tipo_turno_id: tipoId, hasta: hasta || null });
+        if (r.ok) alGuardar("Turno fijo creado ✓");
+        else if ("confirmar" in r) setConfirmarServidor(r.confirmar);
+        else setError(r.error);
+      });
+      return;
+    }
+
+    // Reservar y Marcar ocupado: se ve al instante. Lo que falte se avisa acá, antes de cerrar.
+    const validacion = validarReserva(entrada);
+    if (!validacion.ok) return setError(validacion.error);
+    const nuevo = turnoNuevo({
+      id: `nuevo-${crypto.randomUUID()}`,
+      fecha,
+      inicio,
+      fin,
+      clase: entrada.clase as "turno" | "reservado" | "ocupado",
+      paciente,
+      nombreReserva: nombreSuelto ?? "",
+      motivo,
+      tipo,
     });
+    ejecutar(
+      { tipo: "agregar", turno: nuevo },
+      async () => {
+        const r = await datos.agendar(entrada);
+        // Otro dispositivo agendó en ese horario justo antes: no se agenda encima sin preguntar.
+        if (!r.ok && "confirmar" in r) return { ok: false, error: `${r.confirmar} Abrí el horario de nuevo si querés agendar igual.` };
+        return r;
+      },
+      modo === "ocupado" ? "Marcado como ocupado ✓" : reponiendo ? "Sesión repuesta ✓" : "Agendado ✓",
+    );
   }
 
   return (
