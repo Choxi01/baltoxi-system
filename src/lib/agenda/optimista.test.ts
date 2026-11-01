@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Tramo } from "./bloques";
-import { aplicarCambio, idMovido } from "./optimista";
+import { aplicarCambio, idMovido, turnoNuevo } from "./optimista";
 import { armarDia, type TurnoAgenda } from "./turnos";
 
 // Datos inventados.
@@ -101,5 +101,42 @@ describe("aplicarCambio", () => {
     expect(antes).toEqual(copia);
     expect(despues[1]).toBe(antes[1]);
     expect(aplicarCambio(antes, { tipo: "quitar", id: "otro" })).toBe(antes);
+  });
+});
+
+describe("Reservar y Cobrar ahora", () => {
+  const SESION = { id: "tipo-1", nombre: "Sesión", modalidad: "consultorio" };
+
+  it("turnoNuevo arma el turno como lo devuelve el servidor", () => {
+    expect(
+      turnoNuevo({ id: "n1", fecha: LUNES, inicio: "09:45", fin: "10:30", clase: "turno", paciente: { id: "p1", nombre: "Paciente", apellido: "Inventado" }, tipo: SESION }),
+    ).toMatchObject({ clase: "turno", estado: "agendado", titulo: "Paciente Inventado", tipo: "Sesión", tipoId: "tipo-1", pacienteId: "p1", modalidad: "consultorio", serieId: null });
+    expect(turnoNuevo({ id: "n2", fecha: LUNES, inicio: "09:45", fin: "10:30", clase: "reservado", nombreReserva: "Nombre Suelto", tipo: null })).toMatchObject({
+      titulo: "Nombre Suelto",
+      tipo: null,
+      pacienteId: null,
+    });
+    // Un ocupado no lleva tipo aunque el formulario tenga uno elegido.
+    expect(turnoNuevo({ id: "n3", fecha: LUNES, inicio: "09:45", fin: "10:30", clase: "ocupado", motivo: "Trámite", tipo: SESION })).toMatchObject({
+      titulo: "Trámite",
+      tipo: null,
+      tipoId: null,
+      modalidad: null,
+    });
+  });
+
+  it("Reservar: el turno aparece en su lugar y ocupa el bloque", () => {
+    const antes = [turno("a", "09:00"), turno("b", "10:30")];
+    const nuevo = turnoNuevo({ id: "n1", fecha: LUNES, inicio: "09:45", fin: "10:30", clase: "reservado", nombreReserva: "Nombre Suelto" });
+    const despues = aplicarCambio(antes, { tipo: "agregar", turno: nuevo });
+    expect(despues.map((t) => t.id)).toEqual(["a", "n1", "b"]);
+    expect(despues[1].guardando).toBe(true);
+    expect(libres(antes)).toBe(1);
+    expect(libres(despues)).toBe(0);
+  });
+
+  it("Cobrar ahora: el botón se va y el turno queda guardando, sin cambiar el estado", () => {
+    const antes = [turno("a", "09:00", { estado: "presente", cobro: { tutorId: "t", tutorNombre: "Tutor Inventado", pendiente: 290000, deudaAnterior: 0 } })];
+    expect(aplicarCambio(antes, { tipo: "cobrado", id: "a" })[0]).toMatchObject({ estado: "presente", cobro: undefined, guardando: true });
   });
 });

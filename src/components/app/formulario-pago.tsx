@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import type { ResultadoPago } from "@/lib/cobro/acciones-pagos";
 import { formatoGs, leerGs } from "@/lib/cobro/formato";
-import { MEDIOS_PAGO, REFERENCIA_MAX, type ErroresPago, type MedioRegistrable } from "@/lib/cobro/pago";
+import { MEDIOS_PAGO, REFERENCIA_MAX, validarPago, type ErroresPago, type MedioRegistrable } from "@/lib/cobro/pago";
 import { cn } from "@/lib/utils";
 
 export type TutorParaPago = { id: string; nombre: string };
@@ -28,6 +28,7 @@ export function FormularioPago({
   deudaAnterior = 0,
   titulo,
   registrarPago,
+  enviarOptimista,
   alVolver,
   alGuardar,
 }: {
@@ -38,6 +39,12 @@ export function FormularioPago({
   deudaAnterior?: number;
   titulo?: string;
   registrarPago: (entrada: unknown) => Promise<ResultadoPago>;
+  /**
+   * Opcional (Cobrar ahora en la agenda y Hoy): no espera al servidor. El formulario valida
+   * acá (misma validación que el servidor) y le pasa el pago a la pantalla, que lo guarda
+   * de forma optimista. Sin esto, espera la respuesta (pantallas de Cobros).
+   */
+  enviarOptimista?: (entrada: unknown, aviso: string) => void;
   alVolver: () => void;
   alGuardar: (aviso: string) => void;
 }) {
@@ -56,8 +63,19 @@ export function FormularioPago({
   function guardar() {
     setError(null);
     setErrores({});
+    const entrada = { tutor_id: tutorId, fecha, monto, medio, referencia };
+    if (enviarOptimista) {
+      const v = validarPago(entrada, hoy);
+      if (!v.ok) {
+        setError("Revisá los datos del pago.");
+        setErrores(v.errores);
+        return;
+      }
+      enviarOptimista(entrada, `Pago de ${formatoGs(v.datos.monto_gs)} registrado ✓`);
+      return;
+    }
     iniciar(async () => {
-      const r = await registrarPago({ tutor_id: tutorId, fecha, monto, medio, referencia });
+      const r = await registrarPago(entrada);
       if (r.ok) alGuardar(`Pago de ${formatoGs(leerGs(monto) ?? 0)} registrado ✓`);
       else {
         setError(r.error);

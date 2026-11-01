@@ -19,7 +19,11 @@ export type CambioOptimista =
   /** Quitar un reservado u ocupado: el horario queda libre. */
   | { tipo: "quitar"; id: string }
   /** Mover a otro día u hora. */
-  | { tipo: "mover"; id: string; fecha: string; inicio: string; fin: string };
+  | { tipo: "mover"; id: string; fecha: string; inicio: string; fin: string }
+  /** Reservar o marcar ocupado: el turno nuevo (armado con `turnoNuevo`). */
+  | { tipo: "agregar"; turno: TurnoAgenda }
+  /** Cobrar ahora: el botón desaparece (el pago se registró). */
+  | { tipo: "cobrado"; id: string };
 
 /** Id del turno nuevo que se muestra mientras se mueve uno con paciente (el real lo da la base). */
 export const idMovido = (id: string) => `movido-${id}`;
@@ -30,6 +34,7 @@ export const idMovido = (id: string) => `movido-${id}`;
  * "Cobrar ahora" puede cambiar, así que el botón vuelve cuando contesta el servidor.
  */
 export function aplicarCambio(turnos: TurnoAgenda[], cambio: CambioOptimista): TurnoAgenda[] {
+  if (cambio.tipo === "agregar") return ordenar([...turnos, { ...cambio.turno, guardando: true }]);
   const turno = turnos.find((t) => t.id === cambio.id);
   if (!turno) return turnos;
   const marcado = (datos: Partial<TurnoAgenda>): TurnoAgenda => ({ ...turno, ...datos, cobro: undefined, guardando: true });
@@ -47,6 +52,8 @@ export function aplicarCambio(turnos: TurnoAgenda[], cambio: CambioOptimista): T
       return reemplazar(marcado({ estado: cambio.estado }));
     case "quitar":
       return turnos.filter((t) => t.id !== turno.id);
+    case "cobrado":
+      return reemplazar(marcado({}));
     case "mover": {
       const lugar = { fecha: cambio.fecha, inicio: cambio.inicio, fin: cambio.fin };
       if (turno.clase !== "turno") return ordenar(reemplazar(marcado(lugar)));
@@ -69,3 +76,43 @@ export function aplicarCambio(turnos: TurnoAgenda[], cambio: CambioOptimista): T
 
 const ordenar = (turnos: TurnoAgenda[]) =>
   [...turnos].sort((a, b) => a.fecha.localeCompare(b.fecha) || a.inicio.localeCompare(b.inicio));
+
+/**
+ * El turno que se muestra al Reservar o Marcar ocupado mientras se guarda, con los mismos
+ * datos que después devuelve el servidor (listarTurnos): título = nombre del paciente,
+ * nombre suelto o motivo; un ocupado no tiene tipo de turno.
+ */
+export function turnoNuevo(datos: {
+  id: string;
+  fecha: string;
+  inicio: string;
+  fin: string;
+  clase: "turno" | "reservado" | "ocupado";
+  paciente?: { id: string; nombre: string; apellido: string | null } | null;
+  nombreReserva?: string;
+  motivo?: string;
+  tipo?: { id: string; nombre: string; modalidad: string } | null;
+}): TurnoAgenda {
+  const tipo = datos.clase === "ocupado" ? null : (datos.tipo ?? null);
+  const titulo =
+    datos.clase === "turno"
+      ? `${datos.paciente?.nombre ?? ""} ${datos.paciente?.apellido ?? ""}`.trim()
+      : datos.clase === "reservado"
+        ? (datos.nombreReserva ?? "")
+        : (datos.motivo ?? "");
+  return {
+    id: datos.id,
+    clase: datos.clase,
+    estado: "agendado",
+    fecha: datos.fecha,
+    inicio: datos.inicio,
+    fin: datos.fin,
+    titulo,
+    tipo: tipo?.nombre ?? null,
+    serieId: null,
+    tipoId: tipo?.id ?? null,
+    pacienteId: datos.clase === "turno" ? (datos.paciente?.id ?? null) : null,
+    modalidad: tipo?.modalidad ?? null,
+    porcentajeManual: null,
+  };
+}
