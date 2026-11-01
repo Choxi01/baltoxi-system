@@ -11,6 +11,7 @@ import type { TurnoAgenda } from "@/lib/agenda/turnos";
 import type { MensajeListo } from "@/lib/mensajes/tipos";
 import { AccionesTurno, FormularioTurno, useAccionesTurno, type AccionTarjeta } from "../agenda/acciones-de-turno";
 import type { AccionesDeTurno } from "../agenda/acciones-turno";
+import { useTurnosOptimistas } from "../agenda/turnos-optimistas";
 
 // Turnos de hoy con las mismas acciones que la agenda, siempre a mano (sin tener que abrir el bloque).
 export function ListaHoy({
@@ -29,7 +30,28 @@ export function ListaHoy({
   const [aviso, setAviso] = useState<string | null>(null);
   // Después de mover o cancelar: el WhatsApp para la familia.
   const [ofrecido, setOfrecido] = useState<MensajeListo | null>(null);
-  const turno = useAccionesTurno({ acciones, alGuardar: guardado });
+  // Si el servidor no pudo guardar un cambio (el turno ya volvió a como estaba).
+  const [errorAccion, setErrorAccion] = useState<string | null>(null);
+  // Lo que se ve: los turnos del servidor más los cambios que se están guardando.
+  const optimista = useTurnosOptimistas(turnos, {
+    // Se llama al tocar (no al dibujar), cuando `turno` ya existe: cierra el formulario abierto.
+    enviar: (texto) => {
+      turno.cerrar();
+      setErrorAccion(null);
+      setAviso(texto);
+      setOfrecido(null);
+    },
+    aviso: setAviso,
+    mensaje: setOfrecido,
+    error: (texto) => {
+      setAviso(null);
+      setOfrecido(null);
+      setErrorAccion(texto);
+    },
+  });
+  const turno = useAccionesTurno({ acciones, ejecutar: optimista.ejecutar, alGuardar: guardado });
+  // Al mover un turno a otro día, el nuevo no es de hoy.
+  const deHoy = optimista.turnos.filter((t) => t.fecha === hoy);
 
   function guardado(texto: string, mensaje?: MensajeListo) {
     turno.cerrar();
@@ -41,10 +63,11 @@ export function ListaHoy({
     setUltimo(t.id);
     setAviso(null);
     setOfrecido(null);
+    setErrorAccion(null);
     turno.alAccion(t, accion);
   }
 
-  if (turnos.length === 0) {
+  if (deHoy.length === 0) {
     return (
       <div className="flex flex-col items-center gap-4 rounded-lg border border-dashed px-4 py-10 text-center">
         <p className="text-muted-foreground">No tenés turnos hoy</p>
@@ -60,7 +83,7 @@ export function ListaHoy({
   return (
     <div className="flex flex-col gap-4">
       <ol className="flex flex-col gap-3">
-        {turnos.map((t) => (
+        {deHoy.map((t) => (
           <li key={t.id} className="flex gap-3">
             <span className="w-12 shrink-0 pt-3 text-right text-sm tabular-nums text-muted-foreground">{horaCorta(t.inicio)}</span>
             <div className="flex min-w-0 flex-1 flex-col gap-2">
@@ -71,6 +94,7 @@ export function ListaHoy({
                     hoy={hoy}
                     horasAvisoMinimas={horasAvisoMinimas}
                     acciones={acciones}
+                    ejecutar={optimista.ejecutar}
                     alVolver={turno.cerrar}
                     alGuardar={guardado}
                   />
@@ -78,9 +102,9 @@ export function ListaHoy({
               ) : (
                 <AccionesTurno turno={t} hoy={hoy} ocupado={turno.guardando} alAccion={(a) => alAccion(t, a)} />
               )}
-              {ultimo === t.id && turno.error && (
+              {ultimo === t.id && (turno.error || errorAccion) && (
                 <p role="alert" className="text-sm text-destructive">
-                  {turno.error}
+                  {turno.error ?? errorAccion}
                 </p>
               )}
               {ultimo === t.id && aviso && (

@@ -25,6 +25,7 @@ import { MensajeFamilia } from "@/components/app/mensaje-familia";
 import type { MensajeListo } from "@/lib/mensajes/tipos";
 import { cn } from "@/lib/utils";
 import { CopiarLibres } from "./copiar-libres";
+import { useTurnosOptimistas } from "./turnos-optimistas";
 import { PanelFila, type DatosPanel, type Reposicion } from "./panel";
 import { VistaDia, VistaMes, VistaSemana } from "./vistas";
 
@@ -80,12 +81,32 @@ export function Agenda({
   const [ofrecido, setOfrecido] = useState<MensajeListo | null>(null);
   const [reponiendo, setReponiendo] = useState<Reposicion | null>(null);
   const [copiando, setCopiando] = useState(false);
+  // Si el servidor no pudo guardar un cambio (el turno ya volvió a como estaba).
+  const [errorAccion, setErrorAccion] = useState<string | null>(null);
+
+  // Lo que se ve: los turnos del servidor más los cambios que se están guardando.
+  const { turnos: turnosVista, ejecutar } = useTurnosOptimistas(turnos, {
+    enviar: (texto) => {
+      setAbierta(null);
+      setErrorAccion(null);
+      setAviso(texto);
+      setOfrecido(null);
+      setReponiendo(null);
+    },
+    aviso: setAviso,
+    mensaje: setOfrecido,
+    error: (texto) => {
+      setAviso(null);
+      setOfrecido(null);
+      setErrorAccion(texto);
+    },
+  });
 
   // Todos los días cargados, armados una sola vez: cambiar de vista o de día es instantáneo.
   const dias = useMemo(() => {
-    const mapa = new Map(fechasEntre(rango.desde, rango.hasta).map((f) => [f, armarDia(f, tramos, duracion, bloqueos, turnos)]));
+    const mapa = new Map(fechasEntre(rango.desde, rango.hasta).map((f) => [f, armarDia(f, tramos, duracion, bloqueos, turnosVista)]));
     return mapa;
-  }, [rango.desde, rango.hasta, tramos, duracion, bloqueos, turnos]);
+  }, [rango.desde, rango.hasta, tramos, duracion, bloqueos, turnosVista]);
   const visibles = useMemo(() => diasVisibles([...new Set(tramos.map((t) => t.dia_semana))]), [tramos]);
 
   /** La vista que se ve de verdad (resuelve "auto" según el ancho de la pantalla). */
@@ -94,6 +115,7 @@ export function Agenda({
   function ir(nuevaFecha: string, nuevaVista: VistaElegida = vista, filaAbierta: string | null = null) {
     setAbierta(filaAbierta);
     setAviso(null);
+    setErrorAccion(null);
     setFecha(nuevaFecha);
     setVista(nuevaVista);
     const parametros = new URLSearchParams({ fecha: nuevaFecha });
@@ -212,6 +234,11 @@ export function Agenda({
           {aviso}
         </p>
       )}
+      {errorAccion && (
+        <p role="alert" className="text-center text-sm text-destructive">
+          {errorAccion}
+        </p>
+      )}
       {ofrecido && <MensajeFamilia key={`${ofrecido.clave}-${ofrecido.referencia}`} mensaje={ofrecido} alCerrar={() => setOfrecido(null)} />}
       {!listo || cargando ? (
         <p className="text-muted-foreground">Cargando…</p>
@@ -224,15 +251,17 @@ export function Agenda({
                 abierta={abierta}
                 alTocar={(clave) => {
                   setAviso(null);
+                  setErrorAccion(null);
                   setAbierta(abierta === clave ? null : clave);
                 }}
                 panel={(fila) => (
                   <PanelFila
                     fecha={dia.fecha}
                     fila={fila}
-                    turnosDelDia={turnos.filter((t) => t.fecha === dia.fecha)}
+                    turnosDelDia={turnosVista.filter((t) => t.fecha === dia.fecha)}
                     datos={{ ...datosPanel, duracion }}
                     reponiendo={reponiendo}
+                    ejecutar={ejecutar}
                     alCerrar={() => setAbierta(null)}
                     alGuardar={(texto, mensaje) => {
                       setAbierta(null);
