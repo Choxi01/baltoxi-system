@@ -223,7 +223,9 @@ function FormularioAgendar({
     const validacion = validarReserva(entrada);
     if (!validacion.ok) return setError(validacion.error);
     const nuevo = turnoNuevo({
-      id: `nuevo-${crypto.randomUUID()}`,
+      // Id solo para la pantalla (el real lo da la base). No crypto.randomUUID(): en el iPhone
+      // por http (npm run dev en la red de casa) no existe.
+      id: `nuevo-${Date.now()}-${Math.random().toString(36).slice(2)}`,
       fecha,
       inicio,
       fin,
