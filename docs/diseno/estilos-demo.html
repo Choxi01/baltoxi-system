@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html lang="es-PY">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Baltoxi · Propuestas de estilo visual</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700&family=Atkinson+Hyperlegible:wght@400;700&family=Schibsted+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   DEMO DE ESTILOS — Baltoxi (consultorios)
+   Todo con datos inventados. Cada estilo = un juego de variables
+   (tokens) + pocos ajustes de forma. Así se pasa fácil a Tailwind
+   / shadcn: las variables van a globals.css.
+   ============================================================ */
+
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  font-family:"Public Sans",system-ui,sans-serif;
+  background:#E9E7E1;color:#1d1d1b;
+  -webkit-font-smoothing:antialiased;
+}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+
+/* ---------- Panel de la demo (no es parte de la app) ---------- */
+.demo-top{
+  position:sticky;top:0;z-index:50;
+  background:rgba(250,249,246,.86);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  border-bottom:1px solid #d9d5cb;
+  padding:14px 22px;display:flex;flex-wrap:wrap;gap:14px 22px;align-items:center;
+}
+.demo-brand{display:flex;flex-direction:column;margin-right:auto}
+.demo-brand b{font-family:"Newsreader",serif;font-weight:500;font-size:22px;letter-spacing:-.01em}
+.demo-brand span{font-size:12px;color:#6d6a62}
+.seg{display:inline-flex;background:#ece9e2;border:1px solid #dbd7cc;border-radius:999px;padding:3px;gap:2px}
+.seg button{padding:7px 13px;border-radius:999px;font-size:13px;font-weight:600;color:#5d5a52;white-space:nowrap;min-height:34px}
+.seg button[aria-pressed=true]{background:#1f1f1c;color:#fff;box-shadow:0 1px 2px rgba(0,0,0,.2)}
+.seg-label{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#8a867c;margin-right:6px;font-weight:600}
+.ctl{display:flex;align-items:center}
+
+.demo-main{padding:26px 22px 60px;max-width:1500px;margin:0 auto}
+.ficha-estilo{display:grid;grid-template-columns:1.2fr 1fr;gap:26px;margin-bottom:22px;align-items:end}
+.ficha-estilo h2{font-family:"Newsreader",serif;font-weight:500;font-size:40px;letter-spacing:-.02em;line-height:1}
+.ficha-estilo h2 small{display:block;font-family:"Public Sans";font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:#8a867c;margin-bottom:8px;font-weight:600}
+.ficha-estilo p{color:#4c4a44;font-size:15px;line-height:1.55;max-width:60ch;margin-top:10px}
+.specs{display:grid;grid-template-columns:repeat(2,1fr);gap:8px 18px;font-size:13px}
+.specs div{border-top:1px solid #d6d2c7;padding-top:7px}
+.specs dt{color:#8a867c;font-size:11px;text-transform:uppercase;letter-spacing:.08em;font-weight:600}
+.specs dd{margin-top:2px;color:#2b2a26}
+.swatches{display:flex;gap:6px;margin-top:4px}
+.swatches i{width:22px;height:22px;border-radius:6px;border:1px solid rgba(0,0,0,.12)}
+
+/* Marco del dispositivo */
+.stage{display:flex;justify-content:center}
+.device{transition:width .45s cubic-bezier(.2,.8,.2,1);width:100%;max-width:1380px}
+.device.mac{border-radius:14px;box-shadow:0 30px 70px -30px rgba(30,25,15,.45),0 0 0 1px rgba(0,0,0,.08);overflow:hidden;background:#000}
+.device.mac .chrome{height:30px;background:#2a2a2a;display:flex;align-items:center;gap:7px;padding:0 12px}
+.device.mac .chrome i{width:11px;height:11px;border-radius:50%;background:#555}
+.device.mac .chrome i:nth-child(1){background:#ff5f57}.device.mac .chrome i:nth-child(2){background:#febc2e}.device.mac .chrome i:nth-child(3){background:#28c840}
+.device.mac .chrome span{margin:0 auto;color:#aaa;font-size:11px;font-family:"IBM Plex Mono",monospace;transform:translateX(-30px)}
+.device.mac .screen{height:820px}
+.device.ipad{width:1040px;border-radius:34px;padding:16px;background:#1b1b1d;box-shadow:0 30px 70px -30px rgba(30,25,15,.5)}
+.device.ipad .chrome{display:none}
+.device.ipad .screen{height:760px;border-radius:20px;overflow:hidden}
+.device.iphone{width:402px;border-radius:56px;padding:13px;background:#1b1b1d;box-shadow:0 30px 70px -30px rgba(30,25,15,.55)}
+.device.iphone .chrome{display:none}
+.device.iphone .screen{height:840px;border-radius:44px;overflow:hidden;position:relative}
+.device.iphone .screen::before{content:"";position:absolute;top:11px;left:50%;transform:translateX(-50%);width:120px;height:34px;border-radius:20px;background:#000;z-index:30}
+
+/* Vista "comparar todos" */
+.grid-comparar{display:grid;grid-template-columns:repeat(2,1fr);gap:26px}
+.mini{background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 0 0 1px rgba(0,0,0,.07),0 14px 40px -24px rgba(0,0,0,.4);cursor:pointer;transition:transform .2s}
+.mini:hover{transform:translateY(-3px)}
+.mini-frame{position:relative;width:100%;aspect-ratio:1280/760;overflow:hidden}
+.mini-frame .scale{position:absolute;top:0;left:0;width:1280px;height:760px;transform-origin:0 0}
+.mini-cap{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;font-size:13px;border-top:1px solid #eee}
+.mini-cap b{font-family:"Newsreader",serif;font-size:19px;font-weight:500}
+.mini-cap span{color:#8a867c}
+
+/* Votación */
+.votos{margin-top:34px;background:#faf9f6;border:1px solid #dbd7cc;border-radius:16px;padding:22px}
+.votos h3{font-family:"Newsreader",serif;font-weight:500;font-size:26px}
+.votos > p{color:#5d5a52;font-size:14px;margin:4px 0 16px}
+.voto-fila{display:grid;grid-template-columns:180px auto 1fr;gap:14px;align-items:center;padding:10px 0;border-top:1px solid #e6e2d8}
+.voto-fila b{font-weight:600}
+.voto-fila input{width:100%;padding:10px 12px;border-radius:10px;border:1px solid #d6d2c7;background:#fff;font:inherit;font-size:14px}
+.votos .acciones{display:flex;gap:10px;margin-top:16px;align-items:center}
+.btn-dark{background:#1f1f1c;color:#fff;padding:11px 18px;border-radius:999px;font-weight:600;font-size:14px}
+.ok-copiado{font-size:13px;color:#2f7a4b;opacity:0;transition:opacity .2s}
+.ok-copiado.ver{opacity:1}
+.detalles{margin-top:16px;display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.detalles label{font-size:12px;color:#8a867c;text-transform:uppercase;letter-spacing:.06em;font-weight:600;display:flex;flex-direction:column;gap:6px}
+.detalles select{padding:10px;border-radius:10px;border:1px solid #d6d2c7;background:#fff;font:inherit;font-size:14px;text-transform:none;letter-spacing:0;color:#2b2a26}
+
+@media (max-width:900px){
+  .ficha-estilo{grid-template-columns:1fr}
+  .grid-comparar{grid-template-columns:1fr}
+  .device.ipad{width:100%}
+  .voto-fila{grid-template-columns:1fr}
+  .detalles{grid-template-columns:1fr}
+  .device.mac .screen{height:700px}
+}
+
+/* ============================================================
+   TOKENS POR ESTILO
+   ============================================================ */
+
+/* A · SERENO — editorial clínico, verde petróleo sobre marfil */
+.app[data-estilo=sereno]{
+  --font-display:"Newsreader",Georgia,serif; --font-body:"Public Sans",system-ui,sans-serif; --font-num:"Newsreader",Georgia,serif;
+  --display-weight:500; --num-size:40px; --radius:14px; --radius-sm:9px; --pad:28px; --gap:18px;
+}
+.app[data-estilo=sereno][data-modo=dia]{
+  --bg:#F5F3EE; --surface:#FFFFFF; --surface-2:#F9F8F4; --ink:#1A2928; --ink-2:#5E6B69; --ink-3:#8F9997; --line:#E3DFD5;
+  --accent:#0E5E5B; --accent-ink:#fff; --accent-soft:#E2EFEC;
+  --ok:#2F7A4B; --ok-soft:#E3F1E6; --warn:#A26A12; --warn-soft:#F7EDD9; --bad:#A93A2F; --bad-soft:#F6E3E0;
+  --side-bg:transparent; --side-ink:#1A2928; --side-muted:#5E6B69; --side-active:#E7E3D8; --side-line:#E3DFD5;
+  --shadow:none; --glow:none;
+}
+.app[data-estilo=sereno][data-modo=noche]{
+  --bg:#0D1514; --surface:#131E1D; --surface-2:#172322; --ink:#E7E5DE; --ink-2:#9DABA8; --ink-3:#6C7A78; --line:#233130;
+  --accent:#6CC6B9; --accent-ink:#06211F; --accent-soft:#163331;
+  --ok:#7FCB97; --ok-soft:#173022; --warn:#E3B464; --warn-soft:#33291A; --bad:#EE8B7F; --bad-soft:#3A1F1C;
+  --side-bg:transparent; --side-ink:#E7E5DE; --side-muted:#9DABA8; --side-active:#1B2928; --side-line:#233130;
+  --shadow:none; --glow:none;
+}
+
+
+/* E · SERENO TURQUESA — pedido de la clienta: turquesa, aspecto clásico (no "dashboard") */
+.app[data-estilo=turquesa]{
+  --font-display:"Newsreader",Georgia,serif; --font-body:"Public Sans",system-ui,sans-serif; --font-num:"Newsreader",Georgia,serif;
+  --display-weight:500; --num-size:38px; --radius:8px; --radius-sm:6px; --pad:30px; --gap:20px;
+}
+.app[data-estilo=turquesa][data-modo=dia]{
+  --bg:#F7F5EF; --surface:#FFFFFF; --surface-2:#FAF9F5; --ink:#1C2B2B; --ink-2:#5B6867; --ink-3:#8E9897; --line:#E0DBCF;
+  --accent:#0B7A78; --accent-ink:#fff; --accent-soft:#DDF0EC;
+  --ok:#2F7A4B; --ok-soft:#E3F1E6; --warn:#9A6512; --warn-soft:#F6ECD8; --bad:#A93A2F; --bad-soft:#F6E3E0;
+  --side-bg:#F0EDE4; --side-ink:#1C2B2B; --side-muted:#5B6867; --side-active:#FFFFFF; --side-line:#E0DBCF;
+  --shadow:none; --glow:none;
+}
+.app[data-estilo=turquesa][data-modo=noche]{
+  --bg:#0E1716; --surface:#142120; --surface-2:#182625; --ink:#E9E6DE; --ink-2:#9FAEAB; --ink-3:#6C7A78; --line:#25403E;
+  --accent:#4FC4BD; --accent-ink:#04201F; --accent-soft:#143634;
+  --ok:#7FCB97; --ok-soft:#173022; --warn:#E3B464; --warn-soft:#33291A; --bad:#EE8B7F; --bad-soft:#3A1F1C;
+  --side-bg:#0B1312; --side-ink:#E9E6DE; --side-muted:#9FAEAB; --side-active:#182625; --side-line:#1E2E2D;
+  --shadow:none; --glow:none;
+}
+
+/* B · PRECISIÓN — suizo, denso, cobalto, menú lateral oscuro */
+.app[data-estilo=precision]{
+  --font-display:"IBM Plex Sans",system-ui,sans-serif; --font-body:"IBM Plex Sans",system-ui,sans-serif; --font-num:"IBM Plex Mono",ui-monospace,monospace;
+  --display-weight:600; --num-size:27px; --radius:6px; --radius-sm:4px; --pad:24px; --gap:14px;
+}
+.app[data-estilo=precision][data-modo=dia]{
+  --bg:#F2F4F7; --surface:#FFFFFF; --surface-2:#F7F8FA; --ink:#0B1220; --ink-2:#4B5565; --ink-3:#8A93A3; --line:#DFE3EA;
+  --accent:#1F4FD8; --accent-ink:#fff; --accent-soft:#E6ECFC;
+  --ok:#137A4A; --ok-soft:#E1F3EA; --warn:#A35C00; --warn-soft:#FBEEDB; --bad:#C0262D; --bad-soft:#FBE4E5;
+  --side-bg:#0B1530; --side-ink:#E9EDF7; --side-muted:#8D99B8; --side-active:#1B2A55; --side-line:#1B264A;
+  --shadow:0 1px 0 rgba(11,18,32,.04); --glow:none;
+}
+.app[data-estilo=precision][data-modo=noche]{
+  --bg:#080B11; --surface:#0F141D; --surface-2:#131925; --ink:#E6EAF2; --ink-2:#98A2B6; --ink-3:#5F6A80; --line:#1E2633;
+  --accent:#7097FF; --accent-ink:#06102B; --accent-soft:#16224A;
+  --ok:#4CC88B; --ok-soft:#0F2A1F; --warn:#F0A64A; --warn-soft:#2E2210; --bad:#FF6B70; --bad-soft:#341517;
+  --side-bg:#05070C; --side-ink:#E6EAF2; --side-muted:#6F7A90; --side-active:#141C2E; --side-line:#141B27;
+  --shadow:none; --glow:none;
+}
+
+/* C · CERCANO — cálido y prolijo, terracota + salvia, muy legible */
+.app[data-estilo=cercano]{
+  --font-display:"Bricolage Grotesque",system-ui,sans-serif; --font-body:"Atkinson Hyperlegible",system-ui,sans-serif; --font-num:"Bricolage Grotesque",system-ui,sans-serif;
+  --display-weight:600; --num-size:36px; --radius:22px; --radius-sm:14px; --pad:28px; --gap:18px;
+}
+.app[data-estilo=cercano][data-modo=dia]{
+  --bg:#FAF6F0; --surface:#FFFFFF; --surface-2:#FCF9F5; --ink:#2A2220; --ink-2:#6B5F59; --ink-3:#A0948D; --line:#EFE6DC;
+  --accent:#B0502A; --accent-ink:#fff; --accent-soft:#F8E6DC;
+  --ok:#4F7A57; --ok-soft:#E6F0E5; --warn:#B07A1E; --warn-soft:#F9EFD9; --bad:#B23B3B; --bad-soft:#F8E1DF;
+  --side-bg:#F3ECE2; --side-ink:#2A2220; --side-muted:#7A6D66; --side-active:#FFFFFF; --side-line:#E8DDD0;
+  --shadow:0 1px 2px rgba(80,50,30,.05),0 8px 24px -14px rgba(80,50,30,.18); --glow:none;
+}
+.app[data-estilo=cercano][data-modo=noche]{
+  --bg:#181311; --surface:#221B18; --surface-2:#2A221E; --ink:#F3EAE3; --ink-2:#B9A9A0; --ink-3:#7F716A; --line:#352B26;
+  --accent:#EB8D62; --accent-ink:#2A1208; --accent-soft:#3C2519;
+  --ok:#93C29B; --ok-soft:#1F2C21; --warn:#E5B866; --warn-soft:#352915; --bad:#F08A80; --bad-soft:#3B1E1B;
+  --side-bg:#120E0C; --side-ink:#F3EAE3; --side-muted:#9C8C83; --side-active:#2A221E; --side-line:#261F1B;
+  --shadow:0 10px 30px -18px rgba(0,0,0,.6); --glow:none;
+}
+
+/* D · GRAFITO — premium, oscuro primero, esmeralda, detalles técnicos */
+.app[data-estilo=grafito]{
+  --font-display:"Schibsted Grotesk",system-ui,sans-serif; --font-body:"Schibsted Grotesk",system-ui,sans-serif; --font-num:"Schibsted Grotesk",system-ui,sans-serif;
+  --display-weight:600; --num-size:30px; --radius:12px; --radius-sm:8px; --pad:26px; --gap:14px;
+}
+.app[data-estilo=grafito][data-modo=dia]{
+  --bg:#FAFAF9; --surface:#FFFFFF; --surface-2:#F5F5F4; --ink:#0C0D0F; --ink-2:#55585F; --ink-3:#9396A0; --line:#E7E7E5;
+  --accent:#0A8A5F; --accent-ink:#fff; --accent-soft:#E2F4EC;
+  --ok:#0A8A5F; --ok-soft:#E2F4EC; --warn:#B26B00; --warn-soft:#FBF0DC; --bad:#D13A3A; --bad-soft:#FCE7E7;
+  --side-bg:#F4F4F3; --side-ink:#0C0D0F; --side-muted:#6A6D74; --side-active:#FFFFFF; --side-line:#E7E7E5;
+  --shadow:0 1px 2px rgba(0,0,0,.04),0 0 0 1px rgba(0,0,0,.02); --glow:radial-gradient(900px 400px at 85% -10%,rgba(10,138,95,.07),transparent 60%);
+}
+.app[data-estilo=grafito][data-modo=noche]{
+  --bg:#0A0B0D; --surface:#111317; --surface-2:#16181D; --ink:#EDEEF0; --ink-2:#9A9EA8; --ink-3:#5E626C; --line:#1F2228;
+  --accent:#34D399; --accent-ink:#04140D; --accent-soft:#0E2A20;
+  --ok:#34D399; --ok-soft:#0E2A20; --warn:#FBBF5C; --warn-soft:#2C2312; --bad:#F87171; --bad-soft:#331A1A;
+  --side-bg:#0D0E11; --side-ink:#EDEEF0; --side-muted:#7C808A; --side-active:#181A1F; --side-line:#1A1C21;
+  --shadow:inset 0 1px 0 rgba(255,255,255,.04); --glow:radial-gradient(900px 420px at 85% -10%,rgba(52,211,153,.10),transparent 60%);
+}
+
+/* ============================================================
+   LA APP (misma estructura para los 4 estilos)
+   ============================================================ */
+.app{
+  height:100%; width:100%;
+  background:var(--glow),var(--bg); color:var(--ink);
+  font-family:var(--font-body); font-size:14px; line-height:1.45;
+  display:flex; overflow:hidden; transition:background .35s,color .35s;
+}
+.app *{transition:background-color .35s,border-color .35s,color .35s}
+.side{
+  width:236px;flex-shrink:0;background:var(--side-bg);color:var(--side-ink);
+  border-right:1px solid var(--side-line);display:flex;flex-direction:column;padding:20px 14px;
+}
+.marca{display:flex;align-items:center;gap:10px;padding:2px 8px 22px}
+.marca .logo{width:34px;height:34px;border-radius:var(--radius-sm);background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;font-family:var(--font-display);font-weight:700;font-size:17px}
+.marca b{display:block;font-family:var(--font-display);font-weight:var(--display-weight);font-size:15px;line-height:1.1}
+.marca small{color:var(--side-muted);font-size:12px}
+.nav{list-style:none;display:flex;flex-direction:column;gap:2px;flex:1}
+.nav a{display:flex;align-items:center;gap:11px;height:42px;padding:0 11px;border-radius:var(--radius-sm);color:var(--side-muted);text-decoration:none;font-weight:500;font-size:14px}
+.nav a svg{width:19px;height:19px;flex-shrink:0}
+.nav a.on{background:var(--side-active);color:var(--side-ink);font-weight:600}
+.nav .badge{margin-left:auto;background:var(--accent);color:var(--accent-ink);font-size:11px;font-weight:700;border-radius:999px;min-width:20px;height:20px;display:grid;place-items:center;padding:0 6px}
+.nav .sep{height:1px;background:var(--side-line);margin:10px 8px}
+.yo{display:flex;align-items:center;gap:10px;padding:12px 8px 0;border-top:1px solid var(--side-line)}
+.yo .av{width:32px;height:32px;border-radius:50%;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;font-weight:700;font-size:12px}
+.yo b{font-size:13px;display:block}.yo small{font-size:12px;color:var(--side-muted)}
+
+.main{flex:1;overflow:auto;padding:var(--pad);display:flex;flex-direction:column;gap:var(--gap);min-width:0}
+.cabeza{display:flex;align-items:flex-end;gap:16px;flex-wrap:wrap}
+.cabeza .tit small{display:block;color:var(--ink-2);font-size:13px;margin-bottom:2px}
+.cabeza h1{font-family:var(--font-display);font-weight:var(--display-weight);font-size:34px;letter-spacing:-.02em;line-height:1.05}
+.cabeza .acc{margin-left:auto;display:flex;gap:8px}
+.btn{height:42px;padding:0 16px;border-radius:var(--radius-sm);font-weight:600;font-size:14px;display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink)}
+.btn svg{width:17px;height:17px}
+.btn.pri{background:var(--accent);color:var(--accent-ink);border-color:transparent}
+.buscar{height:42px;min-width:240px;border-radius:var(--radius-sm);border:1px solid var(--line);background:var(--surface);display:flex;align-items:center;gap:8px;padding:0 12px;color:var(--ink-3);font-size:14px}
+.buscar svg{width:17px;height:17px}
+.buscar kbd{margin-left:auto;font-family:"JetBrains Mono",monospace;font-size:11px;border:1px solid var(--line);border-radius:5px;padding:1px 5px;color:var(--ink-3)}
+
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--gap)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
+.kpi{padding:16px 18px;display:flex;flex-direction:column;gap:6px;position:relative;overflow:hidden}
+.kpi .lab{color:var(--ink-2);font-size:13px;font-weight:500;display:flex;align-items:center;gap:6px}
+.kpi .num{font-family:var(--font-num);font-size:var(--num-size);font-weight:500;letter-spacing:-.02em;white-space:nowrap;line-height:1.05;font-variant-numeric:tabular-nums}
+.kpi .num small{font-size:.5em;color:var(--ink-2);font-weight:500;letter-spacing:0;margin-right:3px}
+.kpi .pie{font-size:12.5px;color:var(--ink-2);display:flex;align-items:center;gap:6px}
+.chip{display:inline-flex;align-items:center;gap:5px;height:22px;padding:0 8px;border-radius:999px;font-size:12px;font-weight:600;white-space:nowrap}
+.chip.ok{background:var(--ok-soft);color:var(--ok)}.chip.warn{background:var(--warn-soft);color:var(--warn)}.chip.bad{background:var(--bad-soft);color:var(--bad)}.chip.acc{background:var(--accent-soft);color:var(--accent)}.chip.neu{background:var(--surface-2);color:var(--ink-2);border:1px solid var(--line)}
+.spark{position:absolute;right:14px;bottom:14px;width:96px;height:34px;opacity:.9}
+.barra{height:6px;background:var(--surface-2);border-radius:99px;overflow:hidden;border:1px solid var(--line)}
+.barra i{display:block;height:100%;background:var(--accent);border-radius:99px}
+
+.cuerpo{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(0,1fr);gap:var(--gap);align-items:start}
+.bloque-h{display:flex;align-items:center;gap:10px;padding:16px 18px 12px}
+.bloque-h h2{font-family:var(--font-display);font-weight:var(--display-weight);font-size:18px;letter-spacing:-.01em}
+.bloque-h .mas{margin-left:auto;color:var(--accent);font-weight:600;font-size:13px}
+
+/* Turnos de hoy */
+.turnos{list-style:none;padding:0 10px 10px}
+.turno{display:grid;grid-template-columns:62px 4px minmax(0,1fr) auto;gap:12px;align-items:center;padding:11px 8px;border-radius:var(--radius-sm);position:relative}
+.turno + .turno{border-top:1px solid var(--line)}
+.turno .hora{font-family:var(--font-num);font-variant-numeric:tabular-nums;font-size:15px;font-weight:500;color:var(--ink)}
+.turno .hora small{display:block;font-size:11.5px;color:var(--ink-3);font-family:var(--font-body)}
+.turno .raya{width:4px;align-self:stretch;border-radius:4px;background:var(--line)}
+.turno .quien b{font-weight:600;font-size:14.5px;display:block}
+.turno .quien span{color:var(--ink-2);font-size:13px}
+.turno .der{display:flex;align-items:center;gap:8px}
+.mini-btn{height:34px;padding:0 12px;border-radius:var(--radius-sm);border:1px solid var(--line);background:var(--surface);font-size:13px;font-weight:600;color:var(--ink)}
+.mini-btn.pri{background:var(--accent);border-color:transparent;color:var(--accent-ink)}
+.turno.presente .raya{background:var(--ok)}
+.turno.ahora{background:var(--accent-soft)}
+.turno.ahora .raya{background:var(--accent)}
+.turno.ahora + .turno{border-top-color:transparent}
+.turno.aviso .raya{background:var(--warn)}
+.turno.aviso .quien b{text-decoration:line-through;text-decoration-color:var(--ink-3);color:var(--ink-2)}
+.turno.gris .raya{background:var(--ink-3);opacity:.5}
+.turno.gris .quien b{color:var(--ink-2);font-weight:500}
+.turno.libre .raya{background:repeating-linear-gradient(180deg,var(--accent) 0 4px,transparent 4px 8px);opacity:.6}
+.turno.libre .quien b{color:var(--accent)}
+.linea-ahora{position:absolute;left:70px;right:8px;top:-1px;height:2px;background:var(--bad);border-radius:2px}
+.linea-ahora::before{content:"13:52";position:absolute;left:-62px;top:-8px;font-size:11px;font-weight:700;color:var(--bad);font-family:var(--font-num)}
+
+.lateral{display:flex;flex-direction:column;gap:var(--gap)}
+.msjs{list-style:none;padding:0 12px 12px;display:flex;flex-direction:column;gap:8px}
+.msj{display:flex;gap:11px;align-items:center;padding:11px;border-radius:var(--radius-sm);background:var(--surface-2);border:1px solid var(--line)}
+.msj .ic{width:34px;height:34px;border-radius:var(--radius-sm);display:grid;place-items:center;flex-shrink:0;background:var(--accent-soft);color:var(--accent)}
+.msj .ic svg{width:17px;height:17px}
+.msj b{font-size:13.5px;font-weight:600;display:block}
+.msj span{font-size:12.5px;color:var(--ink-2)}
+.msj .mini-btn{margin-left:auto}
+.deben{list-style:none;padding:0 18px 14px}
+.deben li{display:flex;align-items:center;gap:10px;padding:10px 0}
+.deben li + li{border-top:1px solid var(--line)}
+.deben .av{width:32px;height:32px;border-radius:50%;display:grid;place-items:center;font-size:12px;font-weight:700;background:var(--surface-2);border:1px solid var(--line);color:var(--ink-2);flex-shrink:0}
+.deben b{font-size:13.5px;font-weight:600;display:block}
+.deben span{font-size:12px;color:var(--ink-2)}
+.deben .monto{margin-left:auto;font-family:var(--font-num);font-variant-numeric:tabular-nums;font-weight:600;font-size:14px;text-align:right}
+.deben .monto small{display:block}
+.semana{padding:4px 18px 18px;display:grid;grid-template-columns:repeat(5,1fr);gap:10px;align-items:end;height:150px}
+.semana div{display:flex;flex-direction:column;align-items:center;gap:6px;height:100%;justify-content:flex-end}
+.semana i{width:100%;max-width:34px;border-radius:var(--radius-sm) var(--radius-sm) 3px 3px;background:var(--accent);opacity:.85}
+.semana i.hoy{opacity:1;box-shadow:0 0 0 3px var(--accent-soft)}
+.semana i.fut{background:var(--line);opacity:1}
+.semana span{font-size:11.5px;color:var(--ink-2);font-weight:600}
+
+/* Barra inferior (iPhone) — oculta en pantallas grandes */
+.tabbar{display:none}
+.top-movil{display:none}
+
+/* ---------- Ajustes de forma propios de cada estilo ---------- */
+/* Sereno: títulos en serif cursiva para el día, todo con borde fino, sin sombras */
+.app[data-estilo=sereno] .cabeza h1 em{font-style:italic;color:var(--accent)}
+.app[data-estilo=sereno] .kpi .lab{text-transform:none}
+.app[data-estilo=sereno] .bloque-h h2{font-size:20px}
+.app[data-estilo=sereno] .turno .hora{font-size:17px}
+/* Sereno turquesa: aire de libro de registro — filetes dobles, versalitas, raya turquesa en el menú */
+.app[data-estilo=turquesa] .cabeza h1 em{font-style:italic;color:var(--accent)}
+.app[data-estilo=turquesa] .cabeza{padding-bottom:16px;border-bottom:3px double var(--line)}
+.app[data-estilo=turquesa] .bloque-h{border-bottom:1px solid var(--line);margin-bottom:6px}
+.app[data-estilo=turquesa] .bloque-h h2{font-size:20px}
+.app[data-estilo=turquesa] .kpi .lab{font-variant:small-caps;text-transform:lowercase;letter-spacing:.06em;font-size:14px}
+.app[data-estilo=turquesa] .kpi{border-top:3px double var(--line)}
+.app[data-estilo=turquesa] .nav a.on{box-shadow:inset 3px 0 0 var(--accent);border-radius:0 var(--radius-sm) var(--radius-sm) 0}
+.app[data-estilo=turquesa] .turno .hora{font-size:17px}
+.app[data-estilo=turquesa] .chip{border-radius:4px}
+.app[data-estilo=turquesa] .marca .logo{border-radius:50%;font-family:var(--font-display);font-style:italic;font-weight:500}
+/* Precisión: etiquetas en versalitas, números monoespaciados, todo más compacto */
+.app[data-estilo=precision] .kpi .lab,.app[data-estilo=precision] .bloque-h h2{text-transform:uppercase;letter-spacing:.07em;font-size:12px;font-weight:600;color:var(--ink-2);font-family:var(--font-body)}
+.app[data-estilo=precision] .cabeza h1{font-size:28px}
+.app[data-estilo=precision] .turno{padding:8px}
+.app[data-estilo=precision] .turno .hora{font-size:13.5px}
+.app[data-estilo=precision] .kpi{border-top:3px solid var(--accent)}
+.app[data-estilo=precision] .kpi:nth-child(3){border-top-color:var(--ok)}
+.app[data-estilo=precision] .kpi:nth-child(4){border-top-color:var(--warn)}
+.app[data-estilo=precision] .chip{border-radius:3px}
+.app[data-estilo=precision] .marca .logo{border-radius:4px}
+/* Cercano: avatares de color, píldoras, todo redondeado */
+.app[data-estilo=cercano] .btn,.app[data-estilo=cercano] .mini-btn,.app[data-estilo=cercano] .buscar{border-radius:999px}
+.app[data-estilo=cercano] .nav a{border-radius:999px}
+.app[data-estilo=cercano] .nav a.on{box-shadow:0 1px 2px rgba(80,50,30,.08)}
+.app[data-estilo=cercano] .card{border-color:transparent}
+.app[data-estilo=cercano][data-modo=noche] .card{border-color:var(--line)}
+.app[data-estilo=cercano] .deben .av{border:0}
+.app[data-estilo=cercano] .deben li:nth-child(1) .av{background:#F4D9CB;color:#8A3A1C}
+.app[data-estilo=cercano] .deben li:nth-child(2) .av{background:#DCE8D9;color:#3E6145}
+.app[data-estilo=cercano] .deben li:nth-child(3) .av{background:#F3E6C8;color:#7D5A14}
+.app[data-estilo=cercano] .deben li:nth-child(4) .av{background:#E2DDF0;color:#4E4377}
+.app[data-estilo=cercano][data-modo=noche] .deben .av{filter:saturate(.8) brightness(.55)}
+.app[data-estilo=cercano][data-modo=noche] .deben .av{color:#fff}
+.app[data-estilo=cercano] .turno .raya{width:10px;height:10px;align-self:center;border-radius:50%}
+.app[data-estilo=cercano] .turno.libre .raya{background:transparent;border:2px dashed var(--accent);opacity:1}
+.app[data-estilo=cercano] .turno + .turno{border-top:0}
+.app[data-estilo=cercano] .turno{grid-template-columns:62px 10px minmax(0,1fr) auto}
+.app[data-estilo=cercano] .linea-ahora{left:66px}
+/* Grafito: detalles técnicos, etiquetas mono, botón primario con brillo */
+.app[data-estilo=grafito] .kpi .lab,.app[data-estilo=grafito] .turno .hora small,.app[data-estilo=grafito] .cabeza .tit small{font-family:"JetBrains Mono",monospace;font-size:11.5px;letter-spacing:.02em;text-transform:uppercase}
+.app[data-estilo=grafito] .turno .hora{font-family:"JetBrains Mono",monospace;font-size:13.5px}
+.app[data-estilo=grafito] .btn.pri{box-shadow:0 0 0 1px rgba(255,255,255,.08) inset,0 6px 20px -8px var(--accent)}
+.app[data-estilo=grafito] .nav a.on{box-shadow:var(--shadow),0 0 0 1px var(--line)}
+.app[data-estilo=grafito] .marca .logo{background:linear-gradient(140deg,var(--accent),#0c6b8a)}
+.app[data-estilo=grafito] .chip{border-radius:6px}
+.app[data-estilo=grafito] .kpi .num,.app[data-estilo=grafito] .deben .monto{font-variant-numeric:proportional-nums;letter-spacing:-.03em}
+
+/* ---------- Pantallas chicas: iPad vertical / iPhone (container query) ---------- */
+@container (max-width:1060px){
+  .cuerpo{grid-template-columns:1fr}
+  .lateral{display:grid;grid-template-columns:1fr 1fr}
+  .lateral .card:last-child{grid-column:1 / -1}
+  .side{width:76px;padding:20px 10px}
+  .marca b,.marca small,.nav a span,.yo div,.nav .badge{display:none}
+  .marca{justify-content:center;padding:2px 0 22px}
+  .nav a{justify-content:center;padding:0}
+  .yo{justify-content:center}
+  .buscar{min-width:0}
+  .buscar span,.buscar kbd{display:none}
+}
+@container (max-width:560px){
+  .app{flex-direction:column}
+  .side{display:none}
+  .main{padding:16px 16px 110px;gap:14px}
+  .top-movil{display:flex;align-items:center;gap:10px;padding:58px 16px 10px;background:var(--bg);border-bottom:1px solid var(--line)}
+  .top-movil .logo{width:30px;height:30px;border-radius:var(--radius-sm);background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;font-family:var(--font-display);font-weight:700;font-size:15px}
+  .top-movil b{font-family:var(--font-display);font-weight:var(--display-weight);font-size:15px}
+  .top-movil .ic{margin-left:auto;width:38px;height:38px;border-radius:50%;display:grid;place-items:center;border:1px solid var(--line);background:var(--surface)}
+  .top-movil .ic svg{width:18px;height:18px}
+  .cabeza h1{font-size:30px}
+  .cabeza .acc{width:100%;margin:0}
+  .cabeza .acc .btn{flex:1;justify-content:center;height:46px}
+  .buscar{display:none}
+  .kpis{grid-template-columns:1fr 1fr;gap:10px}
+  .kpi{padding:13px 14px}
+  .kpi .num{font-size:calc(var(--num-size) * .72)}
+  .spark{display:none}
+  .lateral{display:flex}
+  .turno{grid-template-columns:50px 4px minmax(0,1fr);row-gap:8px}
+  .app[data-estilo=cercano] .turno{grid-template-columns:50px 10px minmax(0,1fr)}
+  .turno .der{grid-column:3}
+  .turno .der .chip{display:none}
+  .linea-ahora{left:58px}
+  .linea-ahora::before{left:-54px}
+  .mini-btn{height:38px}
+  .tabbar{display:grid;grid-template-columns:repeat(5,1fr);position:absolute;left:0;right:0;bottom:0;padding:8px 6px 30px;
+    background:color-mix(in srgb,var(--surface) 88%,transparent);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-top:1px solid var(--line);z-index:20}
+  .tabbar a{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:10.5px;font-weight:600;color:var(--ink-3);text-decoration:none;position:relative}
+  .tabbar a svg{width:23px;height:23px}
+  .tabbar a.on{color:var(--accent)}
+  .tabbar .badge{position:absolute;top:-3px;right:calc(50% - 20px);background:var(--bad);color:#fff;font-size:10px;min-width:17px;height:17px;border-radius:99px;display:grid;place-items:center;padding:0 4px}
+}
+.app-wrap,.mini-frame .scale{container-type:inline-size}
+.app-wrap{height:100%;position:relative}
+
+@media (prefers-reduced-motion:no-preference){
+  .entra .kpi,.entra .cuerpo > *,.entra .cabeza{animation:sube .55s cubic-bezier(.2,.8,.2,1) both}
+  .entra .kpi:nth-child(2){animation-delay:.05s}.entra .kpi:nth-child(3){animation-delay:.1s}.entra .kpi:nth-child(4){animation-delay:.15s}
+  .entra .cuerpo > *:nth-child(1){animation-delay:.18s}.entra .cuerpo > *:nth-child(2){animation-delay:.26s}
+}
+@keyframes sube{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+</style>
+</head>
+<body>
+
+<header class="demo-top">
+  <div class="demo-brand">
+    <b>Baltoxi · estilos visuales</b>
+    <span>Propuestas para elegir · pantalla «Hoy» · todos los datos son inventados</span>
+  </div>
+  <div class="ctl"><span class="seg-label">Estilo</span>
+    <div class="seg" id="ctl-estilo">
+      <button data-v="sereno">A · Sereno</button>
+      <button data-v="precision">B · Precisión</button>
+      <button data-v="cercano">C · Cercano</button>
+      <button data-v="grafito">D · Grafito</button>
+      <button data-v="turquesa">E · Sereno turquesa</button>
+      <button data-v="comparar">Comparar todos</button>
+    </div>
+  </div>
+  <div class="ctl"><span class="seg-label">Modo</span>
+    <div class="seg" id="ctl-modo">
+      <button data-v="dia">☀ Día</button>
+      <button data-v="noche">☾ Noche</button>
+    </div>
+  </div>
+  <div class="ctl"><span class="seg-label">Equipo</span>
+    <div class="seg" id="ctl-equipo">
+      <button data-v="mac">Mac</button>
+      <button data-v="ipad">iPad</button>
+      <button data-v="iphone">iPhone</button>
+    </div>
+  </div>
+</header>
+
+<main class="demo-main">
+  <section id="vista-una">
+    <div class="ficha-estilo" id="ficha"></div>
+    <div class="stage">
+      <div class="device mac" id="device">
+        <div class="chrome"><i></i><i></i><i></i><span>baltoxi.app/hoy</span></div>
+        <div class="screen" id="screen"></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="vista-comparar" hidden>
+    <div class="ficha-estilo"><div><h2><small>Vista general</small>Los cuatro estilos, lado a lado</h2>
+      <p>Tocá cualquiera para abrirlo grande. El botón «Modo» de arriba cambia todos a día o a noche.</p></div></div>
+    <div class="grid-comparar" id="grid-comparar"></div>
+  </section>
+
+  <section class="votos">
+    <h3>Para decidir con la persona B</h3>
+    <p>Marquen qué les gusta de cada uno. Al final, «Copiar resumen» deja todo listo para pegar en WhatsApp o en el PR.</p>
+    <div id="filas-voto"></div>
+    <div class="detalles">
+      <label>Modo por defecto
+        <select id="d-modo"><option>Seguir al equipo (automático)</option><option>Siempre día</option><option>Siempre noche</option></select></label>
+      <label>Densidad
+        <select id="d-dens"><option>Cómoda (recomendada en iPhone)</option><option>Compacta</option></select></label>
+      <label>Esquinas
+        <select id="d-esq"><option>Las del estilo elegido</option><option>Más rectas</option><option>Más redondeadas</option></select></label>
+    </div>
+    <div class="acciones">
+      <button class="btn-dark" id="copiar">Copiar resumen</button>
+      <span class="ok-copiado" id="ok-copiado">Copiado ✓</span>
+    </div>
+  </section>
+</main>
+
+<script>
+/* ---------- Íconos (trazos estilo lucide) ---------- */
+const I = {
+  hoy:'<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18M9 16l2 2 4-4"/>',
+  agenda:'<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01"/>',
+  pacientes:'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>',
+  cobros:'<path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"/><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/>',
+  mensajes:'<path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/>',
+  facturar:'<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4M10 9H8M16 13H8M16 17H8"/>',
+  reportes:'<path d="M3 3v18h18"/><path d="M18 17V9M13 17V5M8 17v-3"/>',
+  config:'<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>',
+  mas:'<path d="M4 12h16M4 6h16M4 18h16"/>',
+  buscar:'<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>',
+  plus:'<path d="M12 5v14M5 12h14"/>',
+  copiar:'<rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>',
+  campana:'<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
+  reloj:'<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
+  check:'<path d="M20 6 9 17l-5-5"/>',
+  tarjeta:'<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/>'
+};
+const ic = (n) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${I[n]}</svg>`;
+
+/* ---------- Datos inventados (nada clínico: solo administrativo) ---------- */
+const TURNOS = [
+  {h:"09:00",fin:"09:45",clase:"presente",nom:"Tomás Benítez",det:"Terapia · Consultorio",chip:["ok","Vino"],btn:"Pagado ✓"},
+  {h:"09:45",fin:"10:30",clase:"presente",nom:"Valentina Ruiz",det:"Terapia · Consultorio",chip:["ok","Vino"],btn:"Cobrar",pri:1},
+  {h:"10:30",fin:"11:15",clase:"gris",nom:"Ocupado",det:"Reunión en el colegio",chip:["neu","Ocupado"]},
+  {h:"13:30",fin:"14:15",clase:"ahora",nom:"Mateo Giménez",det:"Evaluación · Consultorio",chip:["acc","En curso"],btn:"Marcar asistencia",pri:1,linea:1},
+  {h:"14:15",fin:"15:00",clase:"",nom:"Sofía Acosta",det:"Terapia · Consultorio",chip:["neu","Agendado"],btn:"Acciones"},
+  {h:"15:00",fin:"15:45",clase:"libre",nom:"Libre",det:"Disponible para reservar",btn:"Reservar"},
+  {h:"15:45",fin:"16:30",clase:"aviso",nom:"Joaquín Duarte",det:"Domicilio · Avisó ayer",chip:["warn","Ausente con aviso"],btn:"Reponer"},
+  {h:"16:30",fin:"17:15",clase:"gris",nom:"Reservado: Fernanda",det:"Sin ficha todavía",chip:["neu","Reservado"],btn:"Crear ficha"},
+];
+const MSJS = [
+  {t:"Recordatorio de mañana",d:"Mamá de Tomás · Mar 09:00",i:"campana"},
+  {t:"Cambio de horario",d:"Papá de Mateo · Jue 14:15",i:"reloj"},
+  {t:"Saldo pendiente",d:"Mamá de Valentina · octubre",i:"tarjeta"},
+];
+const DEBEN = [
+  {ini:"LR",n:"Laura Ruiz",d:"Tutora de Valentina · 2 meses",m:"580.000",chip:["bad","Atrasado"]},
+  {ini:"CO",n:"Carlos Ortiz",d:"Tutor de Camila · octubre",m:"435.000",chip:["warn","Este mes"]},
+  {ini:"MV",n:"Mónica Villalba",d:"Tutora de Lucas · octubre",m:"290.000",chip:["warn","Este mes"]},
+  {ini:"AD",n:"Ana Duarte",d:"Tutora de Joaquín · noviembre",m:"145.000",chip:["neu","Al día"]},
+];
+const NAV = [["hoy","Hoy"],["agenda","Agenda"],["pacientes","Pacientes"],["cobros","Cobros"],["mensajes","Mensajes",3],["facturar","Para facturar"],["reportes","Reportes"],["config","Configuración"]];
+
+const ESTILOS = {
+  sereno:{letra:"A",nombre:"Sereno",tag:"Editorial clínico",
+    desc:"Marfil y verde petróleo, títulos en serif como una revista médica. Transmite calma y trayectoria: se siente como un consultorio con años, no como una startup. Muy poco color, mucho aire, bordes finos sin sombras.",
+    fuentes:"Newsreader (títulos y números) + Public Sans (texto)", forma:"Esquinas suaves (14 px), bordes finos, sin sombras",
+    ideal:"Profesionales que quieren algo sobrio, elegante y atemporal",
+    colores:{dia:["#F5F3EE","#0E5E5B","#1A2928","#2F7A4B","#A26A12"],noche:["#0D1514","#6CC6B9","#E7E5DE","#7FCB97","#E3B464"]}},
+  precision:{letra:"B",nombre:"Precisión",tag:"Suizo / hospitalario",
+    desc:"Cobalto, menú lateral azul noche y números en tipografía monoespaciada, como un sistema de gestión hospitalario bien hecho. Más denso: entra más información por pantalla. Etiquetas en mayúsculas pequeñas, todo alineado a una grilla.",
+    fuentes:"IBM Plex Sans + IBM Plex Mono (horas y montos)", forma:"Esquinas casi rectas (6 px), filete de color arriba de cada indicador",
+    ideal:"Consultorios con mucho volumen, clínicas, varios profesionales",
+    colores:{dia:["#F2F4F7","#0B1530","#1F4FD8","#137A4A","#A35C00"],noche:["#080B11","#05070C","#7097FF","#4CC88B","#F0A64A"]}},
+  cercano:{letra:"C",nombre:"Cercano",tag:"Cálido y muy legible",
+    desc:"Arena, terracota y verde salvia. Serio pero humano — encaja con terapia infantil sin volverse infantil. Tipografía Atkinson Hyperlegible, diseñada para lectura fácil (ideal en el iPhone y con poca luz). Botones tipo píldora, avatares de color.",
+    fuentes:"Bricolage Grotesque (títulos) + Atkinson Hyperlegible (texto)", forma:"Muy redondeado (22 px), píldoras, sombras suaves",
+    ideal:"Fonoaudiología, psicología infantil, terapias con familias",
+    colores:{dia:["#FAF6F0","#B0502A","#4F7A57","#2A2220","#B07A1E"],noche:["#181311","#EB8D62","#93C29B","#F3EAE3","#E5B866"]}},
+  grafito:{letra:"D",nombre:"Grafito",tag:"Premium / tecnológico",
+    desc:"Pensado primero para la noche: negro grafito, acento esmeralda con un brillo sutil, etiquetas técnicas en mono. Se ve como software moderno de primera línea. En modo día queda blanco puro y muy limpio.",
+    fuentes:"Schibsted Grotesk + JetBrains Mono (etiquetas y horas)", forma:"Esquinas medias (12 px), brillos sutiles, bordes de 1 px",
+    ideal:"Quien usa la app mucho de noche o quiere una imagen muy actual",
+    colores:{dia:["#FAFAF9","#0A8A5F","#0C0D0F","#E7E7E5","#B26B00"],noche:["#0A0B0D","#34D399","#EDEEF0","#16181D","#FBBF5C"]}},
+  turquesa:{letra:"E",nombre:"Sereno turquesa",tag:"Clásico · pedido de la clienta",
+    desc:"Variante de A con el turquesa que le gusta a la clienta y un aire más clásico, menos «dashboard»: filetes dobles como en un libro de registro, etiquetas en versalitas, esquinas más rectas y una raya turquesa en la sección activa. Pensado siempre de día. Es el que ya está aplicado en la app.",
+    fuentes:"Newsreader (títulos y números) + Public Sans (texto)", forma:"Esquinas rectas (8 px), filetes dobles, sin sombras",
+    ideal:"Consultorio con trayectoria, imagen seria y tradicional",
+    colores:{dia:["#F7F5EF","#0B7A78","#DDF0EC","#1C2B2B","#F0EDE4"],noche:["#0E1716","#4FC4BD","#143634","#E9E6DE","#0B1312"]}},
+};
+
+/* ---------- Armado de la pantalla «Hoy» ---------- */
+function spark(){
+  return `<svg class="spark" viewBox="0 0 96 34" fill="none"><path d="M1 28 L14 24 L27 26 L40 17 L53 19 L66 11 L79 13 L95 4" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M1 28 L14 24 L27 26 L40 17 L53 19 L66 11 L79 13 L95 4 V34 H1Z" fill="var(--accent)" opacity=".10"/></svg>`;
+}
+function app(estilo, modo){
+  const titulo = (estilo === "sereno" || estilo === "turquesa") ? "Buenas tardes, <em>Andrea</em>" : "Hoy";
+  return `
+<div class="app entra" data-estilo="${estilo}" data-modo="${modo}">
+  <aside class="side">
+    <div class="marca"><div class="logo">V</div><div><b>Voz Clara</b><small>Fonoaudiología</small></div></div>
+    <ul class="nav">
+      ${NAV.map(([k,t,b],i)=>`${i===4?'<li class="sep"></li>':''}<li><a class="${k==='hoy'?'on':''}" href="#">${ic(k)}<span>${t}</span>${b?`<em class="badge">${b}</em>`:''}</a></li>`).join("")}
+    </ul>
+    <div class="yo"><div class="av">AM</div><div><b>Lic. Andrea Martínez</b><small>Administradora</small></div></div>
+  </aside>
+  <div class="top-movil"><div class="logo">V</div><b>Voz Clara</b><div class="ic">${ic("buscar")}</div></div>
+  <section class="main">
+    <div class="cabeza">
+      <div class="tit"><small>Lunes 2 de noviembre · 6 turnos · 1 libre</small><h1>${titulo}</h1></div>
+      <div class="acc">
+        <div class="buscar">${ic("buscar")}<span>Buscar paciente o tutor</span><kbd>⌘K</kbd></div>
+        <button class="btn">${ic("copiar")}Copiar libres</button>
+        <button class="btn pri">${ic("plus")}Reservar</button>
+      </div>
+    </div>
+
+    <div class="kpis">
+      <div class="card kpi"><div class="lab">Turnos de hoy</div><div class="num">6<small style="margin-left:4px"> de 8</small></div><div class="pie"><span class="chip ok">2 vinieron</span><span>1 libre</span></div></div>
+      <div class="card kpi"><div class="lab">Asistencia del mes</div><div class="num">92<small>%</small></div><div class="barra"><i style="width:92%"></i></div></div>
+      <div class="card kpi"><div class="lab">Cobrado en noviembre</div><div class="num"><small>Gs.</small>1.885.000</div><div class="pie"><span class="chip ok">+12%</span><span>vs. octubre</span></div>${spark()}</div>
+      <div class="card kpi"><div class="lab">Por cobrar</div><div class="num"><small>Gs.</small>1.450.000</div><div class="pie"><span class="chip bad">1 atrasado</span><span>4 familias</span></div></div>
+    </div>
+
+    <div class="cuerpo">
+      <div class="card">
+        <div class="bloque-h"><h2>Turnos de hoy</h2><span class="chip acc">Lun 2/11</span><a class="mas">Ver agenda →</a></div>
+        <ul class="turnos">
+          ${TURNOS.map(t=>`<li class="turno ${t.clase}">${t.linea?'<span class="linea-ahora"></span>':''}
+            <div class="hora">${t.h}<small>${t.fin}</small></div><span class="raya"></span>
+            <div class="quien"><b>${t.nom}</b><span>${t.det}</span></div>
+            <div class="der">${t.chip?`<span class="chip ${t.chip[0]}">${t.chip[1]}</span>`:''}${t.btn?`<button class="mini-btn ${t.pri?'pri':''}">${t.btn}</button>`:''}</div></li>`).join("")}
+        </ul>
+      </div>
+      <div class="lateral">
+        <div class="card">
+          <div class="bloque-h"><h2>Mensajes de hoy</h2><span class="chip warn">3 sin mandar</span></div>
+          <ul class="msjs">${MSJS.map(m=>`<li class="msj"><div class="ic">${ic(m.i)}</div><div><b>${m.t}</b><span>${m.d}</span></div><button class="mini-btn">Copiar</button></li>`).join("")}</ul>
+        </div>
+        <div class="card">
+          <div class="bloque-h"><h2>Quién debe</h2><a class="mas">Cobros →</a></div>
+          <ul class="deben">${DEBEN.map(d=>`<li><div class="av">${d.ini}</div><div><b>${d.n}</b><span>${d.d}</span></div><div class="monto">Gs. ${d.m}<small><span class="chip ${d.chip[0]}">${d.chip[1]}</span></small></div></li>`).join("")}</ul>
+        </div>
+        <div class="card">
+          <div class="bloque-h"><h2>Esta semana</h2><span style="margin-left:auto;color:var(--ink-2);font-size:13px">turnos atendidos</span></div>
+          <div class="semana">
+            <div><i class="hoy" style="height:62%"></i><span>Lun</span></div>
+            <div><i class="fut" style="height:88%"></i><span>Mar</span></div>
+            <div><i class="fut" style="height:75%"></i><span>Mié</span></div>
+            <div><i class="fut" style="height:100%"></i><span>Jue</span></div>
+            <div><i class="fut" style="height:50%"></i><span>Vie</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+  <nav class="tabbar">
+    <a class="on">${ic("hoy")}Hoy</a><a>${ic("agenda")}Agenda</a><a>${ic("pacientes")}Pacientes</a><a>${ic("cobros")}Cobros</a><a>${ic("mas")}<em class="badge">3</em>Más</a>
+  </nav>
+</div>`;
+}
+
+/* ---------- Estado de la demo ---------- */
+const S = {estilo:"turquesa", modo:"dia", equipo:"mac"};
+try{ Object.assign(S, JSON.parse(localStorage.getItem("baltoxi-demo")||"{}")); }catch(e){}
+const H = location.hash.slice(1);
+if (["sereno","precision","cercano","grafito","turquesa","comparar"].includes(H)) S.estilo = H;
+if (["dia","noche"].includes(new URLSearchParams(location.search).get("modo"))) S.modo = new URLSearchParams(location.search).get("modo");
+if (["mac","ipad","iphone"].includes(new URLSearchParams(location.search).get("equipo"))) S.equipo = new URLSearchParams(location.search).get("equipo");
+
+function ficha(e){
+  const x = ESTILOS[e];
+  return `<div><h2><small>Estilo ${x.letra} · ${x.tag}</small>${x.nombre}</h2><p>${x.desc}</p></div>
+  <dl class="specs">
+    <div><dt>Tipografía</dt><dd>${x.fuentes}</dd></div>
+    <div><dt>Forma</dt><dd>${x.forma}</dd></div>
+    <div><dt>Ideal para</dt><dd>${x.ideal}</dd></div>
+    <div><dt>Paleta (${S.modo==="dia"?"día":"noche"})</dt><dd class="swatches">${x.colores[S.modo].map(c=>`<i style="background:${c}" title="${c}"></i>`).join("")}</dd></div>
+  </dl>`;
+}
+
+function pintar(){
+  try{ localStorage.setItem("baltoxi-demo", JSON.stringify(S)); }catch(e){}
+  document.querySelectorAll("#ctl-estilo button").forEach(b=>b.setAttribute("aria-pressed", b.dataset.v===S.estilo));
+  document.querySelectorAll("#ctl-modo button").forEach(b=>b.setAttribute("aria-pressed", b.dataset.v===S.modo));
+  document.querySelectorAll("#ctl-equipo button").forEach(b=>b.setAttribute("aria-pressed", b.dataset.v===S.equipo));
+  const comparar = S.estilo === "comparar";
+  document.getElementById("vista-una").hidden = comparar;
+  document.getElementById("vista-comparar").hidden = !comparar;
+  document.getElementById("ctl-equipo").parentElement.style.opacity = comparar ? .4 : 1;
+  if (comparar){
+    const g = document.getElementById("grid-comparar");
+    g.innerHTML = Object.keys(ESTILOS).map(k=>`<div class="mini" data-k="${k}"><div class="mini-frame"><div class="scale">${app(k,S.modo)}</div></div>
+      <div class="mini-cap"><b>${ESTILOS[k].letra} · ${ESTILOS[k].nombre}</b><span>${ESTILOS[k].tag}</span></div></div>`).join("");
+    escalar();
+    g.querySelectorAll(".mini").forEach(m=>m.onclick=()=>{S.estilo=m.dataset.k;pintar();scrollTo({top:0,behavior:"smooth"});});
+  } else {
+    document.getElementById("ficha").innerHTML = ficha(S.estilo);
+    const d = document.getElementById("device");
+    d.className = "device " + S.equipo;
+    document.getElementById("screen").innerHTML = `<div class="app-wrap">${app(S.estilo,S.modo)}</div>`;
+  }
+}
+function escalar(){
+  document.querySelectorAll(".mini-frame").forEach(f=>{ f.querySelector(".scale").style.transform = `scale(${f.clientWidth/1280})`; });
+}
+addEventListener("resize", escalar);
+[["ctl-estilo","estilo"],["ctl-modo","modo"],["ctl-equipo","equipo"]].forEach(([id,k])=>{
+  document.getElementById(id).addEventListener("click",ev=>{
+    const b = ev.target.closest("button"); if(!b) return;
+    S[k] = b.dataset.v; pintar();
+  });
+});
+
+/* ---------- Votación ---------- */
+const VOTOS = (()=>{ try{ return JSON.parse(localStorage.getItem("baltoxi-votos")||"{}"); }catch(e){ return {}; } })();
+document.getElementById("filas-voto").innerHTML = Object.entries(ESTILOS).map(([k,x])=>`
+  <div class="voto-fila"><b>${x.letra} · ${x.nombre}</b>
+    <div class="seg" data-k="${k}">${["Me encanta","Puede ser","No"].map(v=>`<button data-v="${v}" aria-pressed="${VOTOS[k]?.v===v}">${v}</button>`).join("")}</div>
+    <input data-k="${k}" placeholder="Qué cambiarían (ej. «el color de C con la letra de A»)" value="${(VOTOS[k]?.nota||"").replace(/"/g,"&quot;")}">
+  </div>`).join("");
+function guardarVotos(){ try{ localStorage.setItem("baltoxi-votos", JSON.stringify(VOTOS)); }catch(e){} }
+document.querySelectorAll("#filas-voto .seg").forEach(s=>s.addEventListener("click",ev=>{
+  const b = ev.target.closest("button"); if(!b) return;
+  const k = s.dataset.k; VOTOS[k] = {...(VOTOS[k]||{}), v:b.dataset.v}; guardarVotos();
+  s.querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed", x===b));
+}));
+document.querySelectorAll("#filas-voto input").forEach(i=>i.addEventListener("input",()=>{
+  const k = i.dataset.k; VOTOS[k] = {...(VOTOS[k]||{}), nota:i.value}; guardarVotos();
+}));
+document.getElementById("copiar").addEventListener("click", async ()=>{
+  const lineas = ["Baltoxi · elección de estilo visual",""];
+  Object.entries(ESTILOS).forEach(([k,x])=>{
+    lineas.push(`${x.letra} · ${x.nombre}: ${VOTOS[k]?.v||"—"}${VOTOS[k]?.nota?` (${VOTOS[k].nota})`:""}`);
+  });
+  lineas.push("", `Modo por defecto: ${document.getElementById("d-modo").value}`,
+    `Densidad: ${document.getElementById("d-dens").value}`, `Esquinas: ${document.getElementById("d-esq").value}`);
+  try{ await navigator.clipboard.writeText(lineas.join("\n"));
+    const ok = document.getElementById("ok-copiado"); ok.textContent="Copiado ✓"; ok.classList.add("ver"); setTimeout(()=>ok.classList.remove("ver"),1800);
+  }catch(e){ const ok=document.getElementById("ok-copiado"); ok.textContent="No se pudo copiar: seleccioná y copiá a mano"; ok.classList.add("ver"); }
+});
+
+pintar();
+document.fonts && document.fonts.ready.then(escalar);
+</script>
+</body>
+</html>

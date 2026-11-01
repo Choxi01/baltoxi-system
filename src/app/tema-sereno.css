@@ -1,0 +1,93 @@
+/*
+  ─────────────────────────────────────────────────────────────────────────────
+  TEMA «SERENO TURQUESA» — elegido con la persona B y la clienta (noviembre 2026)
+  ─────────────────────────────────────────────────────────────────────────────
+  Qué es: los colores, letras y detalles que le dan a la app el aspecto marfil + turquesa.
+
+  Cuándo se aplica: SOLO si <html data-tema="sereno">. Eso lo decide src/lib/tema.ts:
+    - TEMA = "sereno" → se usa este archivo.
+    - TEMA = "basico" → este archivo no hace nada y la app vuelve al blanco y negro original.
+  Para volver al básico NO hace falta borrar ni tocar este archivo: solo cambiar esa palabra.
+
+  Cómo funciona: shadcn/ui pinta todo con variables (--background, --primary, etc.).
+  Acá les damos otros valores. Ningún componente se modificó.
+
+  Para cambiar un color: cambiá el valor de la variable (ej. --primary) y listo.
+  Si usás un turquesa más claro, revisá que el texto blanco encima se siga leyendo
+  (contraste mínimo 4,5:1; se puede medir en https://webaim.org/resources/contrastchecker/).
+
+  Solo modo día: la app nunca activa el modo oscuro.
+  Contraste comprobado (WCAG AA): turquesa #0B7A78 sobre blanco 5,2:1; texto gris sobre marfil 5,3:1.
+*/
+
+/*
+  Colores y medidas. Se escribe `html[data-tema=...]` (y no solo `[data-tema=...]`) a propósito:
+  así gana sobre los colores básicos de :root en globals.css aunque este archivo se cargue antes.
+*/
+html[data-tema="sereno"] {
+  --radius: 0.5rem; /* esquinas más rectas, aspecto clásico */
+
+  --background: #f7f5ef; /* marfil */
+  --foreground: #1c2b2b; /* tinta verde muy oscura */
+  --card: #ffffff;
+  --card-foreground: #1c2b2b;
+  --popover: #ffffff;
+  --popover-foreground: #1c2b2b;
+  --primary: #0b7a78; /* turquesa profundo */
+  --primary-foreground: #ffffff;
+  --secondary: #efece4;
+  --secondary-foreground: #1c2b2b;
+  --muted: #efece4;
+  --muted-foreground: #5b6867;
+  --accent: #ddf0ec; /* turquesa muy claro: sección activa y hover */
+  --accent-foreground: #0a6664;
+  --destructive: #a93a2f;
+  --border: #e0dbcf;
+  --input: #d3ccbd;
+  --ring: #2fa7a2;
+
+  /* Letras. Las fuentes se descargan en src/app/layout.tsx (next/font). */
+  --fuente-texto: var(--font-public-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --fuente-titulos: var(--font-newsreader), Georgia, "Times New Roman", serif;
+}
+
+/*
+  Detalles de forma. Estos SÍ se escriben con reglas propias (no variables) porque los
+  componentes no traen una variable para eso. Todos empiezan con [data-tema="sereno"],
+  así que con TEMA = "basico" ninguno se aplica.
+*/
+
+/* Títulos con letra serif (como un consultorio con trayectoria). */
+[data-tema="sereno"] :is(h1, h2, h3) {
+  font-family: var(--fuente-titulos);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+[data-tema="sereno"] h1 {
+  font-size: 2rem;
+  line-height: 1.15;
+}
+
+/* El menú se identifica por aria-label="Menú" (src/components/app/menu.tsx). Si ese texto cambia, cambiarlo acá también. */
+/* Menú lateral (iPad y Mac): fondo marfil un poco más oscuro y raya turquesa en la sección activa. */
+@media (min-width: 48rem) {
+  [data-tema="sereno"] nav[aria-label="Menú"] {
+    background: #f0ede4;
+  }
+}
+[data-tema="sereno"] nav[aria-label="Menú"] a[aria-current="page"] {
+  box-shadow: inset 3px 0 0 var(--primary);
+  font-weight: 600;
+}
+/* Barra de abajo del iPhone: la sección activa en turquesa. */
+@media (max-width: 47.99rem) {
+  [data-tema="sereno"] nav[aria-label="Menú"] a[aria-current="page"] {
+    box-shadow: none;
+    color: var(--primary);
+  }
+}
+
+/* Campos de texto blancos sobre el fondo marfil (más fáciles de ver). */
+[data-tema="sereno"] :is(input:not([type="checkbox"], [type="radio"]), textarea, select):not(:disabled) {
+  background-color: var(--card);
+}
