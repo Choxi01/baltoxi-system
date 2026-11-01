@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { connection } from "next/server";
 
 import { rangoParaCargar, type Vista } from "@/lib/agenda/calendario";
 import {
@@ -33,6 +34,9 @@ function fechaValida(valor: unknown): string | null {
 // Agenda (A2b + A3a reservar + A3b mover, cancelar y reponer + A3c turnos fijos + B3 asistencia + A4 copiar libres).
 export default async function Pagina({ searchParams }: PageProps<"/agenda">) {
   const parametros = await searchParams;
+  // "Hoy" se calcula en cada visita, no al compilar. `await searchParams` no alcanza:
+  // con la navegación instantánea, Next puede preparar la página de antemano.
+  await connection();
   const hoy = hoyEnAsuncion();
   const fecha = fechaValida(parametros.fecha) ?? hoy;
   const vista = VISTAS.find((v) => v === parametros.vista) ?? null;
