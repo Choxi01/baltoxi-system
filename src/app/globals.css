@@ -1,11 +1,11 @@
 @import "tailwindcss";
 @import "tw-animate-css";
-/* Estilo visual elegido (se activa con TEMA en src/lib/tema.ts). */
+/* Estilo visual elegido. Se activa o desactiva con TEMA en src/lib/tema.ts (no hace falta borrar esta línea). */
 @import "./tema-sereno.css";
 
 @custom-variant dark (&:is(.dark *));
 
-/* Colores de shadcn/ui (tema neutral). */
+/* Colores de shadcn/ui (tema neutral = el estilo «basico»). El tema sereno los reemplaza. */
 :root {
   /* Fuente del sistema: en iPhone, iPad y Mac es la de Apple (San Francisco). El tema la puede cambiar. */
   --fuente-texto: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;

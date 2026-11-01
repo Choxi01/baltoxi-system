@@ -5,7 +5,9 @@ import { TEMA } from "@/lib/tema";
 import { cn } from "@/lib/utils";
 import "./globals.css";
 
-// Fuentes del tema «sereno» (se descargan al compilar y se sirven desde la propia app).
+// Fuentes del tema «sereno»: Newsreader (títulos, serif) y Public Sans (texto).
+// Se descargan al compilar y se sirven desde la propia app (no dependen de Google al usarla).
+// Con TEMA = "basico" no se usan y la app queda con la fuente del sistema.
 const newsreader = Newsreader({ subsets: ["latin"], weight: ["400", "500", "600"], variable: "--font-newsreader" });
 const publicSans = Public_Sans({ subsets: ["latin"], variable: "--font-public-sans" });
 
@@ -25,6 +27,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
+    // data-tema activa (o no) los colores de src/app/tema-sereno.css. Se elige en src/lib/tema.ts.
     <html
       lang="es-PY"
       data-tema={TEMA}
