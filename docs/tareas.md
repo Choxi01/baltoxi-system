@@ -7,6 +7,9 @@ Cómo usar este archivo:
 
 Todas las tareas asumen que Claude Code leyó `CLAUDE.md`. Si no, empezá con "Leé CLAUDE.md".
 
+> **Pendiente:** sumar a este plan los pedidos de la clienta en `docs/pedidos-daniela-2026-11.md`
+> (cancelar con "¿Se cobra?", grupales y dobles, vista Semana, colores por tipo, reportes día a día).
+
 | Semana | Persona A | Persona B |
 |---|---|---|
 | 1 | 0.1–0.4 juntos | 0.1–0.4 juntos |
