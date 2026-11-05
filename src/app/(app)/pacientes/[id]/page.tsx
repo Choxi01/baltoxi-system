@@ -5,6 +5,8 @@ import { ChevronLeft, Pin } from "lucide-react";
 
 import { Pestanas } from "@/components/app/pestanas";
 import { formatoGs } from "@/lib/cobro/formato";
+import { borrarDocumento, descartarSubida, linkDocumento, prepararSubida, registrarDocumento } from "@/lib/documentos/acciones";
+import { listarDocumentos } from "@/lib/documentos/datos";
 import { hoyEnAsuncion } from "@/lib/fechas";
 import { actualizarPaciente } from "@/lib/pacientes/acciones";
 import { actualizarNota, borrarNota, crearNota, fijarNota } from "@/lib/pacientes/acciones-notas";
@@ -22,6 +24,7 @@ import {
   vincularTutorExistente,
 } from "@/lib/tutores/acciones";
 import { FichaDatos, type FilaResumen } from "./ficha-datos";
+import { TabDocumentos } from "./tab-documentos";
 import { DatosNota, TabNotas } from "./tab-notas";
 import { TabTutores } from "./tab-tutores";
 
@@ -31,10 +34,11 @@ export default async function PaginaPaciente({ params, searchParams }: PageProps
   const { id } = await params;
   const { pestana, turno } = await searchParams;
 
-  const [ficha, disponibles, notas, sesion] = await Promise.all([
+  const [ficha, disponibles, notas, documentos, sesion] = await Promise.all([
     obtenerPaciente(id),
     listarTutoresParaVincular(id),
     listarNotas(id),
+    listarDocumentos(id),
     // "Agregar nota de esta sesión" (agenda y Hoy): ?pestana=notas&turno=<id>
     typeof turno === "string" ? obtenerTurnoParaNota(turno, id) : null,
   ]);
@@ -146,7 +150,21 @@ export default async function PaginaPaciente({ params, searchParams }: PageProps
               />
             ),
           },
-          { id: "documentos", titulo: "Documentos", contenido: proximamente("A7") },
+          {
+            id: "documentos",
+            titulo: "Documentos",
+            contenido: (
+              <TabDocumentos
+                documentos={documentos}
+                hoy={hoy}
+                prepararSubida={prepararSubida.bind(null, paciente.id)}
+                registrar={registrarDocumento.bind(null, paciente.id)}
+                descartarSubida={descartarSubida.bind(null, paciente.id)}
+                pedirLink={linkDocumento.bind(null, paciente.id)}
+                borrar={borrarDocumento.bind(null, paciente.id)}
+              />
+            ),
+          },
           { id: "cuenta", titulo: "Turnos y cuenta", contenido: proximamente("B4") },
         ]}
       />

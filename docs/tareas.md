@@ -204,10 +204,14 @@ Detalle y propuestas en `docs/pedidos-daniela-2026-11.md`. La A11 va antes de la
 
 ## Semana 6 — Documentos, ficha online y facturación
 
-#### [ ] A7 Documentos
+#### [x] A7 Documentos
 > Pestaña Documentos según `docs/expediente.md`: subir desde cámara o archivos, achicar imágenes en el
 > dispositivo, guardar en el bucket privado con la ruta indicada, ver con link firmado de 5 minutos,
 > borrar con confirmación. Tipos y fechas. Probalo desde Safari en iPhone.
+
+> _Hecha (migración 0010: límites del bucket). Detalle en `docs/expediente.md`. Probada en Chrome con
+> datos inventados (una foto de 4032×3024 queda en 2000×1500 JPEG); **falta probarla en Safari de iPhone**
+> con la base (cámara, subir, ver y borrar). Para la 8.1: archivos que quedan al borrar un paciente._
 
 #### [ ] A8 Ficha online y reglamento
 > Página pública `/ficha/<token>` según `docs/expediente.md`: datos editables del tutor y sus hijos,
