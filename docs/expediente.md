@@ -37,7 +37,23 @@ Datos de salud de menores: máxima prioridad de privacidad. Solo la profesional 
 - Antes de subir, achicar imágenes en el dispositivo: lado mayor 2000 px, JPEG calidad 0,8.
   PDF tal cual (máximo 15 MB).
 - Abrir siempre con `createSignedUrl(ruta, 300)` (5 minutos). Nunca URL pública ni guardada.
-- Borrar documento = borrar objeto + fila (confirmación en pantalla).
+- Borrar documento = borrar objeto + fila (confirmación en pantalla). Primero el archivo: si no se
+  pudo borrar, la fila queda.
+- **Cómo está hecho (tarea A7):**
+  1. `prepararSubida` (servidor) arma la ruta con un uuid; nunca el título ni el nombre original.
+  2. El navegador sube el archivo directo al bucket con la sesión de la profesional.
+  3. `registrarDocumento` (servidor) verifica que la ruta sea de ese consultorio y paciente
+     (`rutaValida`), que el archivo esté en el bucket y su tamaño (lo lee del bucket), y guarda la fila.
+     Si algo falla, el archivo se borra (`descartarSubida`).
+  - "Sacar foto" abre la cámara de atrás; "Elegir archivo" acepta fotos y PDF. Las fotos (también HEIC)
+    se achican en un canvas a JPEG (`src/lib/documentos/achicar.ts`).
+  - "Ver" pide el link firmado al tocarlo; la imagen se ve ahí mismo y el PDF con "Abrir PDF". El link
+    solo vive en la pantalla.
+  - Migración 0010: el bucket rechaza archivos de más de 15 MB o que no sean JPEG o PDF.
+  - Código: `src/lib/documentos/` (`reglas.ts` con tests, `acciones.ts`, `datos.ts`) y
+    `src/app/(app)/pacientes/[id]/tab-documentos.tsx`.
+  - Pendiente para la 8.1: al borrar un paciente, la base borra sus filas de documentos pero los
+    archivos quedan en el bucket.
 
 ## Plantilla de anamnesis
 Estructura JSON:
