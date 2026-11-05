@@ -92,7 +92,7 @@ describe("validarTarifa", () => {
 });
 
 const tipo = (datos: Record<string, string> = {}) =>
-  formulario({ nombre: "Sesión", modalidad: "consultorio", tarifa_id: "", genera_cobro: "on", requiere_paciente: "on", ...datos });
+  formulario({ nombre: "Sesión", modalidad: "consultorio", color: "durazno", tarifa_id: "", genera_cobro: "on", requiere_paciente: "on", ...datos });
 
 describe("validarTipoTurno", () => {
   it("tarifa vacía es la del paciente y los checkboxes se leen", () => {
@@ -101,6 +101,7 @@ describe("validarTipoTurno", () => {
       datos: {
         nombre: "Sesión",
         modalidad: "consultorio",
+        color: "durazno",
         tarifa_id: null,
         cobra_en_el_momento: false,
         genera_cobro: true,
@@ -128,6 +129,13 @@ describe("validarTipoTurno", () => {
   it("no cobra en el momento si no genera cobro", () => {
     const r = validarTipoTurno(tipo({ cobra_en_el_momento: "on", genera_cobro: "" }));
     expect(!r.ok && r.errores.cobra_en_el_momento).toBe("Para cobrar en el momento, el tipo tiene que generar cobro.");
+  });
+
+  it("rechaza un color que no está en la paleta", () => {
+    for (const color of ["", "fucsia"]) {
+      const r = validarTipoTurno(tipo({ color }));
+      expect(!r.ok && r.errores.color).toBe("Elegí un color.");
+    }
   });
 
   it("rechaza modalidad desconocida y nombre vacío", () => {

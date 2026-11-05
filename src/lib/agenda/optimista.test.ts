@@ -21,6 +21,7 @@ const turno = (id: string, inicio: string, datos: Partial<TurnoAgenda> = {}): Tu
   tipoId: "tipo-1",
   pacienteId: "paciente-1",
   modalidad: "consultorio",
+  color: null,
   porcentajeManual: null,
   ...datos,
 });

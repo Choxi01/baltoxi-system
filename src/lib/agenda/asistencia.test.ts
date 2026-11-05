@@ -8,6 +8,7 @@ const turno = (estado: Parameters<typeof accionesDelTurno>[0]["estado"], extra: 
   clase: "turno" as const,
   estado,
   fecha: HOY,
+  color: null,
   porcentajeManual: null,
   ...extra,
 });

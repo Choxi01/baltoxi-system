@@ -91,7 +91,7 @@ export function turnoNuevo(datos: {
   paciente?: { id: string; nombre: string; apellido: string | null } | null;
   nombreReserva?: string;
   motivo?: string;
-  tipo?: { id: string; nombre: string; modalidad: string } | null;
+  tipo?: { id: string; nombre: string; modalidad: string; color?: string | null } | null;
 }): TurnoAgenda {
   const tipo = datos.clase === "ocupado" ? null : (datos.tipo ?? null);
   const titulo =
@@ -112,6 +112,7 @@ export function turnoNuevo(datos: {
     serieId: null,
     tipoId: tipo?.id ?? null,
     pacienteId: datos.clase === "turno" ? (datos.paciente?.id ?? null) : null,
+    color: tipo?.color ?? null,
     modalidad: tipo?.modalidad ?? null,
     porcentajeManual: null,
   };

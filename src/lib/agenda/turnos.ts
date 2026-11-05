@@ -51,6 +51,8 @@ export type TurnoAgenda = {
   tipoId: string | null;
   /** Paciente con ficha (para "Ver expediente"). */
   pacienteId: string | null;
+  /** Color del tipo de turno (`tipos_turno.color`, ver src/lib/agenda/colores.ts). Null = el de por defecto. */
+  color: string | null;
   /** Modalidad del tipo de turno (para el aviso de traslado). Sin tipo = consultorio. */
   modalidad: string | null;
   /** Excepción "a criterio" del cobro (0 a 100), si tiene. */

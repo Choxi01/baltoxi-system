@@ -1,4 +1,7 @@
+import { Check, X } from "lucide-react";
+
 import { horaCorta, type Tramo } from "@/lib/agenda/bloques";
+import { CLASES_COLOR, estiloTurno, leyendaTipos, type MarcaEstado } from "@/lib/agenda/colores";
 import { diaCorto, numeroDia } from "@/lib/agenda/calendario";
 import { filasSemana } from "@/lib/agenda/semana";
 import { NOMBRE_ESTADO_TURNO, textoEstado, textoTurno, type Dia, type FilaDia, type TurnoAgenda } from "@/lib/agenda/turnos";
@@ -7,12 +10,58 @@ import { cn } from "@/lib/utils";
 // Vistas de la agenda (solo lectura). Reciben los días ya armados con
 // armarDia; acá solo se dibuja.
 
-/** Color por estado; reservado y ocupado en gris. Siempre con texto, no solo color. */
-function colorTurno(t: TurnoAgenda): string {
-  if (t.clase !== "turno") return "border-border bg-muted text-muted-foreground";
-  if (t.estado === "presente") return "border-emerald-300 bg-emerald-50 text-emerald-950 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-50";
-  if (t.estado === "ausente_sin_aviso") return "border-rose-300 bg-rose-50 text-rose-950 dark:border-rose-800 dark:bg-rose-950 dark:text-rose-50";
-  return "border-sky-300 bg-sky-50 text-sky-950 dark:border-sky-800 dark:bg-sky-950 dark:text-sky-50";
+// Relleno = color del tipo de turno; estado = borde + ícono (src/lib/agenda/colores.ts).
+// Reservado y ocupado, en gris. Siempre con texto o ícono, no solo color.
+
+/** ✓ vino, ✕ no vino (con texto para lectores de pantalla). */
+function IconoEstado({ marca, className }: { marca: MarcaEstado; className?: string }) {
+  if (marca === "vino") return <Check aria-label="Vino" className={cn("shrink-0 text-emerald-700 dark:text-emerald-300", className)} strokeWidth={3} />;
+  if (marca === "no_vino") return <X aria-label="No vino" className={cn("shrink-0 text-rose-700 dark:text-rose-300", className)} strokeWidth={3} />;
+  return null;
+}
+
+/** "%" chiquito: el turno tiene una excepción de cobro. */
+function MarcaExcepcion() {
+  return (
+    <span aria-label="Con excepción de cobro" className="shrink-0 rounded-sm bg-background/70 px-0.5 text-[0.6rem] font-semibold leading-none">
+      %
+    </span>
+  );
+}
+
+/** Leyenda abajo de la grilla: los tipos de turno que aparecen y qué significan los bordes. */
+export function LeyendaAgenda({ turnos }: { turnos: TurnoAgenda[] }) {
+  const tipos = leyendaTipos(turnos);
+  return (
+    <div className="flex flex-col gap-1.5 text-xs text-muted-foreground">
+      {tipos.length > 0 && (
+        <ul className="flex flex-wrap gap-x-3 gap-y-1" aria-label="Tipos de turno">
+          {tipos.map((t) => (
+            <li key={t.nombre} className="flex items-center gap-1">
+              <span className={cn("size-3 shrink-0 rounded-full", CLASES_COLOR[t.color].muestra)} />
+              {t.nombre}
+            </li>
+          ))}
+        </ul>
+      )}
+      <ul className="flex flex-wrap gap-x-3 gap-y-1" aria-label="Estados">
+        <li className="flex items-center gap-1">
+          <span className="size-3 shrink-0 rounded-sm border-2 border-emerald-600" />
+          <IconoEstado marca="vino" className="size-3" /> Vino
+        </li>
+        <li className="flex items-center gap-1">
+          <span className="size-3 shrink-0 rounded-sm border-2 border-rose-600" />
+          <IconoEstado marca="no_vino" className="size-3" /> No vino
+        </li>
+        <li className="flex items-center gap-1">
+          <span className="rounded-sm border px-0.5 text-[0.6rem] font-semibold leading-none">%</span> Excepción de cobro
+        </li>
+        <li className="flex items-center gap-1">
+          <span className="size-3 shrink-0 rounded-sm border border-border bg-muted" /> Reservado u ocupado
+        </li>
+      </ul>
+    </div>
+  );
 }
 
 function AvisoBloqueo({ dia }: { dia: Dia }) {
@@ -97,6 +146,7 @@ function ContenidoFila({ fila }: { fila: FilaDia }) {
 }
 
 function TarjetaTurno({ turno, aviso }: { turno: TurnoAgenda; aviso?: string }) {
+  const estilo = estiloTurno(turno);
   const detalle = [
     turno.clase === "turno" ? turno.tipo : null,
     `${horaCorta(turno.inicio)}–${horaCorta(turno.fin)}`,
@@ -105,8 +155,12 @@ function TarjetaTurno({ turno, aviso }: { turno: TurnoAgenda; aviso?: string }) 
     turno.guardando ? "Guardando…" : null,
   ].filter(Boolean);
   return (
-    <span className={cn("flex min-h-12 w-full flex-col justify-center rounded-lg border px-3 py-2", colorTurno(turno), turno.guardando && "opacity-60")}>
-      <span className="truncate font-medium">{textoTurno(turno)}</span>
+    <span className={cn("flex min-h-12 w-full flex-col justify-center rounded-lg px-3 py-2", estilo.clases, turno.guardando && "opacity-60")}>
+      <span className="flex items-center gap-1.5">
+        <IconoEstado marca={estilo.marca} className="size-4" />
+        <span className="truncate font-medium">{textoTurno(turno)}</span>
+        {estilo.excepcion && <MarcaExcepcion />}
+      </span>
       <span className="text-xs opacity-80">{detalle.join(" · ")}</span>
     </span>
   );
@@ -217,12 +271,20 @@ function CeldaSemana({ dia, hora, alElegir }: { dia: Dia; hora: string; alElegir
       {turnos.length === 0 ? (
         <span className="flex h-12 items-center justify-center rounded-md border border-dashed text-xs text-muted-foreground">Libre</span>
       ) : (
-        turnos.map((t) => (
-          <span key={t.id} className={cn("flex min-h-12 min-w-0 flex-col justify-center rounded-md border px-1 py-1 md:px-1.5", colorTurno(t), t.guardando && "opacity-60")}>
-            <span className="line-clamp-2 hyphens-auto break-words text-[0.7rem] font-medium leading-tight md:text-xs">{textoTurno(t)}</span>
-            {textoEstado(t) && <span className="text-[0.65rem] leading-tight opacity-80">{textoEstado(t)}</span>}
-          </span>
-        ))
+        turnos.map((t) => {
+          const estilo = estiloTurno(t);
+          return (
+            <span key={t.id} className={cn("flex min-h-12 min-w-0 flex-col justify-center rounded-md px-1 py-1 md:px-1.5", estilo.clases, t.guardando && "opacity-60")}>
+              <span className="flex min-w-0 items-start gap-0.5">
+                <IconoEstado marca={estilo.marca} className="mt-px size-3" />
+                <span className="line-clamp-2 min-w-0 hyphens-auto break-words text-[0.7rem] font-medium leading-tight md:text-xs">{textoTurno(t)}</span>
+                {estilo.excepcion && <MarcaExcepcion />}
+              </span>
+              {/* En el iPhone alcanza con el ícono y el borde; en pantallas grandes, también el texto. */}
+              {textoEstado(t) && <span className="hidden text-[0.65rem] leading-tight opacity-80 md:block">{textoEstado(t)}</span>}
+            </span>
+          );
+        })
       )}
     </button>
   );

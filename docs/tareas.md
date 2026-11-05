@@ -139,7 +139,7 @@ Todas las tareas asumen que Claude Code leyó `CLAUDE.md`. Si no, empezá con "L
 
 Detalle y propuestas en `docs/pedidos-daniela-2026-11.md`. La A11 va antes de la 8.2 porque cambia la base.
 
-#### [ ] A12 Vista Semana: por defecto, almuerzo y color por tipo
+#### [x] A12 Vista Semana: por defecto, almuerzo y color por tipo
 > Según `docs/pedidos-daniela-2026-11.md` (pedidos 3, 4 y 5). Agenda abre siempre en **Semana**, también
 > en iPhone (los 5 días tienen que entrar en el ancho); Día y Mes quedan como botones. En la vista
 > Semana, franja gris "Almuerzo" (no clickeable) donde hay un hueco entre dos tramos del mismo día.
@@ -149,7 +149,9 @@ Detalle y propuestas en `docs/pedidos-daniela-2026-11.md`. La A11 va antes de la
 
 > _Dividida en dos PRs. **A12a** (hecha): Semana por defecto en todos los dispositivos, grilla que entra
 > en el iPhone y franja de almuerzo (`filasSemana` en `src/lib/agenda/semana.ts`, con tests). **A12b**
-> (pendiente): color por tipo de turno (migración `tipos_turno.color`), estado en el borde y leyenda._
+> (hecha): color por tipo de turno (migración 0009 `tipos_turno.color` con paleta fija y trigger que
+> sugiere uno libre; selector en Configuración > Tipos de turno), estado en el borde con ✓ / ✕ / "%" y
+> leyenda (`src/lib/agenda/colores.ts`, con tests)._
 
 #### [ ] A11 Sesiones dobles y grupales
 > Según `docs/pedidos-daniela-2026-11.md` (pedido 2), con las respuestas de Daniela. Modelo: **un turno

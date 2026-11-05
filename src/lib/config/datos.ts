@@ -38,7 +38,7 @@ export async function listarTiposTurno() {
   const supabase = await crearClienteServidor();
   const { data, error } = await supabase
     .from("tipos_turno")
-    .select("id, nombre, modalidad, tarifa_id, cobra_en_el_momento, genera_cobro, requiere_paciente, activo")
+    .select("id, nombre, modalidad, color, tarifa_id, cobra_en_el_momento, genera_cobro, requiere_paciente, activo")
     .eq("consultorio_id", consultorio.id)
     .order("activo", { ascending: false })
     .order("nombre");

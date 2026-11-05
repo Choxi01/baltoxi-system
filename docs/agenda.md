@@ -14,7 +14,7 @@ Un bloque está **ocupado** si algún turno vivo (no cancelado ni reprogramado) 
 
 | `turnos.clase` | Significado | Se muestra |
 |---|---|---|
-| `turno` | Paciente con ficha | Nombre + tipo de turno + color por estado |
+| `turno` | Paciente con ficha | Nombre + tipo de turno; relleno del color del tipo, estado en el borde (ver "Colores") |
 | `reservado` | Alguien sin ficha ("Reservado: Fulano") | Gris con el nombre; botón "Crear ficha" que lo convierte en `turno` |
 | `ocupado` | Reunión, trámite, colegio | Gris con el motivo |
 
@@ -39,6 +39,19 @@ separados por menos de `traslado_domicilio_min`, mostrar aviso (no bloquear).
 - **Día** (botón): lista de bloques del día, libres incluidos, con acciones.
 - **Mes**: calendario con la cantidad de libres por día; tocar un día abre la vista Día.
 - Navegación: hoy, anterior, siguiente. Colores accesibles y legibles en modo oscuro.
+
+### Colores
+- **Relleno = tipo de turno.** Cada tipo tiene un color de una paleta fija de 8 (`tipos_turno.color`,
+  migración 0009): cielo, durazno, lavanda, arena, turquesa, rosa, oliva y pizarra. Se elige en
+  Configuración > Tipos de turno; a un tipo nuevo se le sugiere uno que no use otro tipo (en la base,
+  un trigger hace lo mismo si llega sin color). Sin color, se pinta cielo.
+- **Estado = borde + ícono**, nunca solo el color: agendado, borde finito del tono del tipo; vino,
+  borde verde grueso y ✓; no vino, borde rojo y ✕; con excepción de cobro, una marca "%". Los
+  cancelados y movidos no ocupan la grilla: en la vista Día se ven tachados debajo del horario.
+- Reservado y ocupado: gris.
+- Leyenda abajo de las vistas Semana y Día: los tipos que aparecen y qué significa cada borde.
+- Código: `src/lib/agenda/colores.ts` (`estiloTurno`, `colorSugerido`, `leyendaTipos`, con tests).
+  Si se agrega un color, cambiar `COLORES_TIPO` y el check de la migración (con una migración nueva).
 
 ## Acciones
 - Bloque libre → **Reservar** (buscar paciente o escribir un nombre suelto), **Marcar ocupado**

@@ -20,20 +20,23 @@ import {
   type Vista,
 } from "@/lib/agenda/calendario";
 import { diaSemana, horaCorta } from "@/lib/agenda/bloques";
-import { armarDia, type TurnoAgenda } from "@/lib/agenda/turnos";
+import { armarDia, type Dia, type TurnoAgenda } from "@/lib/agenda/turnos";
 import { MensajeFamilia } from "@/components/app/mensaje-familia";
 import type { MensajeListo } from "@/lib/mensajes/tipos";
 import { cn } from "@/lib/utils";
 import { CopiarLibres } from "./copiar-libres";
 import { useTurnosOptimistas } from "./turnos-optimistas";
 import { PanelFila, type DatosPanel, type Reposicion } from "./panel";
-import { VistaDia, VistaMes, VistaSemana } from "./vistas";
+import { LeyendaAgenda, VistaDia, VistaMes, VistaSemana } from "./vistas";
 
 const VISTAS: { id: Vista; titulo: string }[] = [
   { id: "dia", titulo: "Día" },
   { id: "semana", titulo: "Semana" },
   { id: "mes", titulo: "Mes" },
 ];
+
+/** Los turnos que se ven en esos días (para la leyenda de colores). */
+const turnosVisibles = (dias: Dia[]) => dias.flatMap((d) => d.filas.flatMap((f) => (f.tipo === "fuera" ? [f.turno] : f.turnos)));
 
 /** Semana en todos los dispositivos (pedido de la profesional): Día y Mes, con los botones. */
 const VISTA_POR_DEFECTO: Vista = "semana";
@@ -254,6 +257,7 @@ export function Agenda({
               )}
             />
           )}
+          {vista === "dia" && dia && <LeyendaAgenda turnos={turnosVisibles([dia])} />}
           {vista === "semana" && (
             <VistaSemana
               dias={semana}
@@ -263,6 +267,7 @@ export function Agenda({
               alElegirFila={(f, clave) => ir(f, "dia", clave)}
             />
           )}
+          {vista === "semana" && <LeyendaAgenda turnos={turnosVisibles(semana)} />}
           {vista === "mes" && (
             <VistaMes
               semanas={semanasMes}

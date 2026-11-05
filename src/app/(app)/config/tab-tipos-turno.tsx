@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
+import { CLASES_COLOR, COLORES_TIPO, NOMBRE_COLOR, colorDeTipo, colorSugerido } from "@/lib/agenda/colores";
 import type { EstadoFormularioConfig } from "@/lib/config/acciones";
 import { MODALIDADES, NOMBRE_MODALIDAD, type Modalidad } from "@/lib/config/validacion";
 import { formatoGs } from "@/lib/cobro/formato";
@@ -16,6 +17,7 @@ type TipoTurno = {
   id: string;
   nombre: string;
   modalidad: string;
+  color: string | null;
   tarifa_id: string | null;
   cobra_en_el_momento: boolean;
   genera_cobro: boolean;
@@ -66,6 +68,7 @@ export function TabTiposTurno({
             key={t.id}
             accion={actualizar.bind(null, t.id)}
             valores={t}
+            colorInicial={colorDeTipo(t.color)}
             tarifas={tarifas}
             textoBoton="Guardar cambios"
             alCancelar={() => setAbierto(null)}
@@ -82,6 +85,7 @@ export function TabTiposTurno({
       {abierto === "nuevo" ? (
         <FormularioTipo
           accion={crear}
+          colorInicial={colorSugerido(tipos.map((t) => t.color))}
           tarifas={tarifas}
           textoBoton="Agregar tipo de turno"
           alCancelar={() => setAbierto(null)}
@@ -125,7 +129,13 @@ function FilaTipo({
   return (
     <div className={cn("flex flex-col gap-3 rounded-lg border p-4", !tipo.activo && "bg-muted/50 text-muted-foreground")}>
       <div className="flex flex-col gap-1">
-        <span className="font-medium">{tipo.nombre}</span>
+        <span className="flex items-center gap-2 font-medium">
+          <span
+            className={cn("size-4 shrink-0 rounded-full", CLASES_COLOR[colorDeTipo(tipo.color)].muestra)}
+            aria-label={`Color ${NOMBRE_COLOR[colorDeTipo(tipo.color)]}`}
+          />
+          {tipo.nombre}
+        </span>
         <span className="text-sm text-muted-foreground">
           {nombreModalidad(tipo.modalidad)} · {tipo.genera_cobro ? textoTarifa : "Sin cobro"}
         </span>
@@ -189,6 +199,7 @@ function Casilla({
 function FormularioTipo({
   accion,
   valores,
+  colorInicial,
   tarifas,
   textoBoton,
   alCancelar,
@@ -196,6 +207,8 @@ function FormularioTipo({
 }: {
   accion: AccionForm;
   valores?: TipoTurno;
+  /** El del tipo, o uno sugerido que no use otro tipo. */
+  colorInicial: string;
   tarifas: Tarifa[];
   textoBoton: string;
   alCancelar: () => void;
@@ -245,6 +258,22 @@ function FormularioTipo({
         </Select>
         {e.modalidad && <p className="text-sm text-destructive">{e.modalidad}</p>}
       </div>
+      <fieldset className="flex flex-col gap-2">
+        <legend className="text-sm font-medium">Color en la agenda</legend>
+        <div className="grid grid-cols-4 gap-2" aria-invalid={!!e.color}>
+          {COLORES_TIPO.map((c) => (
+            <label
+              key={c}
+              className="flex min-h-14 cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border px-1 py-1.5 text-xs has-[:checked]:border-foreground has-[:checked]:ring-2 has-[:checked]:ring-ring/50 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring"
+            >
+              <input type="radio" name="color" value={c} defaultChecked={(enviado?.color ?? colorInicial) === c} className="sr-only" />
+              <span className={cn("size-5 shrink-0 rounded-full", CLASES_COLOR[c].muestra)} />
+              <span>{NOMBRE_COLOR[c]}</span>
+            </label>
+          ))}
+        </div>
+        {e.color && <p className="text-sm text-destructive">{e.color}</p>}
+      </fieldset>
       <div className="flex flex-col gap-2">
         <Label htmlFor={`${prefijo}-tarifa`}>Tarifa</Label>
         <Select
