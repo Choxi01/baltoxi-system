@@ -25,7 +25,7 @@ Variables: `{tutor}` (nombre de pila), `{paciente}` (nombre de pila; si son dos 
 - Por defecto solo el total (como lo manda hoy). Interruptor "Agregar detalle" suma `{detalle}`:
   ```
   • 03/10 Tomi – Sesión – Gs. 290.000
-  • 10/10 Tomi – Canceló con menos de 48 h – Gs. 290.000
+  • 10/10 Tomi – Canceló con menos de 24 h – Gs. 290.000
   ```
 - Total = cargos del período del tutor (todos sus hijos) − pagos ya imputados a ese período.
 - Si el total es 0 o negativo, no se sugiere el mensaje.

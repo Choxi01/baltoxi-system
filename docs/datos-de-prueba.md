@@ -3,7 +3,7 @@
 Datos **inventados** para probar la app en el proyecto `pruebas`. Nunca en producción.
 
 ## Qué carga
-- **Consultorio:** datos ficticios de la profesional, del RUC y de pago. El nombre del consultorio no se toca.
+- **Consultorio:** datos ficticios de la profesional, del RUC y de pago; aviso mínimo de 24 h (como trabaja la profesional). El nombre del consultorio no se toca.
 - **Tarifas:** Regular 290.000, Económica 280.000, Domicilio 350.000, Evaluación 280.000, Colegio 350.000.
 - **12 tutores y 15 pacientes:**
   - 3 familias con dos hermanos (Benitez, Gimenez y Ortiz).

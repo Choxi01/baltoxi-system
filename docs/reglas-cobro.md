@@ -9,8 +9,8 @@ Todo caso de esta página tiene su test.
 |---|---|---|
 | `agendado` | No pasó o no se marcó | Sin cargo |
 | `presente` | Vino | 100% |
-| `ausente_con_aviso` | Canceló con `horas_aviso_minimas` (48 h) o más | 0% |
-| `aviso_tardio` | Canceló con menos de 48 h | 100% |
+| `ausente_con_aviso` | Canceló con `horas_aviso_minimas` o más (Daniela usa 24 h) | 0% |
+| `aviso_tardio` | Canceló con menos de `horas_aviso_minimas` | 100% (al cancelar se pregunta "¿Se cobra?", tarea B9) |
 | `ausente_sin_aviso` | No vino ni avisó | 100% |
 | `cancelado_profesional` | Canceló la profesional (queda `reponer = true`) | 0% |
 | `reprogramado` | Se movió a otro horario; se cobra el turno nuevo | 0% |
@@ -83,7 +83,8 @@ ninguna -> error (no inventar)
 - Horas trabajadas = duración de turnos `presente` + bloques `ocupado` de tipo reunión o colegio.
 
 ## Casos de prueba obligatorios
-Datos: Regular Gs. 290.000, Económica 280.000, Domicilio 350.000, Evaluación 280.000; aviso mínimo 48 h;
+Datos: Regular Gs. 290.000, Económica 280.000, Domicilio 350.000, Evaluación 280.000; aviso mínimo 48 h (solo para los
+tests: el valor real se carga en Configuración y el de Daniela es 24 h);
 reglas por defecto (100 / 0 / 100 / 100 / 0 / 0); plazo de pago día 10.
 
 | # | Caso | Esperado |
