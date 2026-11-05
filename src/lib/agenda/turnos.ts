@@ -91,6 +91,14 @@ export function textoEstado(t: Pick<TurnoAgenda, "clase" | "estado" | "porcentaj
   return t.porcentajeManual != null ? `${estado} · Excepción ${t.porcentajeManual}%` : estado;
 }
 
+/**
+ * "Agregar nota de esta sesión": turnos con paciente, de hoy o de antes (una nota no puede ser de
+ * una fecha futura) y que no se cancelaron ni se movieron.
+ */
+export function puedeAgregarNota(t: Pick<TurnoAgenda, "clase" | "estado" | "fecha" | "pacienteId">, hoy: string): boolean {
+  return t.clase === "turno" && t.pacienteId !== null && t.fecha <= hoy && !liberaBloque(t.estado);
+}
+
 const seSuperponen = (a: { inicio: string; fin: string }, b: { inicio: string; fin: string }) =>
   aMinutos(a.inicio) < aMinutos(b.fin) && aMinutos(b.inicio) < aMinutos(a.fin);
 

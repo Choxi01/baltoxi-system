@@ -174,9 +174,12 @@ Detalle y propuestas en `docs/pedidos-daniela-2026-11.md`. La A11 va antes de la
 
 ## Semana 5 — Expediente y mensajes
 
-#### [ ] A5 Notas de sesión
+#### [x] A5 Notas de sesión
 > Pestaña Notas del expediente: crear, editar, fijar; la fijada se ve arriba de la ficha. Desde un turno:
 > "Agregar nota de esta sesión". Nada de esto aparece en mensajes, reportes ni logs.
+
+> _Hecha. Una sola nota fijada por paciente (fijar otra desfija la anterior) y también se pueden borrar,
+> con confirmación. Detalle en `docs/expediente.md`. Para la 8.1: `auditoria` guarda copia del texto._
 
 #### [ ] A6 Anamnesis
 > Editor de plantillas de anamnesis (secciones y campos, tipos de `docs/expediente.md`) y formulario
@@ -249,7 +252,7 @@ Detalle y propuestas en `docs/pedidos-daniela-2026-11.md`. La A11 va antes de la
 #### [ ] 8.1 Revisión de seguridad
 > Revisá todo el código: service role solo en servidor; consultas filtradas por consultorio; bucket
 > privado y links firmados; ficha pública sin datos clínicos y con límite de intentos; nada clínico en
-> mensajes, facturas, reportes ni logs; claves fuera del repo; MFA obligatorio. Test con dos
+> mensajes, facturas, reportes ni logs (ojo: `auditoria` guarda copia de notas, anamnesis y documentos); claves fuera del repo; MFA obligatorio. Test con dos
 > consultorios que verifique que uno no ve pacientes, notas ni documentos del otro.
 
 #### [ ] 8.2 Prueba con datos reales

@@ -2,8 +2,10 @@ import "server-only";
 
 import { z } from "zod";
 
+import { aHoraLocal } from "@/lib/agenda/turnos";
 import { exigirConsultorio } from "@/lib/auth/servidor";
 import { crearClienteServidor } from "@/lib/supabase/servidor";
+import type { Nota } from "./notas";
 
 // Lecturas de pacientes. Todo pasa por RLS (cliente del usuario) y además se
 // filtra por el consultorio, por las dudas.
@@ -114,4 +116,37 @@ export async function listarTarifas(actualId?: string | null) {
   return (data ?? [])
     .filter((t) => t.activa || t.id === actualId)
     .map(({ id, nombre, monto_gs }) => ({ id, nombre, monto_gs }));
+}
+
+/** Notas del paciente (DATOS CLÍNICOS: solo para el expediente). Sin ordenar: ver `ordenarNotas`. */
+export async function listarNotas(pacienteId: string): Promise<Nota[]> {
+  if (!esIdValido(pacienteId)) return [];
+  const consultorio = await exigirConsultorio();
+  const supabase = await crearClienteServidor();
+  const { data, error } = await supabase
+    .from("notas")
+    .select("id, fecha, texto, fijada, turno_id, creado_en, actualizado_en")
+    .eq("consultorio_id", consultorio.id)
+    .eq("paciente_id", pacienteId);
+  // Mensaje genérico: nunca datos de la nota en errores ni logs.
+  if (error) throw new Error("No se pudieron leer las notas");
+  return data ?? [];
+}
+
+/**
+ * "Agregar nota de esta sesión": el turno, si es de este paciente, con su fecha en Asunción.
+ * Si no existe o es de otro paciente, null (la nota se crea sin sesión).
+ */
+export async function obtenerTurnoParaNota(turnoId: string, pacienteId: string): Promise<{ id: string; fecha: string } | null> {
+  if (!esIdValido(turnoId) || !esIdValido(pacienteId)) return null;
+  const consultorio = await exigirConsultorio();
+  const supabase = await crearClienteServidor();
+  const { data } = await supabase
+    .from("turnos")
+    .select("id, inicio")
+    .eq("consultorio_id", consultorio.id)
+    .eq("paciente_id", pacienteId)
+    .eq("id", turnoId)
+    .maybeSingle();
+  return data ? { id: data.id, fecha: aHoraLocal(data.inicio).fecha } : null;
 }

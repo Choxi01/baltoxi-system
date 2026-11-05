@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRightLeft, Ban, Banknote, Check, ExternalLink, Percent, Repeat, Trash2, Undo2, UserPlus, UserX, X, type LucideIcon } from "lucide-react";
+import { ArrowRightLeft, Ban, Banknote, Check, ExternalLink, NotebookPen, Percent, Repeat, Trash2, Undo2, UserPlus, UserX, X, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { useState, useTransition } from "react";
 
@@ -10,7 +10,7 @@ import { accionesDelTurno, type AccionAsistencia, type AccionTurno } from "@/lib
 import { horaCorta } from "@/lib/agenda/bloques";
 import { tituloDia } from "@/lib/agenda/calendario";
 import { formatoGs } from "@/lib/cobro/formato";
-import { NOMBRE_ESTADO_TURNO, textoEstado, textoTurno, type TurnoAgenda } from "@/lib/agenda/turnos";
+import { NOMBRE_ESTADO_TURNO, puedeAgregarNota, textoEstado, textoTurno, type TurnoAgenda } from "@/lib/agenda/turnos";
 import type { MensajeListo } from "@/lib/mensajes/tipos";
 import { cn } from "@/lib/utils";
 import { FormularioCancelar, FormularioExcepcion, FormularioMover, type AccionesDeTurno } from "./acciones-turno";
@@ -65,6 +65,14 @@ export function AccionesTurno({
         <Button asChild variant="outline" className="h-12 justify-start">
           <Link href={`/pacientes/${turno.pacienteId}`}>
             <ExternalLink /> Ver expediente
+          </Link>
+        </Button>
+      )}
+      {puedeAgregarNota(turno, hoy) && (
+        <Button asChild variant="outline" className="h-12 justify-start">
+          {/* Solo ids en la dirección: nada clínico (regla de oro 7). */}
+          <Link href={`/pacientes/${turno.pacienteId}?pestana=notas&turno=${turno.id}`}>
+            <NotebookPen /> Agregar nota de esta sesión
           </Link>
         </Button>
       )}
