@@ -147,6 +147,10 @@ Detalle y propuestas en `docs/pedidos-daniela-2026-11.md`. La A11 va antes de la
 > Tipos de turno. El relleno del turno es el color del tipo; el estado se ve con borde + ícono
 > (vino ✓, no vino ✕, canceló tachado). Leyenda chica abajo de la grilla. Actualizá `docs/agenda.md`.
 
+> _Dividida en dos PRs. **A12a** (hecha): Semana por defecto en todos los dispositivos, grilla que entra
+> en el iPhone y franja de almuerzo (`filasSemana` en `src/lib/agenda/semana.ts`, con tests). **A12b**
+> (pendiente): color por tipo de turno (migración `tipos_turno.color`), estado en el borde y leyenda._
+
 #### [ ] A11 Sesiones dobles y grupales
 > Según `docs/pedidos-daniela-2026-11.md` (pedido 2), con las respuestas de Daniela. Modelo: **un turno
 > por chico unidos por `grupo_id`** (también en series), así la asistencia y el cargo siguen siendo por

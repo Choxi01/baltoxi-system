@@ -1,5 +1,6 @@
-import { horaCorta } from "@/lib/agenda/bloques";
+import { horaCorta, type Tramo } from "@/lib/agenda/bloques";
 import { diaCorto, numeroDia } from "@/lib/agenda/calendario";
+import { filasSemana } from "@/lib/agenda/semana";
 import { NOMBRE_ESTADO_TURNO, textoEstado, textoTurno, type Dia, type FilaDia, type TurnoAgenda } from "@/lib/agenda/turnos";
 import { cn } from "@/lib/utils";
 
@@ -114,29 +115,36 @@ function TarjetaTurno({ turno, aviso }: { turno: TurnoAgenda; aviso?: string }) 
 /** Grilla de la semana: una columna por día y una fila por horario de bloque. */
 export function VistaSemana({
   dias,
+  tramos,
   hoy,
   alElegirDia,
   alElegirFila,
 }: {
   dias: Dia[];
+  /** Horario de atención: los huecos entre tramos se dibujan como franja gris (almuerzo). */
+  tramos: Tramo[];
   hoy: string;
   alElegirDia: (fecha: string) => void;
   /** Tocar una celda: abre ese día con esa fila abierta. */
   alElegirFila?: (fecha: string, clave: string) => void;
 }) {
-  const horas = [...new Set(dias.flatMap((d) => d.filas.map((f) => f.inicio)))].sort();
+  const filas = filasSemana(dias, tramos);
   return (
-    <div className="-mx-4 overflow-x-auto px-4 md:mx-0 md:px-0">
-      <table className="w-full min-w-[36rem] table-fixed border-separate border-spacing-1 text-sm">
+    // Pensada para que lunes a viernes entren en el ancho del iPhone (sin deslizar de costado).
+    <div className="-mx-4 overflow-x-auto px-2 md:mx-0 md:px-0">
+      <table className="w-full min-w-[20rem] table-fixed border-separate border-spacing-0.5 text-sm md:border-spacing-1">
         <thead>
           <tr>
-            <th className="w-12" />
+            <th className="w-9 md:w-12" />
             {dias.map((d) => (
               <th key={d.fecha} className="font-normal">
                 <button
                   type="button"
                   onClick={() => alElegirDia(d.fecha)}
-                  className={cn("h-11 w-full rounded-md capitalize active:bg-accent", d.fecha === hoy && "bg-primary font-semibold text-primary-foreground")}
+                  className={cn(
+                    "h-11 w-full rounded-md text-xs capitalize active:bg-accent md:text-sm",
+                    d.fecha === hoy && "bg-primary font-semibold text-primary-foreground",
+                  )}
                 >
                   {diaCorto(d.fecha)}
                 </button>
@@ -145,17 +153,40 @@ export function VistaSemana({
           </tr>
         </thead>
         <tbody>
-          {horas.map((hora) => (
-            <tr key={hora}>
-              <td className="pr-1 text-right align-top text-xs tabular-nums text-muted-foreground">{horaCorta(hora)}</td>
-              {dias.map((d) => (
-                <td key={d.fecha} className="align-top">
-                  <CeldaSemana dia={d} hora={hora} alElegir={(clave) => (alElegirFila ? alElegirFila(d.fecha, clave) : alElegirDia(d.fecha))} />
+          {filas.map((fila) =>
+            fila.tipo === "corte" ? (
+              <tr key={`corte-${fila.desde}`}>
+                <td className="pr-1 text-right align-middle text-[0.65rem] tabular-nums text-muted-foreground md:text-xs">
+                  {horaCorta(fila.desde)}
                 </td>
-              ))}
-            </tr>
-          ))}
-          {horas.length === 0 && (
+                {dias.map((d) => (
+                  <td key={d.fecha} className="align-middle">
+                    {fila.fechas.includes(d.fecha) ? (
+                      // Solo visual: no se puede reservar ni tocar.
+                      <div
+                        className="flex h-7 items-center justify-center rounded-md bg-muted bg-[repeating-linear-gradient(135deg,transparent_0_6px,var(--color-border)_6px_8px)] text-[0.6rem] text-muted-foreground md:text-[0.65rem]"
+                        title={`${fila.texto}: ${horaCorta(fila.desde)} a ${horaCorta(fila.hasta)}`}
+                      >
+                        <span className="truncate">{fila.texto}</span>
+                      </div>
+                    ) : (
+                      <div className="h-7" />
+                    )}
+                  </td>
+                ))}
+              </tr>
+            ) : (
+              <tr key={fila.hora}>
+                <td className="pr-1 text-right align-top text-[0.65rem] tabular-nums text-muted-foreground md:text-xs">{horaCorta(fila.hora)}</td>
+                {dias.map((d) => (
+                  <td key={d.fecha} className="align-top">
+                    <CeldaSemana dia={d} hora={fila.hora} alElegir={(clave) => (alElegirFila ? alElegirFila(d.fecha, clave) : alElegirDia(d.fecha))} />
+                  </td>
+                ))}
+              </tr>
+            ),
+          )}
+          {filas.length === 0 && (
             <tr>
               <td />
               <td colSpan={dias.length} className="py-4 text-center text-muted-foreground">
@@ -166,7 +197,7 @@ export function VistaSemana({
           <tr>
             <td />
             {dias.map((d) => (
-              <td key={d.fecha} className="text-center text-xs text-muted-foreground">
+              <td key={d.fecha} className="text-center text-[0.65rem] leading-tight text-muted-foreground md:text-xs">
                 {d.bloqueo ? (d.bloqueo.motivo || "Sin agenda") : `${d.libres} ${d.libres === 1 ? "libre" : "libres"}`}
               </td>
             ))}
@@ -187,8 +218,8 @@ function CeldaSemana({ dia, hora, alElegir }: { dia: Dia; hora: string; alElegir
         <span className="flex h-12 items-center justify-center rounded-md border border-dashed text-xs text-muted-foreground">Libre</span>
       ) : (
         turnos.map((t) => (
-          <span key={t.id} className={cn("flex min-h-12 flex-col justify-center rounded-md border px-1.5 py-1", colorTurno(t), t.guardando && "opacity-60")}>
-            <span className="line-clamp-2 text-xs font-medium leading-tight">{textoTurno(t)}</span>
+          <span key={t.id} className={cn("flex min-h-12 min-w-0 flex-col justify-center rounded-md border px-1 py-1 md:px-1.5", colorTurno(t), t.guardando && "opacity-60")}>
+            <span className="line-clamp-2 hyphens-auto break-words text-[0.7rem] font-medium leading-tight md:text-xs">{textoTurno(t)}</span>
             {textoEstado(t) && <span className="text-[0.65rem] leading-tight opacity-80">{textoEstado(t)}</span>}
           </span>
         ))

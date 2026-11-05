@@ -29,8 +29,14 @@ Domicilios: si dos turnos con modalidad `domicilio` (o uno de domicilio y otro e
 separados por menos de `traslado_domicilio_min`, mostrar aviso (no bloquear).
 
 ## Vistas
-- **Día** (por defecto en iPhone): lista de bloques del día, libres incluidos, con acciones.
-- **Semana** (por defecto en iPad y Mac): grilla lunes a viernes × bloques.
+- **Semana** (por defecto en todos los dispositivos, pedido de la profesional): grilla lunes a viernes ×
+  bloques. Entra en el ancho del iPhone sin deslizar de costado. Tocar un turno o un libre abre ese
+  día con esa fila. Al entrar a Agenda desde el menú siempre se abre Semana.
+  - **Franja gris** donde el horario tiene un hueco entre dos tramos del mismo día: "Almuerzo" si
+    empieza entre las 11:00 y las 15:00; si no, "No disponible". Solo visual: no se reserva ni se toca.
+    Si los días tienen almuerzos que se pisan, va una sola franja, pintada solo en esos días. Los
+    feriados no la llevan. Función pura con tests: `src/lib/agenda/semana.ts` (`filasSemana`).
+- **Día** (botón): lista de bloques del día, libres incluidos, con acciones.
 - **Mes**: calendario con la cantidad de libres por día; tocar un día abre la vista Día.
 - Navegación: hoy, anterior, siguiente. Colores accesibles y legibles en modo oscuro.
 

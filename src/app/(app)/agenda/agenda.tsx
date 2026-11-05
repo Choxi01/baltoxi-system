@@ -29,17 +29,14 @@ import { useTurnosOptimistas } from "./turnos-optimistas";
 import { PanelFila, type DatosPanel, type Reposicion } from "./panel";
 import { VistaDia, VistaMes, VistaSemana } from "./vistas";
 
-/** "auto" = Día en iPhone y Semana en iPad y Mac (se resuelve con CSS, sin parpadeo). */
-type VistaElegida = Vista | "auto";
-
 const VISTAS: { id: Vista; titulo: string }[] = [
   { id: "dia", titulo: "Día" },
   { id: "semana", titulo: "Semana" },
   { id: "mes", titulo: "Mes" },
 ];
 
-/** Igual que el `md:` de Tailwind. */
-const esPantallaGrande = () => window.matchMedia("(min-width: 768px)").matches;
+/** Semana en todos los dispositivos (pedido de la profesional): Día y Mes, con los botones. */
+const VISTA_POR_DEFECTO: Vista = "semana";
 
 export function Agenda({
   hoy,
@@ -72,7 +69,7 @@ export function Agenda({
 }) {
   const router = useRouter();
   const [fecha, setFecha] = useState(fechaInicial);
-  const [vista, setVista] = useState<VistaElegida>(vistaInicial ?? "auto");
+  const [vista, setVista] = useState<Vista>(vistaInicial ?? VISTA_POR_DEFECTO);
   const [cargando, iniciar] = useTransition();
   // Fila de la vista Día con el panel de acciones abierto, y el último aviso ("Agendado ✓").
   const [abierta, setAbierta] = useState<string | null>(null);
@@ -109,20 +106,15 @@ export function Agenda({
   }, [rango.desde, rango.hasta, tramos, duracion, bloqueos, turnosVista]);
   const visibles = useMemo(() => diasVisibles([...new Set(tramos.map((t) => t.dia_semana))]), [tramos]);
 
-  /** La vista que se ve de verdad (resuelve "auto" según el ancho de la pantalla). */
-  const vistaReal = (): Vista => (vista === "auto" ? (esPantallaGrande() ? "semana" : "dia") : vista);
-
-  function ir(nuevaFecha: string, nuevaVista: VistaElegida = vista, filaAbierta: string | null = null) {
+  function ir(nuevaFecha: string, nuevaVista: Vista = vista, filaAbierta: string | null = null) {
     setAbierta(filaAbierta);
     setAviso(null);
     setErrorAccion(null);
     setFecha(nuevaFecha);
     setVista(nuevaVista);
     const parametros = new URLSearchParams({ fecha: nuevaFecha });
-    if (nuevaVista !== "auto") parametros.set("vista", nuevaVista);
-    // "auto" puede ser Semana: hay que tener la semana entera.
-    const necesaria = nuevaVista === "auto" ? "semana" : nuevaVista;
-    if (cubre(rango, necesaria, nuevaFecha)) {
+    if (nuevaVista !== VISTA_POR_DEFECTO) parametros.set("vista", nuevaVista);
+    if (cubre(rango, nuevaVista, nuevaFecha)) {
       window.history.replaceState(null, "", `?${parametros}`);
     } else {
       // Fuera de lo cargado: el servidor trae los turnos de esas fechas.
@@ -130,7 +122,7 @@ export function Agenda({
     }
   }
 
-  const listo = cubre(rango, vista === "auto" ? "semana" : vista, fecha);
+  const listo = cubre(rango, vista, fecha);
   const dia = dias.get(fecha);
   const semana = diasDeLaSemana(fecha, visibles).flatMap((f) => dias.get(f) ?? []);
   const semanasMes = semanasDelMes(fecha).map((s) => s.filter((f) => visibles.includes(diaSemana(f))).flatMap((f) => dias.get(f) ?? []));
@@ -148,21 +140,14 @@ export function Agenda({
           <Button variant="outline" className="h-11 px-4" onClick={() => ir(hoy)}>
             Hoy
           </Button>
-          <Button variant="ghost" className="size-11" aria-label="Anterior" onClick={() => ir(mover(vistaReal(), fecha, -1))}>
+          <Button variant="ghost" className="size-11" aria-label="Anterior" onClick={() => ir(mover(vista, fecha, -1))}>
             <ChevronLeft className="size-5" />
           </Button>
-          <Button variant="ghost" className="size-11" aria-label="Siguiente" onClick={() => ir(mover(vistaReal(), fecha, 1))}>
+          <Button variant="ghost" className="size-11" aria-label="Siguiente" onClick={() => ir(mover(vista, fecha, 1))}>
             <ChevronRight className="size-5" />
           </Button>
           <h2 className="text-lg font-semibold first-letter:uppercase" aria-live="polite">
-            {vista === "auto" ? (
-              <>
-                <span className="md:hidden">{titulos.dia}</span>
-                <span className="hidden md:inline">{titulos.semana}</span>
-              </>
-            ) : (
-              titulos[vista]
-            )}
+            {titulos[vista]}
           </h2>
         </div>
         <div role="group" aria-label="Vista" className="grid grid-cols-3 gap-1 rounded-lg bg-muted p-1">
@@ -175,9 +160,6 @@ export function Agenda({
               className={cn(
                 "h-10 rounded-md px-4 text-sm font-medium text-muted-foreground",
                 vista === v.id && "bg-background text-foreground shadow-xs",
-                // En "auto", se marca la que se ve según la pantalla.
-                vista === "auto" && v.id === "dia" && "max-md:bg-background max-md:text-foreground max-md:shadow-xs",
-                vista === "auto" && v.id === "semana" && "md:bg-background md:text-foreground md:shadow-xs",
               )}
             >
               {v.titulo}
@@ -244,40 +226,42 @@ export function Agenda({
         <p className="text-muted-foreground">Cargando…</p>
       ) : (
         <>
-          {(vista === "dia" || vista === "auto") && dia && (
-            <div className={cn(vista === "auto" && "md:hidden")}>
-              <VistaDia
-                dia={dia}
-                abierta={abierta}
-                alTocar={(clave) => {
-                  setAviso(null);
-                  setErrorAccion(null);
-                  setAbierta(abierta === clave ? null : clave);
-                }}
-                panel={(fila) => (
-                  <PanelFila
-                    fecha={dia.fecha}
-                    fila={fila}
-                    turnosDelDia={turnosVista.filter((t) => t.fecha === dia.fecha)}
-                    datos={{ ...datosPanel, duracion }}
-                    reponiendo={reponiendo}
-                    ejecutar={ejecutar}
-                    alCerrar={() => setAbierta(null)}
-                    alGuardar={(texto, mensaje) => {
-                      setAbierta(null);
-                      setAviso(texto);
-                      setOfrecido(mensaje ?? null);
-                      setReponiendo(null);
-                    }}
-                  />
-                )}
-              />
-            </div>
+          {vista === "dia" && dia && (
+            <VistaDia
+              dia={dia}
+              abierta={abierta}
+              alTocar={(clave) => {
+                setAviso(null);
+                setErrorAccion(null);
+                setAbierta(abierta === clave ? null : clave);
+              }}
+              panel={(fila) => (
+                <PanelFila
+                  fecha={dia.fecha}
+                  fila={fila}
+                  turnosDelDia={turnosVista.filter((t) => t.fecha === dia.fecha)}
+                  datos={{ ...datosPanel, duracion }}
+                  reponiendo={reponiendo}
+                  ejecutar={ejecutar}
+                  alCerrar={() => setAbierta(null)}
+                  alGuardar={(texto, mensaje) => {
+                    setAbierta(null);
+                    setAviso(texto);
+                    setOfrecido(mensaje ?? null);
+                    setReponiendo(null);
+                  }}
+                />
+              )}
+            />
           )}
-          {(vista === "semana" || vista === "auto") && (
-            <div className={cn(vista === "auto" && "hidden md:block")}>
-              <VistaSemana dias={semana} hoy={hoy} alElegirDia={(f) => ir(f, "dia")} alElegirFila={(f, clave) => ir(f, "dia", clave)} />
-            </div>
+          {vista === "semana" && (
+            <VistaSemana
+              dias={semana}
+              tramos={tramos}
+              hoy={hoy}
+              alElegirDia={(f) => ir(f, "dia")}
+              alElegirFila={(f, clave) => ir(f, "dia", clave)}
+            />
           )}
           {vista === "mes" && (
             <VistaMes
