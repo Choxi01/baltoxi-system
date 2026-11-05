@@ -7,12 +7,15 @@ Cómo usar este archivo:
 
 Todas las tareas asumen que Claude Code leyó `CLAUDE.md`. Si no, empezá con "Leé CLAUDE.md".
 
+> Los pedidos de la clienta del 2/11 (`docs/pedidos-daniela-2026-11.md`) ya están sumados como
+> **A12**, **A11** y **B9** (ver "Pedidos de Daniela") y como ampliación de la **B8**.
+
 | Semana | Persona A | Persona B |
 |---|---|---|
 | 1 | 0.1–0.4 juntos | 0.1–0.4 juntos |
 | 2–3 | A1, A2 | B1, B2 |
 | 4 | A3, A4 | B3, B4 |
-| 5 | A5, A6 | B5 |
+| 5 | A12, A11, A5, A6 | B5, B9 |
 | 6 | A7, A8 | B6, B7 |
 | 7 | A9, A10 | B8 |
 | 8 | 8.1, 8.2 juntos | 8.1, 8.2 juntos |
@@ -132,11 +135,51 @@ Todas las tareas asumen que Claude Code leyó `CLAUDE.md`. Si no, empezá con "L
 
 ---
 
+## Pedidos de Daniela (2/11) — antes de seguir con la semana 5
+
+Detalle y propuestas en `docs/pedidos-daniela-2026-11.md`. La A11 va antes de la 8.2 porque cambia la base.
+
+#### [x] A12 Vista Semana: por defecto, almuerzo y color por tipo
+> Según `docs/pedidos-daniela-2026-11.md` (pedidos 3, 4 y 5). Agenda abre siempre en **Semana**, también
+> en iPhone (los 5 días tienen que entrar en el ancho); Día y Mes quedan como botones. En la vista
+> Semana, franja gris "Almuerzo" (no clickeable) donde hay un hueco entre dos tramos del mismo día.
+> Migración `tipos_turno.color` con una paleta fija de colores suaves y selector en Configuración >
+> Tipos de turno. El relleno del turno es el color del tipo; el estado se ve con borde + ícono
+> (vino ✓, no vino ✕, canceló tachado). Leyenda chica abajo de la grilla. Actualizá `docs/agenda.md`.
+
+> _Dividida en dos PRs. **A12a** (hecha): Semana por defecto en todos los dispositivos, grilla que entra
+> en el iPhone y franja de almuerzo (`filasSemana` en `src/lib/agenda/semana.ts`, con tests). **A12b**
+> (hecha): color por tipo de turno (migración 0009 `tipos_turno.color` con paleta fija y trigger que
+> sugiere uno libre; selector en Configuración > Tipos de turno), estado en el borde con ✓ / ✕ / "%" y
+> leyenda (`src/lib/agenda/colores.ts`, con tests)._
+
+#### [ ] A11 Sesiones dobles y grupales
+> Según `docs/pedidos-daniela-2026-11.md` (pedido 2), con las respuestas de Daniela. Modelo: **un turno
+> por chico unidos por `grupo_id`** (también en series), así la asistencia y el cargo siguen siendo por
+> paciente. El tipo de turno define el cupo (1 individual, 2 doble, N grupal). Reservar y Turno fijo
+> con un tipo doble o grupal piden elegir 2 o N pacientes. En la grilla se ve un solo rectángulo
+> ("Juan + Pedro" o "Grupal · 4"); la asistencia se marca por chico. Mover y cancelar mueven el grupo
+> entero, con opción de sacar a un solo chico. Tests en `src/lib/agenda`.
+
+> _Antes de empezar, preguntarle a Daniela: ¿cuántos chicos como máximo en una grupal? ¿Duran lo mismo
+> que una individual? ¿La tarifa es por chico, de grupo o una parte? ¿La doble es siempre de hermanos?_
+
+#### [ ] B9 "¿Se cobra?" al cancelar tarde
+> Según `docs/pedidos-daniela-2026-11.md` (pedido 1). En el formulario Cancelar, si la clasificación da
+> `aviso_tardio`, mostrar **Se cobra (Gs. …)** / **No se cobra** (por defecto Se cobra). "No se cobra"
+> guarda `aviso_tardio` con `porcentaje_manual = 0` y motivo ("Excepción al cancelar" por defecto). Es
+> la misma excepción de la B3: `calcularCargoTurno` y los 22 casos no cambian. Test del armado de datos.
+
+---
+
 ## Semana 5 — Expediente y mensajes
 
-#### [ ] A5 Notas de sesión
+#### [x] A5 Notas de sesión
 > Pestaña Notas del expediente: crear, editar, fijar; la fijada se ve arriba de la ficha. Desde un turno:
 > "Agregar nota de esta sesión". Nada de esto aparece en mensajes, reportes ni logs.
+
+> _Hecha. Una sola nota fijada por paciente (fijar otra desfija la anterior) y también se pueden borrar,
+> con confirmación. Detalle en `docs/expediente.md`. Para la 8.1: `auditoria` guarda copia del texto._
 
 #### [ ] A6 Anamnesis
 > Editor de plantillas de anamnesis (secciones y campos, tipos de `docs/expediente.md`) y formulario
@@ -198,6 +241,9 @@ Todas las tareas asumen que Claude Code leyó `CLAUDE.md`. Si no, empezá con "L
 #### [ ] B8 Reportes
 > Pantalla Reportes según `docs/reglas-cobro.md` sección 8: generado hoy y en el mes, proyección,
 > cobrado, pendiente, horas trabajadas, comparación de 6 meses (gráfico de barras). Exportar a Excel.
+> Además (pedido 6 de `docs/pedidos-daniela-2026-11.md`): vista Semana con el generado de cada día
+> (Lun a Vie, monto exacto y barrita, flechas de semana en semana; tocar un día muestra sus turnos) y
+> vista Mes con gráfico de líneas del generado acumulado y la proyección punteada hasta fin de mes.
 
 ---
 
@@ -206,7 +252,7 @@ Todas las tareas asumen que Claude Code leyó `CLAUDE.md`. Si no, empezá con "L
 #### [ ] 8.1 Revisión de seguridad
 > Revisá todo el código: service role solo en servidor; consultas filtradas por consultorio; bucket
 > privado y links firmados; ficha pública sin datos clínicos y con límite de intentos; nada clínico en
-> mensajes, facturas, reportes ni logs; claves fuera del repo; MFA obligatorio. Test con dos
+> mensajes, facturas, reportes ni logs (ojo: `auditoria` guarda copia de notas, anamnesis y documentos); claves fuera del repo; MFA obligatorio. Test con dos
 > consultorios que verifique que uno no ve pacientes, notas ni documentos del otro.
 
 #### [ ] 8.2 Prueba con datos reales

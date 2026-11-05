@@ -51,6 +51,8 @@ export type TurnoAgenda = {
   tipoId: string | null;
   /** Paciente con ficha (para "Ver expediente"). */
   pacienteId: string | null;
+  /** Color del tipo de turno (`tipos_turno.color`, ver src/lib/agenda/colores.ts). Null = el de por defecto. */
+  color: string | null;
   /** Modalidad del tipo de turno (para el aviso de traslado). Sin tipo = consultorio. */
   modalidad: string | null;
   /** Excepción "a criterio" del cobro (0 a 100), si tiene. */
@@ -87,6 +89,14 @@ export function textoEstado(t: Pick<TurnoAgenda, "clase" | "estado" | "porcentaj
   if (t.clase !== "turno" || t.estado === "agendado") return null;
   const estado = NOMBRE_ESTADO_TURNO[t.estado];
   return t.porcentajeManual != null ? `${estado} · Excepción ${t.porcentajeManual}%` : estado;
+}
+
+/**
+ * "Agregar nota de esta sesión": turnos con paciente, de hoy o de antes (una nota no puede ser de
+ * una fecha futura) y que no se cancelaron ni se movieron.
+ */
+export function puedeAgregarNota(t: Pick<TurnoAgenda, "clase" | "estado" | "fecha" | "pacienteId">, hoy: string): boolean {
+  return t.clase === "turno" && t.pacienteId !== null && t.fecha <= hoy && !liberaBloque(t.estado);
 }
 
 const seSuperponen = (a: { inicio: string; fin: string }, b: { inicio: string; fin: string }) =>

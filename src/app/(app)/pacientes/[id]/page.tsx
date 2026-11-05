@@ -1,16 +1,18 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, Pin } from "lucide-react";
 
 import { Pestanas } from "@/components/app/pestanas";
 import { formatoGs } from "@/lib/cobro/formato";
 import { hoyEnAsuncion } from "@/lib/fechas";
 import { actualizarPaciente } from "@/lib/pacientes/acciones";
+import { actualizarNota, borrarNota, crearNota, fijarNota } from "@/lib/pacientes/acciones-notas";
 import { NOMBRE_ESTADO, type EstadoPaciente } from "@/lib/pacientes/busqueda";
-import { listarTarifas, listarTutoresParaVincular, obtenerPaciente } from "@/lib/pacientes/datos";
+import { listarNotas, listarTarifas, listarTutoresParaVincular, obtenerPaciente, obtenerTurnoParaNota } from "@/lib/pacientes/datos";
 import { textoEdad } from "@/lib/pacientes/edad";
 import { textoFecha } from "@/lib/pacientes/fecha";
+import { ordenarNotas } from "@/lib/pacientes/notas";
 import { NOMBRE_PLAN, PLANES_COBRO } from "@/lib/pacientes/validacion";
 import {
   actualizarTutor,
@@ -20,15 +22,22 @@ import {
   vincularTutorExistente,
 } from "@/lib/tutores/acciones";
 import { FichaDatos, type FilaResumen } from "./ficha-datos";
+import { DatosNota, TabNotas } from "./tab-notas";
 import { TabTutores } from "./tab-tutores";
 
 export const metadata: Metadata = { title: "Paciente · Consultorio" };
 
 export default async function PaginaPaciente({ params, searchParams }: PageProps<"/pacientes/[id]">) {
   const { id } = await params;
-  const { pestana } = await searchParams;
+  const { pestana, turno } = await searchParams;
 
-  const [ficha, disponibles] = await Promise.all([obtenerPaciente(id), listarTutoresParaVincular(id)]);
+  const [ficha, disponibles, notas, sesion] = await Promise.all([
+    obtenerPaciente(id),
+    listarTutoresParaVincular(id),
+    listarNotas(id),
+    // "Agregar nota de esta sesión" (agenda y Hoy): ?pestana=notas&turno=<id>
+    typeof turno === "string" ? obtenerTurnoParaNota(turno, id) : null,
+  ]);
   if (!ficha) notFound();
   const tarifas = await listarTarifas(ficha.paciente.tarifa_id);
   const { paciente, tutores } = ficha;
@@ -57,6 +66,8 @@ export default async function PaginaPaciente({ params, searchParams }: PageProps
     { etiqueta: "Responsable de pago", valor: responsable ? nombreDe(responsable) : null },
   ];
 
+  const { fijada, resto } = ordenarNotas(notas);
+
   const proximamente = (tarea: string) => <p className="text-muted-foreground">Próximamente (tarea {tarea}).</p>;
 
   return (
@@ -73,9 +84,19 @@ export default async function PaginaPaciente({ params, searchParams }: PageProps
         </p>
       </div>
 
+      {fijada && (
+        // Nota fijada: siempre visible arriba de la ficha, en todas las pestañas.
+        <section aria-label="Nota fijada" className="flex flex-col gap-1 rounded-lg border border-primary/50 bg-primary/5 p-3">
+          <span className="flex items-center gap-1 text-xs font-medium text-primary">
+            <Pin className="size-3.5" /> Nota fijada · <DatosNota nota={fijada} />
+          </span>
+          <p className="line-clamp-4 whitespace-pre-wrap break-words text-sm">{fijada.texto}</p>
+        </section>
+      )}
+
       <Pestanas
         etiqueta="Secciones del expediente"
-        inicial={typeof pestana === "string" ? pestana : "datos"}
+        inicial={sesion ? "notas" : typeof pestana === "string" ? pestana : "datos"}
         pestanas={[
           {
             id: "datos",
@@ -108,7 +129,23 @@ export default async function PaginaPaciente({ params, searchParams }: PageProps
             ),
           },
           { id: "anamnesis", titulo: "Anamnesis", contenido: proximamente("A6") },
-          { id: "notas", titulo: "Notas", contenido: proximamente("A5") },
+          {
+            id: "notas",
+            titulo: "Notas",
+            contenido: (
+              <TabNotas
+                fijada={fijada}
+                resto={resto}
+                hoy={hoy}
+                sesion={sesion}
+                crear={crearNota.bind(null, paciente.id, null)}
+                crearDeSesion={sesion ? crearNota.bind(null, paciente.id, sesion.id) : null}
+                actualizar={actualizarNota.bind(null, paciente.id)}
+                fijar={fijarNota.bind(null, paciente.id)}
+                borrar={borrarNota.bind(null, paciente.id)}
+              />
+            ),
+          },
           { id: "documentos", titulo: "Documentos", contenido: proximamente("A7") },
           { id: "cuenta", titulo: "Turnos y cuenta", contenido: proximamente("B4") },
         ]}

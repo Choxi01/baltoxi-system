@@ -13,6 +13,19 @@ Datos de salud de menores: máxima prioridad de privacidad. Solo la profesional 
    plantilla cambia). Guardado automático. Vista para leer e imprimir desde el navegador del dispositivo.
 4. **Notas**: lista por fecha, la más nueva arriba. Nota fijada siempre visible arriba de la ficha.
    Desde un turno de la agenda: "Agregar nota de esta sesión" (guarda `turno_id`).
+   - Crear, editar, fijar y borrar (con confirmación). **Una sola fijada por paciente**: al fijar
+     otra, la anterior se desfija. La fijada se ve en una tarjeta arriba de las pestañas.
+   - Texto obligatorio (hasta 10.000 letras); fecha sin futuro. Al editar se guarda `actualizado_en`
+     y la nota dice "Editada".
+   - "Agregar nota de esta sesión" aparece en el turno (Agenda y Hoy) si tiene paciente, es de hoy o
+     de antes y no se canceló ni se movió. Abre `/pacientes/<id>?pestana=notas&turno=<id>` con el
+     formulario listo y la fecha de la sesión (solo ids en la dirección). El servidor verifica que el
+     turno sea de ese paciente.
+   - Código: `src/lib/pacientes/notas.ts` (`validarNota`, `ordenarNotas`, con tests),
+     `acciones-notas.ts` y `src/app/(app)/pacientes/[id]/tab-notas.tsx`. Los errores son genéricos:
+     nunca llevan el texto de la nota.
+   - Pendiente para la 8.1: la tabla `auditoria` guarda una copia de cada nota (con el texto) al
+     crearla, editarla o borrarla.
 5. **Documentos**: subir desde cámara o archivos. Tipos: cédula, análisis, informe, certificado, otro.
    Título y fecha. Vista previa de imágenes y PDF.
 6. **Turnos y cuenta**: próximos turnos, historial de asistencia, cargos, pagos, saldo.

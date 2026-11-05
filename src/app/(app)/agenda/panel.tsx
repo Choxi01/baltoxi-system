@@ -22,7 +22,7 @@ import type { Ejecutar } from "./turnos-optimistas";
 import type { AccionesDeTurno } from "./acciones-turno";
 
 export type PacienteParaReservar = { id: string; nombre: string; apellido: string | null };
-export type TipoParaReservar = { id: string; nombre: string; modalidad: string; requiere_paciente: boolean };
+export type TipoParaReservar = { id: string; nombre: string; modalidad: string; color: string | null; requiere_paciente: boolean };
 
 export type DatosPanel = {
   pacientes: PacienteParaReservar[];

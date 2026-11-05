@@ -81,6 +81,8 @@ docs/                      especificaciones y tareas
 - `docs/reglas-cobro.md` — cálculo de cargos, saldos, atrasos, facturación, reportes y casos de prueba
 - `docs/mensajes.md` — plantillas, "Mensajes de hoy" y fase 2 automática
 - `docs/tareas.md` — tareas con el pedido para cada una
+- `docs/pedidos-daniela-2026-11.md` — cambios que pidió la clienta (2/11); revisalo antes de cada tarea
+  de agenda, cobro o reportes: algunos cambian lo que dicen los otros docs
 - `docs/supabase.md` — variables, clientes, migraciones y tipos
 - `docs/datos-de-prueba.md` — qué carga `supabase/seed.sql` y cómo cargarlo
 - `supabase/migrations/` — esquema completo comentado

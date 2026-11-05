@@ -14,7 +14,7 @@ Un bloque está **ocupado** si algún turno vivo (no cancelado ni reprogramado) 
 
 | `turnos.clase` | Significado | Se muestra |
 |---|---|---|
-| `turno` | Paciente con ficha | Nombre + tipo de turno + color por estado |
+| `turno` | Paciente con ficha | Nombre + tipo de turno; relleno del color del tipo, estado en el borde (ver "Colores") |
 | `reservado` | Alguien sin ficha ("Reservado: Fulano") | Gris con el nombre; botón "Crear ficha" que lo convierte en `turno` |
 | `ocupado` | Reunión, trámite, colegio | Gris con el motivo |
 
@@ -29,10 +29,29 @@ Domicilios: si dos turnos con modalidad `domicilio` (o uno de domicilio y otro e
 separados por menos de `traslado_domicilio_min`, mostrar aviso (no bloquear).
 
 ## Vistas
-- **Día** (por defecto en iPhone): lista de bloques del día, libres incluidos, con acciones.
-- **Semana** (por defecto en iPad y Mac): grilla lunes a viernes × bloques.
+- **Semana** (por defecto en todos los dispositivos, pedido de la profesional): grilla lunes a viernes ×
+  bloques. Entra en el ancho del iPhone sin deslizar de costado. Tocar un turno o un libre abre ese
+  día con esa fila. Al entrar a Agenda desde el menú siempre se abre Semana.
+  - **Franja gris** donde el horario tiene un hueco entre dos tramos del mismo día: "Almuerzo" si
+    empieza entre las 11:00 y las 15:00; si no, "No disponible". Solo visual: no se reserva ni se toca.
+    Si los días tienen almuerzos que se pisan, va una sola franja, pintada solo en esos días. Los
+    feriados no la llevan. Función pura con tests: `src/lib/agenda/semana.ts` (`filasSemana`).
+- **Día** (botón): lista de bloques del día, libres incluidos, con acciones.
 - **Mes**: calendario con la cantidad de libres por día; tocar un día abre la vista Día.
 - Navegación: hoy, anterior, siguiente. Colores accesibles y legibles en modo oscuro.
+
+### Colores
+- **Relleno = tipo de turno.** Cada tipo tiene un color de una paleta fija de 8 (`tipos_turno.color`,
+  migración 0009): cielo, durazno, lavanda, arena, turquesa, rosa, oliva y pizarra. Se elige en
+  Configuración > Tipos de turno; a un tipo nuevo se le sugiere uno que no use otro tipo (en la base,
+  un trigger hace lo mismo si llega sin color). Sin color, se pinta cielo.
+- **Estado = borde + ícono**, nunca solo el color: agendado, borde finito del tono del tipo; vino,
+  borde verde grueso y ✓; no vino, borde rojo y ✕; con excepción de cobro, una marca "%". Los
+  cancelados y movidos no ocupan la grilla: en la vista Día se ven tachados debajo del horario.
+- Reservado y ocupado: gris.
+- Leyenda abajo de las vistas Semana y Día: los tipos que aparecen y qué significa cada borde.
+- Código: `src/lib/agenda/colores.ts` (`estiloTurno`, `colorSugerido`, `leyendaTipos`, con tests).
+  Si se agrega un color, cambiar `COLORES_TIPO` y el check de la migración (con una migración nueva).
 
 ## Acciones
 - Bloque libre → **Reservar** (buscar paciente o escribir un nombre suelto), **Marcar ocupado**

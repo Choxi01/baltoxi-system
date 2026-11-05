@@ -1146,6 +1146,7 @@ export type Database = {
         Row: {
           activo: boolean
           cobra_en_el_momento: boolean
+          color: string | null
           consultorio_id: string
           genera_cobro: boolean
           id: string
@@ -1157,6 +1158,7 @@ export type Database = {
         Insert: {
           activo?: boolean
           cobra_en_el_momento?: boolean
+          color?: string | null
           consultorio_id: string
           genera_cobro?: boolean
           id?: string
@@ -1168,6 +1170,7 @@ export type Database = {
         Update: {
           activo?: boolean
           cobra_en_el_momento?: boolean
+          color?: string | null
           consultorio_id?: string
           genera_cobro?: boolean
           id?: string

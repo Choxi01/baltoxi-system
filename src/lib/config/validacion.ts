@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { COLORES_TIPO } from "@/lib/agenda/colores";
 import { leerGs } from "@/lib/cobro/formato";
 import { calcularDv } from "@/lib/tutores/ruc";
 
@@ -86,6 +87,8 @@ const esquemaTipoTurno = z
   .object({
     nombre: z.string().trim().min(1, "Escribí el nombre del tipo de turno.").max(60, "Nombre: hasta 60 letras."),
     modalidad: z.enum(MODALIDADES, "Elegí dónde se hace."),
+    // Color en la agenda (paleta fija, migración 0009).
+    color: z.enum(COLORES_TIPO, "Elegí un color."),
     // "" = usa la tarifa del paciente.
     tarifa_id: z
       .string()
@@ -158,7 +161,7 @@ export function validarTarifa(formulario: FormData) {
 export function validarTipoTurno(formulario: FormData) {
   return validar(
     esquemaTipoTurno,
-    ["nombre", "modalidad", "tarifa_id", "cobra_en_el_momento", "genera_cobro", "requiere_paciente"],
+    ["nombre", "modalidad", "color", "tarifa_id", "cobra_en_el_momento", "genera_cobro", "requiere_paciente"],
     formulario,
   );
 }

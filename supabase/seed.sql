@@ -70,8 +70,9 @@ begin
     direccion = 'Calle Inventada 123, Asunción',
     telefono_wa = '595981000000',
     datos_pago = 'Alias 000000 (dato de prueba)',
-    reglamento_texto = 'Reglamento de prueba: avisá las cancelaciones con 48 horas de anticipación. Las sesiones se abonan hasta el día 10 del mes siguiente.',
-    reglamento_version = 1
+    reglamento_texto = 'Reglamento de prueba: avisá las cancelaciones con 24 horas de anticipación. Las sesiones se abonan hasta el día 10 del mes siguiente.',
+    reglamento_version = 1,
+    horas_aviso_minimas = 24   -- como trabaja la profesional (la base trae 48 por defecto)
   where id = c;
 
   update public.tarifas t set monto_gs = v.monto

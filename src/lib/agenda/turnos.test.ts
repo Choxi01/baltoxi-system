@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Tramo } from "./bloques";
-import { aHoraLocal, armarDia, inicioDelDiaUtc, liberaBloque, textoEstado, textoTurno, type TurnoAgenda } from "./turnos";
+import { aHoraLocal, armarDia, inicioDelDiaUtc, liberaBloque, puedeAgregarNota, textoEstado, textoTurno, type TurnoAgenda } from "./turnos";
 
 const HORARIO: Tramo[] = [1, 2, 3, 4, 5].flatMap((d) => [
   { dia_semana: d, desde: "09:00", hasta: "11:15" },
@@ -25,6 +25,7 @@ const turno = (inicio: string, datos: Partial<TurnoAgenda> = {}): TurnoAgenda =>
     tipoId: null,
     pacienteId: null,
     modalidad: "consultorio",
+    color: null,
     porcentajeManual: null,
     ...datos,
   };
@@ -135,5 +136,23 @@ describe("textoEstado", () => {
   it("con excepción se ve el porcentaje (también 0%)", () => {
     expect(textoEstado(turno("09:00", { estado: "ausente_sin_aviso", porcentajeManual: 0 }))).toBe("No vino · Excepción 0%");
     expect(textoEstado(turno("09:00", { estado: "aviso_tardio", porcentajeManual: 50 }))).toBe("Canceló tarde · Excepción 50%");
+  });
+});
+
+describe("puedeAgregarNota", () => {
+  const conPaciente = (datos: Partial<TurnoAgenda> = {}) => turno("09:00", { pacienteId: "p1", ...datos });
+
+  it("una sesión de hoy o de antes, con paciente", () => {
+    expect(puedeAgregarNota(conPaciente({ estado: "presente" }), LUNES)).toBe(true);
+    expect(puedeAgregarNota(conPaciente({ estado: "agendado" }), "2026-11-05")).toBe(true);
+    expect(puedeAgregarNota(conPaciente({ estado: "ausente_sin_aviso" }), LUNES)).toBe(true);
+  });
+
+  it("no en sesiones futuras, canceladas o movidas, ni sin paciente", () => {
+    expect(puedeAgregarNota(conPaciente(), "2026-11-01")).toBe(false);
+    expect(puedeAgregarNota(conPaciente({ estado: "aviso_tardio" }), LUNES)).toBe(false);
+    expect(puedeAgregarNota(conPaciente({ estado: "reprogramado" }), LUNES)).toBe(false);
+    expect(puedeAgregarNota(conPaciente({ clase: "reservado" }), LUNES)).toBe(false);
+    expect(puedeAgregarNota(turno("09:00", { pacienteId: null }), LUNES)).toBe(false);
   });
 });
