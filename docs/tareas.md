@@ -224,10 +224,14 @@ Detalle y propuestas en `docs/pedidos-daniela-2026-11.md`. La A11 va antes de la
 > familia (hermanos juntos), con interruptor de detalle por sesión. Usa las funciones de
 > `docs/reglas-cobro.md` sección 6.
 
-#### [ ] B7 Para facturar
+#### [x] B7 Para facturar
 > Pantalla Para facturar según `docs/reglas-cobro.md` sección 7: elegir mes de cobro, una fila por
 > familia con todos los datos y botones copiar por campo, descarga en Excel (exceljs), y "Marcar
 > facturado" con número de factura (crea `facturas` y vincula los pagos).
+
+> _Hecha (migración 0012: `crear_factura`, se permite otra factura en el mes y el número no se repite). También
+> se sumó "Ya facturadas" con Deshacer, que no anula la factura en Marangatu. **Falta aplicar la 0012 y probar
+> con la base y en Safari de iPhone** (pasos en el PR). Los tipos de `crear_factura` se escribieron a mano._
 
 ---
 

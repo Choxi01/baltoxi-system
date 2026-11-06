@@ -73,7 +73,9 @@ ninguna -> error (no inventar)
   IVA 10% (`Math.round(monto / 11)`), medios de pago, concepto.
 - Concepto: `"{concepto_factura} – sesiones de {meses}"`, donde `{meses}` sale de la imputación: los meses
   de servicio de los cargos que cubrieron esos pagos (ej. "septiembre 2026" o "septiembre y octubre 2026").
-- Al cargar el número de factura: crear `facturas` y poner `factura_id` en esos pagos.
+- Al cargar el número de factura (`001-001-0000123`, no se repite en el consultorio): crear `facturas` y poner `factura_id` en esos pagos, todo junto (función `crear_factura`, migración 0012). `emitida_en` = día en Asunción.
+- Si una familia paga después de facturar, esos pagos forman una fila nueva con el aviso "Ya tiene factura este mes" y llevan otra factura. Lo normal sigue siendo una por familia y mes.
+- Deshacer saca la factura de la app y sus pagos vuelven a la lista. **No la anula en Marangatu**, y la confirmación lo dice.
 
 ## 8. Reportes
 - Generado (día / mes) = suma de cargos con esa fecha.

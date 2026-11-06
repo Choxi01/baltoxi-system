@@ -1385,6 +1385,17 @@ export type Database = {
     }
     Functions: {
       crear_consultorio: { Args: { p_nombre: string }; Returns: string }
+      crear_factura: {
+        Args: {
+          p_concepto: string
+          p_emitida_en: string
+          p_mes: string
+          p_numero: string
+          p_pagos: string[]
+          p_tutor: string
+        }
+        Returns: string
+      }
       mis_consultorios: { Args: never; Returns: string[] }
       mover_turno: {
         Args: { p_fin: string; p_inicio: string; p_turno: string }
