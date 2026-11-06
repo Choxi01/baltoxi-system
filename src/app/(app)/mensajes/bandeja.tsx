@@ -4,6 +4,7 @@ import { TriangleAlert } from "lucide-react";
 import { useState } from "react";
 
 import { BotonesMensaje } from "@/components/app/botones-mensaje";
+import { MensajeMonto } from "@/components/app/mensaje-monto";
 import type { FilaPendiente } from "@/lib/mensajes/pendientes";
 import { cn } from "@/lib/utils";
 
@@ -48,7 +49,11 @@ export function Bandeja({ grupos }: { grupos: GrupoBandeja[] }) {
                           <TriangleAlert className="mt-0.5 size-4 shrink-0" /> {f.aviso}
                         </p>
                       )}
-                      <BotonesMensaje mensaje={f} enviado={enviado} alEnviar={() => tachar(f)} />
+                      {f.textoConDetalle ? (
+                        <MensajeMonto mensaje={{ ...f, textoConDetalle: f.textoConDetalle }} enviado={enviado} alEnviar={() => tachar(f)} />
+                      ) : (
+                        <BotonesMensaje mensaje={f} enviado={enviado} alEnviar={() => tachar(f)} />
+                      )}
                     </li>
                   );
                 })}
