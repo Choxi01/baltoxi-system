@@ -4,9 +4,8 @@ import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { useState } from "react";
 
 import { diaCorto, sumarDias, tituloSemana } from "@/lib/agenda/calendario";
-import { NOMBRE_ESTADO_TURNO } from "@/lib/agenda/turnos";
 import { formatoGs } from "@/lib/cobro/formato";
-import type { FilaDetalle, Reporte } from "@/lib/cobro/reportes";
+import { subtituloFila, textoSinMonto, type FilaDetalle, type Reporte } from "@/lib/cobro/reportes";
 import { cn } from "@/lib/utils";
 import { EnlacePeriodo } from "./enlace-periodo";
 
@@ -19,9 +18,9 @@ function Detalle({ filas }: { filas: FilaDetalle[] }) {
           <span className="w-11 shrink-0 tabular-nums text-muted-foreground">{f.hora ?? "—"}</span>
           <div className="min-w-0 flex-1">
             <p className="truncate font-medium">{f.paciente ?? f.tipo}</p>
-            {f.paciente && <p className="truncate text-muted-foreground">{f.tipo}</p>}
+            {f.paciente && <p className="text-muted-foreground">{subtituloFila(f)}</p>}
           </div>
-          <span className="shrink-0 tabular-nums">{f.monto !== null ? formatoGs(f.monto) : f.estado && NOMBRE_ESTADO_TURNO[f.estado]}</span>
+          <span className="shrink-0 tabular-nums">{f.monto !== null ? formatoGs(f.monto) : textoSinMonto(f)}</span>
         </li>
       ))}
     </ul>

@@ -4,7 +4,7 @@
 
 import { diaSemana } from "@/lib/agenda/bloques";
 import { diasVisibles, fechasEntre, finDeMes, inicioDeMes, lunesDe, sumarDias } from "@/lib/agenda/calendario";
-import type { TurnoAgenda } from "@/lib/agenda/turnos";
+import { textoEstado, type TurnoAgenda } from "@/lib/agenda/turnos";
 import { hoyEnAsuncion } from "@/lib/fechas";
 import { MESES } from "@/lib/pacientes/fecha";
 import { montoBase } from "./cargo";
@@ -296,17 +296,24 @@ export type FilaDetalle = {
   hora: string | null;
   paciente: string | null;
   tipo: string;
-  estado: EstadoTurno | null;
+  /** Como en la agenda: "No vino · Excepción 0%". null: sin marcar, o un cargo sin turno. */
+  estado: string | null;
   /** null: el turno no tiene cargo (sin marcar, o un tipo que no genera cobro). */
   monto: number | null;
 };
+
+/** "Sesión · No vino · Excepción 0%": explica por qué un turno da Gs. 0. */
+export const subtituloFila = (f: Pick<FilaDetalle, "tipo" | "estado">) => (f.estado ? `${f.tipo} · ${f.estado}` : f.tipo);
+
+/** Lo que va en lugar del monto cuando el turno no tiene cargo. */
+export const textoSinMonto = (f: Pick<FilaDetalle, "estado">) => (f.estado ? "Sin cargo" : "Sin marcar");
 
 /**
  * Lo que se ve al tocar un día: los turnos con paciente y su monto. Los reservados y ocupados no van
  * (su título es texto libre). Un cargo sin turno se muestra sin su concepto, para que la suma del día cierre.
  */
 export function detallePorDia(
-  turnos: Pick<TurnoAgenda, "id" | "clase" | "estado" | "fecha" | "inicio" | "titulo" | "tipo">[],
+  turnos: Pick<TurnoAgenda, "id" | "clase" | "estado" | "fecha" | "inicio" | "titulo" | "tipo" | "porcentajeManual">[],
   cargos: Pick<CargoReporte, "id" | "fecha" | "monto_gs" | "turno_id" | "tipo">[],
 ): Record<string, FilaDetalle[]> {
   const conTurno = turnos.filter((t) => t.clase === "turno");
@@ -321,7 +328,7 @@ export function detallePorDia(
       hora: t.inicio,
       paciente: t.titulo,
       tipo: t.tipo ?? "Sesión",
-      estado: t.estado,
+      estado: textoEstado(t),
       monto: montos.get(t.id) ?? null,
     });
   }

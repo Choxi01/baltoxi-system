@@ -20,9 +20,11 @@ import {
   semanaReporte,
   semanaValida,
   serieMes,
+  subtituloFila,
   tasaAusenciasSinCobro,
   tasaDelMes,
   textoHoras,
+  textoSinMonto,
   type CargoReporte,
   type TurnoReporte,
 } from "./reportes";
@@ -258,7 +260,7 @@ describe("comparación de 6 meses", () => {
 });
 
 describe("detalle del día", () => {
-  const base = { fecha: "2026-11-02", estado: "presente" as const, inicio: "10:00", tipo: "Sesión" };
+  const base = { fecha: "2026-11-02", estado: "presente" as const, inicio: "10:00", tipo: "Sesión", porcentajeManual: null };
 
   it("muestra los turnos con paciente y su monto, sin reservados ni ocupados", () => {
     const detalle = detallePorDia(
@@ -273,9 +275,28 @@ describe("detalle del día", () => {
     expect(detalle["2026-11-02"][0]).toMatchObject({ paciente: "Niño Inventado", monto: 290000 });
   });
 
-  it("un turno sin marcar no tiene monto", () => {
+  it("un turno sin marcar no tiene monto ni estado", () => {
     const detalle = detallePorDia([{ ...base, estado: "agendado", id: "a", clase: "turno", titulo: "Niño Inventado" }], []);
-    expect(detalle["2026-11-02"][0].monto).toBeNull();
+    const fila = detalle["2026-11-02"][0];
+    expect(fila.monto).toBeNull();
+    expect(subtituloFila(fila)).toBe("Sesión");
+    expect(textoSinMonto(fila)).toBe("Sin marcar");
+  });
+
+  it("el estado explica por qué un turno da Gs. 0, como en la agenda", () => {
+    const detalle = detallePorDia(
+      [
+        { ...base, id: "a", clase: "turno", titulo: "Niño Inventado", estado: "ausente_sin_aviso", porcentajeManual: 0 },
+        { ...base, id: "b", clase: "turno", titulo: "Niña Inventada", estado: "aviso_tardio" },
+      ],
+      [cargo("2026-11-02", 0, { turno_id: "a" }), cargo("2026-11-02", 290000, { turno_id: "b" })],
+    );
+    expect(detalle["2026-11-02"].map(subtituloFila)).toEqual(["Sesión · No vino · Excepción 0%", "Sesión · Canceló tarde"]);
+  });
+
+  it("un turno marcado de un tipo que no genera cobro dice que no tiene cargo", () => {
+    const detalle = detallePorDia([{ ...base, id: "a", clase: "turno", titulo: "Niño Inventado" }], []);
+    expect(textoSinMonto(detalle["2026-11-02"][0])).toBe("Sin cargo");
   });
 
   it("un ajuste aparece sin texto libre, para que la suma del día cierre", () => {
@@ -344,8 +365,8 @@ describe("reporte completo y Excel", () => {
       tarifas: TARIFAS,
       diasConHorario: [1, 2, 3, 4, 5],
       turnosSemana: [
-        { id: "x", clase: "turno", estado: "presente", fecha: "2026-11-02", inicio: "10:00", titulo: "Niño Inventado", tipo: "Sesión" },
-        { id: "y", clase: "ocupado", estado: "agendado", fecha: "2026-11-03", inicio: "10:00", titulo: MOTIVO, tipo: null },
+        { id: "x", clase: "turno", estado: "presente", fecha: "2026-11-02", inicio: "10:00", titulo: "Niño Inventado", tipo: "Sesión", porcentajeManual: null },
+        { id: "y", clase: "ocupado", estado: "agendado", fecha: "2026-11-03", inicio: "10:00", titulo: MOTIVO, tipo: null, porcentajeManual: null },
       ],
     });
 
