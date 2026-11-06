@@ -242,7 +242,7 @@ Detalle y propuestas en `docs/pedidos-daniela-2026-11.md`. La A11 va antes de la
 #### [ ] A10 App instalable
 > PWA instalable en iPhone, iPad y Mac (manifest, íconos, pantalla de inicio), sin modo offline.
 
-#### [ ] B8 Reportes
+#### [x] B8 Reportes
 > Pantalla Reportes según `docs/reglas-cobro.md` sección 8: generado hoy y en el mes, proyección,
 > cobrado, pendiente, horas trabajadas, comparación de 6 meses (gráfico de barras). Exportar a Excel.
 > Además (pedido 6 de `docs/pedidos-daniela-2026-11.md`): vista Semana con el generado de cada día

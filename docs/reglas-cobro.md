@@ -79,8 +79,19 @@ ninguna -> error (no inventar)
 - Generado (día / mes) = suma de cargos con esa fecha.
 - Proyección del mes = generado del mes + Σ(monto base de turnos `agendado` que quedan en el mes) ×
   (1 − tasa de ausencias sin cobro de los últimos 3 meses). Con menos de 20 turnos de historia, tasa 0.
+  - "Que quedan" = clase `turno`, tipo con `genera_cobro`, desde hoy inclusive hasta fin de mes. Los de
+    días pasados sin marcar no entran y la pantalla avisa cuántos son. Un paciente sin tarifa tampoco
+    entra, y también se avisa. Los meses que ya terminaron no muestran proyección.
+  - "Últimos 3 meses" = los 3 meses calendario anteriores al mes del reporte. Solo cuentan los turnos
+    con cargo: un tipo que no genera cobro no es una ausencia.
 - Cobrado del mes = suma de pagos con fecha en el mes.
-- Horas trabajadas = duración de turnos `presente` + bloques `ocupado` de tipo reunión o colegio.
+- Pendiente del mes = lo generado en ese mes que todavía no se pagó, con la imputación FIFO de la
+  sección 5. Puede no coincidir con el total de Cobros, que suma las deudas de todos los meses.
+- Horas trabajadas = duración de turnos `presente` + bloques `ocupado` de reunión o colegio, solo los
+  que ya terminaron. "Marcar ocupado" no guarda tipo de turno: se reconocen por las palabras "reunión"
+  o "colegio" en el motivo. El motivo se usa solo para esto: no se muestra ni se exporta.
+- **Sin confirmar por Daniela:** los criterios de horas trabajadas y de ausencias sin cobro. Se cambian
+  en `src/lib/cobro/criterios-reportes.ts`.
 
 ## Casos de prueba obligatorios
 Datos: Regular Gs. 290.000, Económica 280.000, Domicilio 350.000, Evaluación 280.000; aviso mínimo 48 h (solo para los
