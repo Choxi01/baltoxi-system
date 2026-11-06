@@ -164,11 +164,15 @@ Detalle y propuestas en `docs/pedidos-daniela-2026-11.md`. La A11 va antes de la
 > _Antes de empezar, preguntarle a Daniela: ¿cuántos chicos como máximo en una grupal? ¿Duran lo mismo
 > que una individual? ¿La tarifa es por chico, de grupo o una parte? ¿La doble es siempre de hermanos?_
 
-#### [ ] B9 "¿Se cobra?" al cancelar tarde
+#### [x] B9 "¿Se cobra?" al cancelar tarde
 > Según `docs/pedidos-daniela-2026-11.md` (pedido 1). En el formulario Cancelar, si la clasificación da
 > `aviso_tardio`, mostrar **Se cobra (Gs. …)** / **No se cobra** (por defecto Se cobra). "No se cobra"
 > guarda `aviso_tardio` con `porcentaje_manual = 0` y motivo ("Excepción al cancelar" por defecto). Es
 > la misma excepción de la B3: `calcularCargoTurno` y los 22 casos no cambian. Test del armado de datos.
+
+> _Hecha. El monto del botón sale de `montoAvisoTardio` (`src/lib/cobro/aplicar-estado.ts`), la misma cuenta
+> que el cargo. Si no hay nada para cobrar, no pregunta; si no se pudo calcular, pregunta sin el número.
+> Funciona en Agenda y en Hoy. El "Otro %" opcional no se hizo: sigue la acción Excepción._
 
 ---
 

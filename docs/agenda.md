@@ -57,7 +57,8 @@ separados por menos de `traslado_domicilio_min`, mostrar aviso (no bloquear).
 - Bloque libre → **Reservar** (buscar paciente o escribir un nombre suelto), **Marcar ocupado**
   (motivo), **Turno fijo** (crea `series_turnos` y materializa 8 semanas).
 - Turno → **Marcar asistencia** (ver reglas-cobro.md), **Mover** (crea turno nuevo y marca el original
-  `reprogramado` con `reprogramado_a`; sin costo), **Cancelar** (pide quién canceló y cuándo avisó),
+  `reprogramado` con `reprogramado_a`; sin costo), **Cancelar** (pide quién canceló y cuándo avisó; si la
+  familia avisó tarde, pregunta "¿Se cobra?", ver reglas-cobro.md sección 3),
   **Ver expediente**, **Copiar mensaje** (cambio o cancelación).
 - Turno cancelado por la profesional → queda `reponer = true` y aparece en una lista "Para reponer este
   mes" hasta que se agende otro turno con `repone_a`.

@@ -9,6 +9,7 @@ import {
   finalizarSerie,
   libresDelDia,
   marcarAsistencia,
+  montoSiSeCobra,
   moverTurno,
   quitarTurno,
 } from "@/lib/agenda/acciones-turnos";
@@ -71,7 +72,7 @@ export default async function Pagina({ searchParams }: PageProps<"/agenda">) {
           ...paraReservar,
           hoy,
           agendar,
-          acciones: { libresDelDia, moverTurno, cancelarTurno, quitarTurno, marcarAsistencia, crearSerie, finalizarSerie, registrarPago },
+          acciones: { libresDelDia, moverTurno, montoSiSeCobra, cancelarTurno, quitarTurno, marcarAsistencia, crearSerie, finalizarSerie, registrarPago },
         }}
       />
     </div>
