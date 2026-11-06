@@ -198,7 +198,7 @@ Detalle y propuestas en `docs/pedidos-daniela-2026-11.md`. La A11 va antes de la
 > **B5b**: `pendientesDelDia` (`src/lib/mensajes/pendientes.ts`): recordatorios del próximo día de atención
 > (`proximoDiaDeAtencion`, salteando feriados), monto del período el día del último turno (aviso si quedan turnos
 > de hoy sin marcar) y pagos atrasados con `vencimiento` + `atraso` (máximo uno cada 7 días por tutor).
-> Pantalla Mensajes de hoy y contador en el menú. Para la B6 queda el detalle por sesión y la cuenta del tutor._
+> Pantalla Mensajes de hoy y contador en el menú. El detalle por sesión y la cuenta del tutor se hicieron en la B6._
 
 ---
 
@@ -219,10 +219,15 @@ Detalle y propuestas en `docs/pedidos-daniela-2026-11.md`. La A11 va antes de la
 > límite de intentos. Nunca mostrar datos clínicos. En Configuración, editor del reglamento (al guardar
 > sube la versión). En la ficha del paciente, estado de la firma.
 
-#### [ ] B6 Monto del período
+#### [x] B6 Monto del período
 > En "Mensajes de hoy" y en la cuenta del tutor: mensaje de monto de la semana o del mes, total por
 > familia (hermanos juntos), con interruptor de detalle por sesión. Usa las funciones de
 > `docs/reglas-cobro.md` sección 6.
+
+> _Hecha, sin migración. El mensaje sale de `armarMonto` (`src/lib/mensajes/monto.ts`), que usan la bandeja y la
+> cuenta. Se arregló `montoPeriodo`: un ajuste negativo se descontaba dos veces. También se sumó la pestaña
+> "Turnos y cuenta" del expediente y `mensajes/datos.ts` pasó a `leerTodo`. **Falta probarla con la base en
+> Safari de iPhone.**_
 
 #### [ ] B7 Para facturar
 > Pantalla Para facturar según `docs/reglas-cobro.md` sección 7: elegir mes de cobro, una fila por

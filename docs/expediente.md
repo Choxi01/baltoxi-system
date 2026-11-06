@@ -28,7 +28,8 @@ Datos de salud de menores: máxima prioridad de privacidad. Solo la profesional 
      crearla, editarla o borrarla.
 5. **Documentos**: subir desde cámara o archivos. Tipos: cédula, análisis, informe, certificado, otro.
    Título y fecha. Vista previa de imágenes y PDF.
-6. **Turnos y cuenta**: próximos turnos, historial de asistencia, cargos, pagos, saldo.
+6. **Turnos y cuenta**: próximos turnos, historial de asistencia y la cuenta del responsable de pago (cargos,
+   pagos y saldo de toda la familia), de solo lectura. Los pagos y el mensaje de monto están en Cobros.
 7. **Reglamento**: firmado o no, versión, fecha, quién firmó.
 
 ## Documentos (Supabase Storage)

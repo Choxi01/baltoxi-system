@@ -4,14 +4,38 @@ import { z } from "zod";
 
 import { aHoraLocal } from "@/lib/agenda/turnos";
 import { exigirConsultorio } from "@/lib/auth/servidor";
+import { leerTodo } from "@/lib/supabase/paginar";
 import { crearClienteServidor } from "@/lib/supabase/servidor";
 import type { Nota } from "./notas";
+import type { TurnoPaciente } from "./turnos";
 
 // Lecturas de pacientes. Todo pasa por RLS (cliente del usuario) y además se
 // filtra por el consultorio, por las dudas.
 
 export function esIdValido(id: string): boolean {
   return z.uuid().safeParse(id).success;
+}
+
+/** Todos los turnos de un paciente, para "Turnos y cuenta". Sin el motivo de las excepciones. */
+export async function listarTurnosPaciente(pacienteId: string): Promise<TurnoPaciente[]> {
+  if (!esIdValido(pacienteId)) return [];
+  const consultorio = await exigirConsultorio();
+  const supabase = await crearClienteServidor();
+  const filas = await leerTodo((de, a) =>
+    supabase
+      .from("turnos")
+      .select("id, estado, inicio, tipos_turno!turnos_consultorio_id_tipo_turno_id_fkey(nombre)")
+      .eq("consultorio_id", consultorio.id)
+      .eq("paciente_id", pacienteId)
+      .eq("clase", "turno")
+      .order("inicio")
+      .order("id")
+      .range(de, a),
+  );
+  return filas.map((t) => {
+    const { fecha, hora } = aHoraLocal(t.inicio);
+    return { id: t.id, estado: t.estado, fecha, hora, tipo: t.tipos_turno?.nombre ?? null };
+  });
 }
 
 /** Lista para la pantalla Pacientes. Sin datos clínicos (regla de oro 7). */
