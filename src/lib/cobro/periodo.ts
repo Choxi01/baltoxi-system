@@ -19,6 +19,8 @@ export function rangoMes(fecha: string): Rango {
 /**
  * Total del período = cargos del tutor con fecha en el período − lo imputado a esos cargos.
  * Pasá los cargos de un solo tutor (si tiene varios hijos, salen todos juntos).
+ * Un ajuste negativo no se suma: es un crédito y ya bajó lo pendiente en la imputación (si no,
+ * contaría dos veces).
  */
 export function montoPeriodo({
   cargos,
@@ -33,6 +35,6 @@ export function montoPeriodo({
 }): number {
   const pagado = new Map(imputacion.map((i) => [i.cargo_id, i.pagado]));
   return cargos
-    .filter((c) => c.fecha >= desde && c.fecha <= hasta)
+    .filter((c) => c.fecha >= desde && c.fecha <= hasta && c.monto_gs >= 0)
     .reduce((total, c) => total + c.monto_gs - (pagado.get(c.id) ?? 0), 0);
 }

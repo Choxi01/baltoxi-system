@@ -119,6 +119,7 @@ export function rellenar(texto: string, valores: Valores): string {
         .trim(),
     )
     .join("\n")
+    .replace(/\n{3,}/g, "\n\n") // {detalle} vacío en su propia línea
     .trim();
 }
 
@@ -181,7 +182,7 @@ export const EJEMPLO: Required<Valores> = {
   rango: "esta semana",
   libres: "• Lunes 3/11: 9:00, 9:45\n• Jueves 6/11: 15:00",
   link_ficha: "https://ejemplo.com/ficha/abc123",
-  detalle: "",
+  detalle: "• 03/10 Tomi – Sesión – Gs. 290.000\n• 10/10 Tomi – Canceló con menos de 24 h – Gs. 290.000",
 };
 
 /** Vista previa de una plantilla con datos de ejemplo. */
