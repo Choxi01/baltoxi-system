@@ -715,6 +715,7 @@ export type Database = {
         Row: {
           apellido: string | null
           colegio: string | null
+          cambios_familia_en: string | null
           consultorio_id: string
           creado_en: string
           derivado_por: string | null
@@ -731,6 +732,7 @@ export type Database = {
         Insert: {
           apellido?: string | null
           colegio?: string | null
+          cambios_familia_en?: string | null
           consultorio_id: string
           creado_en?: string
           derivado_por?: string | null
@@ -747,6 +749,7 @@ export type Database = {
         Update: {
           apellido?: string | null
           colegio?: string | null
+          cambios_familia_en?: string | null
           consultorio_id?: string
           creado_en?: string
           derivado_por?: string | null
@@ -1309,6 +1312,7 @@ export type Database = {
         Row: {
           activo: boolean
           apellido: string | null
+          cambios_familia_en: string | null
           consultorio_id: string
           creado_en: string
           doc_numero: string | null
@@ -1324,6 +1328,7 @@ export type Database = {
         Insert: {
           activo?: boolean
           apellido?: string | null
+          cambios_familia_en?: string | null
           consultorio_id: string
           creado_en?: string
           doc_numero?: string | null
@@ -1339,6 +1344,7 @@ export type Database = {
         Update: {
           activo?: boolean
           apellido?: string | null
+          cambios_familia_en?: string | null
           consultorio_id?: string
           creado_en?: string
           doc_numero?: string | null

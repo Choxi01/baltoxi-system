@@ -94,3 +94,26 @@ export async function actualizarPaciente(
   const ahora = Date.now();
   return { errores: {}, guardadoEn: ahora, revision: ahora };
 }
+
+/** "Visto": la profesional ya revisó lo que cambió la familia desde la ficha online (A8a). */
+export async function marcarCambiosVistos(pacienteId: string): Promise<{ error: string | null }> {
+  if (!esIdValido(pacienteId)) return { error: "Paciente no encontrado." };
+  const consultorio = await exigirConsultorio();
+  const supabase = await crearClienteServidor();
+  const { data: vinculos } = await supabase
+    .from("paciente_tutores")
+    .select("tutor_id")
+    .eq("consultorio_id", consultorio.id)
+    .eq("paciente_id", pacienteId);
+  const [{ error }, { error: errorTutores }] = await Promise.all([
+    supabase.from("pacientes").update({ cambios_familia_en: null }).eq("consultorio_id", consultorio.id).eq("id", pacienteId),
+    supabase
+      .from("tutores")
+      .update({ cambios_familia_en: null })
+      .eq("consultorio_id", consultorio.id)
+      .in("id", (vinculos ?? []).map((v) => v.tutor_id)),
+  ]);
+  if (error || errorTutores) return { error: "No se pudo guardar. Probá de nuevo." };
+  revalidatePath(`/pacientes/${pacienteId}`);
+  return { error: null };
+}
