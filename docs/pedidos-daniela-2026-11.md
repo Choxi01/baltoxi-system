@@ -45,29 +45,32 @@ y el ejemplo del doc para no confundirnos al comparar con su Excel en la 8.2.
 - Hoy se pueden poner a mano dos turnos en el mismo horario (con la confirmación de superposición),
   pero no se puede crear un **turno fijo con varios chicos**.
 - Distinguir dos clases:
-  - **Sesión doble**: dos chicos juntos (por ejemplo, hermanos o una pareja de trabajo).
-  - **Sesión grupal**: varios chicos (tres o más).
+  - **Sesión doble**: dos compañeritos juntos (nunca hermanos).
+  - **Sesión grupal**: tres o cuatro chicos.
 - Que se agenden de a dos (o de a varios) **según el tipo de sesión**.
 
 **Hoy.** La tabla `turnos` tiene un solo `paciente_id`, y `series_turnos` también. Cada turno es de un
 paciente por diseño; en ningún doc ni tarea aparece lo grupal.
 
-**Propuesta (para discutir).**
-- **Base.** En `tipos_turno`, agregar `cupo` (1 = individual, 2 = doble, N = grupal) o una columna
-  `clase` (`individual` / `doble` / `grupal`) más `cupo_maximo`. Agregar una tabla intermedia
-  `turno_pacientes (turno_id, paciente_id)` y lo mismo para series (`serie_pacientes`). Alternativa
-  más simple: un **turno por chico** unidos por un `grupo_id`. Cada chico tiene su propio estado
-  (vino / no vino / canceló) y su propio cargo, y el motor de cobro casi no cambia. **Recomiendo
-  esta**, porque la asistencia y el cobro siguen siendo por paciente.
+**Respuestas de Daniela.**
+- **Máximo en una grupal:** 4 chicos.
+- **Duración:** igual que una individual.
+- **Cobro:** cada familia paga una sesión entera, como una individual. No se reparte el precio.
+- **Sesión doble:** nunca es de hermanos, son compañeritos. Cada chico tiene su propia familia y su
+  propio cobro, lo que confirma el modelo de un turno por chico con `grupo_id`.
+
+**Propuesta.**
+- **Base.** En `tipos_turno`, agregar `cupo` (1 = individual, 2 = doble, hasta 4 = grupal) o una
+  columna `clase` (`individual` / `doble` / `grupal`) más `cupo_maximo`. Modelo confirmado: un
+  **turno por chico** unidos por un `grupo_id`. Cada chico tiene su propio estado (vino / no vino /
+  canceló) y su propio cargo, y el motor de cobro casi no cambia, porque la asistencia y el cobro
+  siguen siendo por paciente.
 - **Agenda.** Al reservar o crear un turno fijo con un tipo doble o grupal, elegir 2 o N pacientes. En
   la grilla se ve como **un rectángulo** con los nombres ("Juan + Pedro" o "Grupal · 4"); al tocarlo,
   la asistencia se marca por chico. Mover o cancelar mueve el grupo entero, con la opción de sacar a
   un solo chico.
-- **Cobro (B).** Definir con Daniela: ¿cada chico paga la tarifa completa, una tarifa de grupo o una
-  parte? Se resuelve con una tarifa propia del tipo de turno (`tipos_turno.tarifa_id`, que ya existe).
-  Si un chico del grupo cancela tarde, se le cobra solo a él.
-- **Preguntas para Daniela:** ¿cuántos chicos como máximo en una grupal? ¿Duran lo mismo que una
-  individual? ¿La tarifa es por chico? ¿La sesión doble es siempre de hermanos?
+- **Cobro (B).** Cada chico genera su propio cargo por una sesión entera, igual que una individual,
+  al responsable de pago de su familia. Si un chico del grupo cancela tarde, se le cobra solo a él.
 
 **Por qué antes de la 8.2.** Cambia la base y toca agenda, asistencia, series y cobro. Si se carga el
 mes real con un solo paciente por turno, después hay que migrar datos.
