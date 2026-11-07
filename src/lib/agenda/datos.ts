@@ -41,7 +41,7 @@ export async function listarTurnos(desde: string, hasta: string): Promise<TurnoA
   const { data, error } = await supabase
     .from("turnos")
     .select(
-      "id, clase, estado, inicio, fin, paciente_id, tipo_turno_id, serie_id, nombre_reserva, motivo_ocupado, porcentaje_manual, pacientes!turnos_consultorio_id_paciente_id_fkey(nombre, apellido), tipos_turno!turnos_consultorio_id_tipo_turno_id_fkey(nombre, modalidad, color)",
+      "id, clase, estado, inicio, fin, paciente_id, tipo_turno_id, serie_id, grupo_id, nombre_reserva, motivo_ocupado, porcentaje_manual, pacientes!turnos_consultorio_id_paciente_id_fkey(nombre, apellido), tipos_turno!turnos_consultorio_id_tipo_turno_id_fkey(nombre, modalidad, color)",
     )
     .eq("consultorio_id", consultorio.id)
     .gte("inicio", inicioDelDiaUtc(desde))
@@ -62,6 +62,7 @@ export async function listarTurnos(desde: string, hasta: string): Promise<TurnoA
       titulo: (t.clase === "turno" ? paciente : t.clase === "reservado" ? t.nombre_reserva : t.motivo_ocupado) ?? "",
       tipo: t.tipos_turno?.nombre ?? null,
       serieId: t.serie_id,
+      grupoId: t.grupo_id,
       tipoId: t.tipo_turno_id,
       pacienteId: t.paciente_id,
       color: t.tipos_turno?.color ?? null,
@@ -157,7 +158,7 @@ export async function obtenerDatosParaReservar() {
       .order("nombre"),
     supabase
       .from("tipos_turno")
-      .select("id, nombre, modalidad, color, requiere_paciente")
+      .select("id, nombre, modalidad, color, cupo, requiere_paciente")
       .eq("consultorio_id", consultorio.id)
       .eq("activo", true)
       .order("nombre"),

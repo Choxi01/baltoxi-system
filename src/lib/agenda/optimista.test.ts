@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Tramo } from "./bloques";
-import { aplicarCambio, idMovido, turnoNuevo } from "./optimista";
+import { aplicarCambio, idMovido, turnoNuevo, turnosNuevosDelGrupo } from "./optimista";
 import { armarDia, type TurnoAgenda } from "./turnos";
 
 // Datos inventados.
@@ -18,6 +18,7 @@ const turno = (id: string, inicio: string, datos: Partial<TurnoAgenda> = {}): Tu
   titulo: "Paciente Inventado",
   tipo: "Sesión",
   serieId: null,
+  grupoId: null,
   tipoId: "tipo-1",
   pacienteId: "paciente-1",
   modalidad: "consultorio",
@@ -94,6 +95,7 @@ describe("aplicarCambio", () => {
       pacienteId: "paciente-1",
       tipoId: "tipo-1",
       serieId: null,
+      grupoId: null,
       porcentajeManual: null,
       guardando: true,
     });
@@ -148,6 +150,37 @@ describe("Reservar y Cobrar ahora", () => {
     expect(despues[1].guardando).toBe(true);
     expect(libres(antes)).toBe(1);
     expect(libres(despues)).toBe(0);
+  });
+
+  it("Reservar una sesión doble: un turno por chico con el mismo grupo, y ocupan un solo bloque", () => {
+    const antes = [turno("a", "09:00"), turno("b", "10:30")];
+    const nuevos = turnosNuevosDelGrupo({
+      id: "g1",
+      fecha: LUNES,
+      inicio: "09:45",
+      fin: "10:30",
+      pacientes: [
+        { id: "p1", nombre: "Juan", apellido: "Inventado" },
+        { id: "p2", nombre: "Pedro", apellido: "Prueba" },
+      ],
+      tipo: { id: "tipo-doble", nombre: "Sesión doble", modalidad: "consultorio", color: "durazno" },
+    });
+    expect(nuevos).toEqual([
+      expect.objectContaining({ id: "g1-0", grupoId: "g1", pacienteId: "p1", titulo: "Juan Inventado", tipoId: "tipo-doble", color: "durazno" }),
+      expect.objectContaining({ id: "g1-1", grupoId: "g1", pacienteId: "p2", titulo: "Pedro Prueba", tipoId: "tipo-doble" }),
+    ]);
+    const despues = aplicarCambio(antes, { tipo: "agregar_grupo", turnos: nuevos });
+    expect(despues.map((t) => t.id)).toEqual(["a", "g1-0", "g1-1", "b"]);
+    expect(despues.filter((t) => t.grupoId === "g1").every((t) => t.guardando)).toBe(true);
+    expect(libres(despues)).toBe(0);
+    expect(antes).toHaveLength(2);
+  });
+
+  it("Mover a un chico de una sesión doble lo saca del grupo", () => {
+    const antes = [turno("a", "09:00", { grupoId: "g1" }), turno("b", "09:00", { grupoId: "g1", pacienteId: "paciente-2" })];
+    const despues = aplicarCambio(antes, { tipo: "mover", id: "a", fecha: MARTES, inicio: "09:00", fin: "09:45" });
+    expect(despues.find((t) => t.id === idMovido("a"))?.grupoId).toBeNull();
+    expect(despues.find((t) => t.id === "b")?.grupoId).toBe("g1");
   });
 
   it("Cobrar ahora: el botón se va y el turno queda guardando, sin cambiar el estado", () => {

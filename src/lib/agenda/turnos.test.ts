@@ -22,6 +22,7 @@ const turno = (inicio: string, datos: Partial<TurnoAgenda> = {}): TurnoAgenda =>
     titulo: "Paciente Prueba",
     tipo: "Sesión",
     serieId: null,
+    grupoId: null,
     tipoId: null,
     pacienteId: null,
     modalidad: "consultorio",

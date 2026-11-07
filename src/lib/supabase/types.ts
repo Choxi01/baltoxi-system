@@ -1025,6 +1025,7 @@ export type Database = {
           dia_semana: number
           duracion_min: number
           estado: string
+          grupo_id: string | null
           hasta: string | null
           hora: string
           id: string
@@ -1038,6 +1039,7 @@ export type Database = {
           dia_semana: number
           duracion_min?: number
           estado?: string
+          grupo_id?: string | null
           hasta?: string | null
           hora: string
           id?: string
@@ -1051,6 +1053,7 @@ export type Database = {
           dia_semana?: number
           duracion_min?: number
           estado?: string
+          grupo_id?: string | null
           hasta?: string | null
           hora?: string
           id?: string
@@ -1151,6 +1154,7 @@ export type Database = {
           cobra_en_el_momento: boolean
           color: string | null
           consultorio_id: string
+          cupo: number
           genera_cobro: boolean
           id: string
           modalidad: string
@@ -1163,6 +1167,7 @@ export type Database = {
           cobra_en_el_momento?: boolean
           color?: string | null
           consultorio_id: string
+          cupo?: number
           genera_cobro?: boolean
           id?: string
           modalidad?: string
@@ -1175,6 +1180,7 @@ export type Database = {
           cobra_en_el_momento?: boolean
           color?: string | null
           consultorio_id?: string
+          cupo?: number
           genera_cobro?: boolean
           id?: string
           modalidad?: string
@@ -1207,6 +1213,7 @@ export type Database = {
           creado_en: string
           estado: string
           fin: string
+          grupo_id: string | null
           id: string
           inicio: string
           marcado_en: string | null
@@ -1228,6 +1235,7 @@ export type Database = {
           creado_en?: string
           estado?: string
           fin: string
+          grupo_id?: string | null
           id?: string
           inicio: string
           marcado_en?: string | null
@@ -1249,6 +1257,7 @@ export type Database = {
           creado_en?: string
           estado?: string
           fin?: string
+          grupo_id?: string | null
           id?: string
           inicio?: string
           marcado_en?: string | null

@@ -15,6 +15,7 @@ import { diaSemana } from "./bloques";
 import { inicioDeMes } from "./calendario";
 import { datosCancelacion, pendientesDeReponer, validarNoSeCobra, type MontoAvisoTardio } from "./cancelacion";
 import { listarTurnos, obtenerHorario } from "./datos";
+import { turnosDelGrupo, validarGrupo } from "./grupos";
 import { avisosAlAgendar, horaFin, instanteUtc, textosAvisos, validarReserva } from "./reservas";
 import { fechasDeSerie } from "./series";
 import { materializarSeries } from "./series-servidor";
@@ -40,16 +41,30 @@ export async function agendar(entrada: unknown): Promise<ResultadoAgendar> {
   // El tipo de turno y el paciente tienen que ser de este consultorio.
   const tipoId = datos.clase === "ocupado" ? null : datos.tipo_turno_id;
   let modalidad: string | null = null;
+  let cupo = 1;
   if (tipoId) {
     const { data: tipo } = await supabase
       .from("tipos_turno")
-      .select("modalidad")
+      .select("modalidad, cupo")
       .eq("consultorio_id", consultorio.id)
       .eq("id", tipoId)
       .eq("activo", true)
       .maybeSingle();
     if (!tipo) return { ok: false, error: "Elegí un tipo de turno." };
     modalidad = tipo.modalidad;
+    cupo = tipo.cupo;
+  }
+  // Sesión doble o grupal: entre 2 y el cupo del tipo, todos pacientes de este consultorio.
+  if (datos.clase === "grupo") {
+    const grupo = validarGrupo(datos.paciente_ids, cupo);
+    if (!grupo.ok) return grupo;
+    const { data: pacientes, error: errorPacientes } = await supabase
+      .from("pacientes")
+      .select("id")
+      .eq("consultorio_id", consultorio.id)
+      .in("id", datos.paciente_ids);
+    if (errorPacientes) return { ok: false, error: NO_SE_PUDO };
+    if ((pacientes ?? []).length !== datos.paciente_ids.length) return { ok: false, error: "Paciente no encontrado." };
   }
   if (datos.clase === "turno") {
     const { data: paciente } = await supabase
@@ -98,6 +113,23 @@ export async function agendar(entrada: unknown): Promise<ResultadoAgendar> {
     );
     const texto = textosAvisos(avisos, config.traslado_domicilio_min).superposicion;
     if (texto) return { ok: false, confirmar: texto };
+  }
+
+  // Un turno por chico con el mismo grupo_id, en un solo insert: se guardan todos o ninguno.
+  if (datos.clase === "grupo") {
+    const { error } = await supabase.from("turnos").insert(
+      turnosDelGrupo({
+        consultorioId: consultorio.id,
+        grupoId: crypto.randomUUID(),
+        pacienteIds: datos.paciente_ids,
+        tipoTurnoId: datos.tipo_turno_id,
+        inicio: instanteUtc(datos.fecha, datos.inicio),
+        fin: instanteUtc(datos.fecha, fin),
+      }),
+    );
+    if (error) return { ok: false, error: NO_SE_PUDO };
+    revalidar();
+    return { ok: true };
   }
 
   const { error } = await supabase.from("turnos").insert({

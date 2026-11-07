@@ -31,6 +31,7 @@ const turno = (fecha: string, inicio: string, estado: TurnoAgenda["estado"] = "a
   titulo: "Paciente Inventado",
   tipo: "Sesión",
   serieId: null,
+  grupoId: null,
   tipoId: null,
   pacienteId: null,
   modalidad: "consultorio",

@@ -261,6 +261,35 @@ begin
          (((lunes + 10) + time '16:30') at time zone 'America/Asuncion') + interval '45 minutes'
   from public.tipos_turno tt where tt.consultorio_id = c and tt.nombre = 'Reunión de equipo';
 
+  -- Sesiones dobles y grupales (A11a): un turno por chico, unidos por grupo_id.
+  -- Los tipos no se borran al recargar: se crean si faltan y se les pone el cupo.
+  insert into public.tipos_turno (consultorio_id, nombre, cupo)
+  select c, v.nombre, v.cupo
+  from (values ('Sesión doble', 2), ('Sesión grupal', 4)) v(nombre, cupo)
+  where not exists (select 1 from public.tipos_turno tt where tt.consultorio_id = c and tt.nombre = v.nombre);
+  update public.tipos_turno set cupo = 2 where consultorio_id = c and nombre = 'Sesión doble';
+  update public.tipos_turno set cupo = 4 where consultorio_id = c and nombre = 'Sesión grupal';
+
+  -- Doble del jueves pasado a las 14:15 (Lucas vino, el otro no: en la grilla se ve "½").
+  -- La próxima semana: una doble el lunes 15:00 y una grupal de 3 el martes 15:45.
+  with grupos (dia, hora, tipo, ninos, estados) as (
+    values (lunes - 4, time '14:15', 'Sesión doble', array[7, 12], array['presente', 'ausente_sin_aviso']),
+           (lunes + 7, time '15:00', 'Sesión doble', array[11, 14], array['agendado', 'agendado']),
+           (lunes + 8, time '15:45', 'Sesión grupal', array[1, 7, 15], array['agendado', 'agendado', 'agendado'])
+  ), con_id as (
+    select g.*, gen_random_uuid() as grupo_id from grupos g
+  )
+  insert into public.turnos (consultorio_id, clase, paciente_id, tipo_turno_id, grupo_id, inicio, fin, estado, marcado_en)
+  select c, 'turno', i.paciente_id, tt.id, g.grupo_id,
+         ((g.dia + g.hora) at time zone 'America/Asuncion'),
+         ((g.dia + g.hora) at time zone 'America/Asuncion') + interval '45 minutes',
+         g.estados[k.orden],
+         case when g.estados[k.orden] <> 'agendado' then ((g.dia + g.hora) at time zone 'America/Asuncion') + interval '45 minutes' end
+  from con_id g
+  cross join lateral unnest(g.ninos) with ordinality k(n, orden)
+  join seed_pid i on i.n = k.n
+  join public.tipos_turno tt on tt.consultorio_id = c and tt.nombre = g.tipo;
+
   -- ---------------------------------------------------------------
   -- 7. Cargos de los turnos que ya pasaron (docs/reglas-cobro.md, 2 a 4)
   --    monto base: tarifa del tipo > precio especial > tarifa del paciente
