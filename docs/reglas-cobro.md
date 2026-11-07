@@ -10,7 +10,7 @@ Todo caso de esta página tiene su test.
 | `agendado` | No pasó o no se marcó | Sin cargo |
 | `presente` | Vino | 100% |
 | `ausente_con_aviso` | Canceló con `horas_aviso_minimas` o más (Daniela usa 24 h) | 0% |
-| `aviso_tardio` | Canceló con menos de `horas_aviso_minimas` | 100% (al cancelar se pregunta "¿Se cobra?", tarea B9) |
+| `aviso_tardio` | Canceló con menos de `horas_aviso_minimas` | 100% (al cancelar se pregunta "¿Se cobra?", sección 3) |
 | `ausente_sin_aviso` | No vino ni avisó | 100% |
 | `cancelado_profesional` | Canceló la profesional (queda `reponer = true`) | 0% |
 | `reprogramado` | Se movió a otro horario; se cobra el turno nuevo | 0% |
@@ -38,6 +38,12 @@ regla del paciente para ese estado
 regla general del consultorio
 ninguna -> error (no inventar)
 ```
+
+**"¿Se cobra?" al cancelar tarde.** Si la familia avisa tarde, el formulario Cancelar pregunta
+**Se cobra (Gs. …)** / **No se cobra** (por defecto, Se cobra). El monto sale de la misma cuenta que el
+cargo. Si no hay nada para cobrar (regla en 0% o tipo sin cobro), no pregunta. "No se cobra" guarda
+`aviso_tardio` con `porcentaje_manual = 0` y motivo ("Excepción al cancelar" si no se escribe otro): es
+la misma excepción de siempre, y después se puede cambiar o quitar con la acción Excepción.
 
 ## 4. Cargo de un turno
 - Solo `clase = 'turno'` cuyo tipo tenga `genera_cobro = true`.

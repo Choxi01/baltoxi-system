@@ -5,6 +5,7 @@ import "server-only";
 // No es "use server" a propósito: así no queda como acción que el navegador pueda llamar sola.
 // Usa el cliente con la sesión del usuario: RLS filtra por consultorio.
 
+import type { MontoAvisoTardio } from "@/lib/agenda/cancelacion";
 import type { crearClienteServidor } from "@/lib/supabase/servidor";
 import { accionCargo, datosCargo, MES_CERRADO, mensajeErrorCobro } from "./aplicar";
 import { calcularCargoTurno, montoBase, type CargoCalculado } from "./cargo";
@@ -15,19 +16,22 @@ export type ResultadoCargo = { ok: true } | { ok: false; error: string };
 
 const NO_SE_PUDO = "No se pudo guardar el cobro. Probá de nuevo.";
 
-export async function aplicarEstadoTurno(supabase: Supabase, consultorioId: string, turnoId: string): Promise<ResultadoCargo> {
-  const [{ data: turno, error: errorTurno }, { data: existente, error: errorCargo }] = await Promise.all([
-    supabase
-      .from("turnos")
-      .select("clase, estado, inicio, porcentaje_manual, motivo_excepcion, paciente_id, tipo_turno_id")
-      .eq("consultorio_id", consultorioId)
-      .eq("id", turnoId)
-      .maybeSingle(),
-    supabase.from("cargos").select("id").eq("consultorio_id", consultorioId).eq("turno_id", turnoId).maybeSingle(),
-  ]);
-  if (errorTurno || errorCargo || !turno) return { ok: false, error: NO_SE_PUDO };
+const COLUMNAS_TURNO = "clase, estado, inicio, porcentaje_manual, motivo_excepcion, paciente_id, tipo_turno_id";
 
-  // Calcular primero (sin escribir nada): si falta un dato, se avisa y no se toca el cargo.
+type TurnoParaCargo = {
+  clase: string;
+  estado: string;
+  inicio: string;
+  porcentaje_manual: number | null;
+  motivo_excepcion: string | null;
+  paciente_id: string | null;
+  tipo_turno_id: string | null;
+};
+
+type Calculo = { ok: true; calculado: CargoCalculado | null; tipoNombre: string | null } | { ok: false; error: string };
+
+/** Lee lo que hace falta y calcula el cargo del turno, sin escribir nada. */
+async function calcularCargoDe(supabase: Supabase, consultorioId: string, turno: TurnoParaCargo): Promise<Calculo> {
   let calculado: CargoCalculado | null = null;
   let tipoNombre: string | null = null;
   if (turno.clase === "turno" && turno.estado !== "agendado" && turno.paciente_id && turno.tipo_turno_id) {
@@ -75,6 +79,46 @@ export async function aplicarEstadoTurno(supabase: Supabase, consultorioId: stri
       }
     }
   }
+  return { ok: true, calculado, tipoNombre };
+}
+
+/**
+ * Cuánto se cobraría si este turno queda como aviso tardío, sin excepción (B9). No escribe nada:
+ * es el número del botón "Se cobra", con la misma cuenta que después hace el cargo.
+ */
+export async function montoAvisoTardio(supabase: Supabase, consultorioId: string, turnoId: string): Promise<MontoAvisoTardio> {
+  const { data: turno, error } = await supabase
+    .from("turnos")
+    .select(COLUMNAS_TURNO)
+    .eq("consultorio_id", consultorioId)
+    .eq("id", turnoId)
+    .maybeSingle();
+  if (error || !turno) return "desconocido";
+  const calculo = await calcularCargoDe(supabase, consultorioId, {
+    ...turno,
+    estado: "aviso_tardio",
+    porcentaje_manual: null,
+    motivo_excepcion: null,
+  });
+  return calculo.ok ? (calculo.calculado?.monto ?? null) : "desconocido";
+}
+
+export async function aplicarEstadoTurno(supabase: Supabase, consultorioId: string, turnoId: string): Promise<ResultadoCargo> {
+  const [{ data: turno, error: errorTurno }, { data: existente, error: errorCargo }] = await Promise.all([
+    supabase
+      .from("turnos")
+      .select(COLUMNAS_TURNO)
+      .eq("consultorio_id", consultorioId)
+      .eq("id", turnoId)
+      .maybeSingle(),
+    supabase.from("cargos").select("id").eq("consultorio_id", consultorioId).eq("turno_id", turnoId).maybeSingle(),
+  ]);
+  if (errorTurno || errorCargo || !turno) return { ok: false, error: NO_SE_PUDO };
+
+  // Calcular primero (sin escribir nada): si falta un dato, se avisa y no se toca el cargo.
+  const calculo = await calcularCargoDe(supabase, consultorioId, turno);
+  if (!calculo.ok) return calculo;
+  const { calculado, tipoNombre } = calculo;
 
   const accion = accionCargo(existente, calculado);
   if (accion === "nada") return { ok: true };

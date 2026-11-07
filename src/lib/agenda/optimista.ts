@@ -14,8 +14,8 @@ export type CambioOptimista =
   | { tipo: "asistencia"; id: string; accion: Exclude<AccionAsistencia, "excepcion"> }
   /** Excepción "a criterio" (otro porcentaje). */
   | { tipo: "excepcion"; id: string; porcentaje: number }
-  /** Cancelar (el estado sale de datosCancelacion, igual que en el servidor). */
-  | { tipo: "cancelar"; id: string; estado: EstadoCancelado }
+  /** Cancelar (estado y porcentaje salen de datosCancelacion, igual que en el servidor). */
+  | { tipo: "cancelar"; id: string; estado: EstadoCancelado; porcentaje?: number }
   /** Quitar un reservado u ocupado: el horario queda libre. */
   | { tipo: "quitar"; id: string }
   /** Mover a otro día u hora. */
@@ -49,7 +49,7 @@ export function aplicarCambio(turnos: TurnoAgenda[], cambio: CambioOptimista): T
     case "excepcion":
       return reemplazar(marcado({ porcentajeManual: cambio.porcentaje }));
     case "cancelar":
-      return reemplazar(marcado({ estado: cambio.estado }));
+      return reemplazar(marcado({ estado: cambio.estado, porcentajeManual: cambio.porcentaje ?? null }));
     case "quitar":
       return turnos.filter((t) => t.id !== turno.id);
     case "cobrado":
