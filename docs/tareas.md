@@ -161,8 +161,9 @@ Detalle y propuestas en `docs/pedidos-daniela-2026-11.md`. La A11 va antes de la
 > ("Juan + Pedro" o "Grupal · 4"); la asistencia se marca por chico. Mover y cancelar mueven el grupo
 > entero, con opción de sacar a un solo chico. Tests en `src/lib/agenda`.
 
-> _Antes de empezar, preguntarle a Daniela: ¿cuántos chicos como máximo en una grupal? ¿Duran lo mismo
-> que una individual? ¿La tarifa es por chico, de grupo o una parte? ¿La doble es siempre de hermanos?_
+> _Respuestas de Daniela: máximo 4 chicos en una grupal; duran lo mismo que una individual; cada familia
+> paga una sesión entera, sin repartir el precio; la doble nunca es de hermanos, son compañeritos, así
+> que cada chico tiene su propia familia y su propio cobro (confirma un turno por chico con `grupo_id`)._
 
 #### [ ] B9 "¿Se cobra?" al cancelar tarde
 > Según `docs/pedidos-daniela-2026-11.md` (pedido 1). En el formulario Cancelar, si la clasificación da
