@@ -4,19 +4,28 @@ import { notFound } from "next/navigation";
 import { ChevronLeft, Pin } from "lucide-react";
 
 import { Pestanas } from "@/components/app/pestanas";
+import { obtenerCuentaTutor } from "@/lib/cobro/datos";
 import { formatoGs } from "@/lib/cobro/formato";
 import { borrarDocumento, descartarSubida, linkDocumento, prepararSubida, registrarDocumento } from "@/lib/documentos/acciones";
 import { listarDocumentos } from "@/lib/documentos/datos";
-import { estadoReglamentoDeTutores } from "@/lib/ficha/datos-expediente";
 import { aHoraLocal } from "@/lib/agenda/turnos";
-import { hoyEnAsuncion } from "@/lib/fechas";
+import { ahoraEnAsuncion } from "@/lib/fechas";
+import { estadoReglamentoDeTutores } from "@/lib/ficha/datos-expediente";
 import { actualizarPaciente, marcarCambiosVistos } from "@/lib/pacientes/acciones";
 import { actualizarNota, borrarNota, crearNota, fijarNota } from "@/lib/pacientes/acciones-notas";
 import { NOMBRE_ESTADO, type EstadoPaciente } from "@/lib/pacientes/busqueda";
-import { listarNotas, listarTarifas, listarTutoresParaVincular, obtenerPaciente, obtenerTurnoParaNota } from "@/lib/pacientes/datos";
+import {
+  listarNotas,
+  listarTarifas,
+  listarTurnosPaciente,
+  listarTutoresParaVincular,
+  obtenerPaciente,
+  obtenerTurnoParaNota,
+} from "@/lib/pacientes/datos";
 import { textoEdad } from "@/lib/pacientes/edad";
 import { textoFecha } from "@/lib/pacientes/fecha";
 import { ordenarNotas } from "@/lib/pacientes/notas";
+import { separarTurnos } from "@/lib/pacientes/turnos";
 import { NOMBRE_PLAN, PLANES_COBRO } from "@/lib/pacientes/validacion";
 import {
   actualizarTutor,
@@ -29,6 +38,7 @@ import { AvisoFamilia } from "./aviso-familia";
 import { FichaDatos, type FilaResumen } from "./ficha-datos";
 import { TabDocumentos } from "./tab-documentos";
 import { DatosNota, TabNotas } from "./tab-notas";
+import { TabTurnosCuenta } from "./tab-turnos-cuenta";
 import { TabTutores } from "./tab-tutores";
 
 export const metadata: Metadata = { title: "Paciente · Consultorio" };
@@ -37,21 +47,24 @@ export default async function PaginaPaciente({ params, searchParams }: PageProps
   const { id } = await params;
   const { pestana, turno } = await searchParams;
 
-  const [ficha, disponibles, notas, documentos, sesion] = await Promise.all([
+  const ahora = ahoraEnAsuncion();
+  const hoy = ahora.fecha;
+  const [ficha, disponibles, notas, documentos, turnos, sesion] = await Promise.all([
     obtenerPaciente(id),
     listarTutoresParaVincular(id),
     listarNotas(id),
     listarDocumentos(id),
+    listarTurnosPaciente(id),
     // "Agregar nota de esta sesión" (agenda y Hoy): ?pestana=notas&turno=<id>
     typeof turno === "string" ? obtenerTurnoParaNota(turno, id) : null,
   ]);
   if (!ficha) notFound();
-  const [tarifas, reglamento] = await Promise.all([
-    listarTarifas(ficha.paciente.tarifa_id),
-    estadoReglamentoDeTutores(ficha.tutores.map((t) => t.id)),
-  ]);
   const { paciente, tutores } = ficha;
-  const hoy = hoyEnAsuncion();
+  const [tarifas, cuentaResponsable, reglamento] = await Promise.all([
+    listarTarifas(paciente.tarifa_id),
+    paciente.responsable_pago_id ? obtenerCuentaTutor(paciente.responsable_pago_id, hoy) : null,
+    estadoReglamentoDeTutores(tutores.map((t) => t.id)),
+  ]);
   const edad = textoEdad(paciente.fecha_nacimiento, hoy);
   const nombreDe = (t: { nombre: string; apellido: string | null }) => `${t.nombre} ${t.apellido ?? ""}`.trim();
 
@@ -187,7 +200,11 @@ export default async function PaginaPaciente({ params, searchParams }: PageProps
               />
             ),
           },
-          { id: "cuenta", titulo: "Turnos y cuenta", contenido: proximamente("B4") },
+          {
+            id: "cuenta",
+            titulo: "Turnos y cuenta",
+            contenido: <TabTurnosCuenta {...separarTurnos(turnos, ahora)} responsable={cuentaResponsable} />,
+          },
         ]}
       />
     </div>

@@ -26,7 +26,18 @@ Variables: `{tutor}` (nombre de pila), `{paciente}` (nombre de pila; si son dos 
   ```
   • 03/10 Tomi – Sesión – Gs. 290.000
   • 10/10 Tomi – Canceló con menos de 24 h – Gs. 290.000
+  • Ya pagado – -Gs. 290.000
   ```
+- Si la plantilla no tiene `{detalle}` (la de por defecto no lo tiene), las líneas van al final del mensaje.
+- Las líneas siempre suman el total: la última, "Ya pagado", es lo imputado a los cargos del período (pagos y
+  ajustes a favor) y solo aparece si hay algo.
+- Las horas de "Canceló con menos de…" salen de `horas_aviso_minimas`. Las líneas se arman con el estado del
+  snapshot y el tipo de turno; nunca con el motivo de una excepción, el motivo de un ajuste ni el concepto.
+- Las cancelaciones en Gs. 0 sí aparecen (también el "No se cobra" de la B9). Los reprogramados en Gs. 0 no: la
+  sesión nueva ya aparece en su fecha.
+- También se manda desde la cuenta del tutor (`/cobros/[tutorId]`), eligiendo Esta semana, Este mes o Mes pasado.
+  Ahí el total es de toda la familia, sea cual sea el plan de cada hijo; en la bandeja cada fila es de un plan.
+  Usan la misma referencia: mandarlo desde la cuenta también lo tacha en la bandeja.
 - Total = cargos del período del tutor (todos sus hijos) − pagos ya imputados a ese período.
 - Si el total es 0 o negativo, no se sugiere el mensaje.
 - El total sale de los cargos que ya existen: si ese día quedan turnos de la familia sin marcar, la fila avisa

@@ -7,18 +7,19 @@ import { notFound } from "next/navigation";
 import { borrarPago, registrarPago } from "@/lib/cobro/acciones-pagos";
 import { obtenerCuentaTutor } from "@/lib/cobro/datos";
 import { hoyEnAsuncion } from "@/lib/fechas";
+import { obtenerMontosTutor } from "@/lib/mensajes/datos";
 import { CuentaTutor } from "./cuenta-tutor";
 
 export const metadata: Metadata = { title: "Cuenta · Consultorio" };
 
-// Cuenta de un tutor (B4): cargos, pagos, imputación FIFO y saldo acumulado.
+// Cuenta de un tutor (B4): cargos, pagos, imputación FIFO y saldo acumulado. Mensaje de monto (B6).
 export default async function Pagina({ params }: PageProps<"/cobros/[tutorId]">) {
   const { tutorId } = await params;
   // La fecha de hoy es de cada pedido: no se arma la página de antemano.
   await connection();
   const hoy = hoyEnAsuncion();
-  const datos = await obtenerCuentaTutor(tutorId, hoy);
-  if (!datos) notFound();
+  const [datos, montos] = await Promise.all([obtenerCuentaTutor(tutorId, hoy), obtenerMontosTutor(tutorId, hoy)]);
+  if (!datos || !montos) notFound();
 
   return (
     <div className="flex flex-col gap-4">
@@ -26,7 +27,15 @@ export default async function Pagina({ params }: PageProps<"/cobros/[tutorId]">)
         <ChevronLeft className="size-4" /> Cobros
       </Link>
       <h1 className="text-2xl font-semibold tracking-tight">{datos.tutor.nombre}</h1>
-      <CuentaTutor hoy={hoy} tutor={datos.tutor} cuenta={datos.cuenta} registrarPago={registrarPago} borrarPago={borrarPago} />
+      <CuentaTutor
+        hoy={hoy}
+        tutor={datos.tutor}
+        cuenta={datos.cuenta}
+        montos={montos.montos}
+        periodoInicial={montos.inicial}
+        registrarPago={registrarPago}
+        borrarPago={borrarPago}
+      />
     </div>
   );
 }

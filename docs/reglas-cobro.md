@@ -69,7 +69,8 @@ la misma excepción de siempre, y después se puede cambiar o quitar con la acci
 
 ## 6. Monto del período (mensaje)
 - Semana = lunes a domingo. Mes = mes calendario.
-- Total = cargos del tutor con fecha en el período − lo imputado a esos cargos.
+- Total = cargos del tutor con fecha en el período − lo imputado a esos cargos. Un ajuste negativo no se suma:
+  es un crédito y ya entra en lo imputado.
 - El mensaje se sugiere el día del último turno del período de cualquiera de sus hijos (ver mensajes.md).
 
 ## 7. Para facturar (mensual)

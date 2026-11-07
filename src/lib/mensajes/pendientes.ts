@@ -4,13 +4,13 @@
 
 import { proximoDiaDeAtencion } from "@/lib/agenda/atencion";
 import type { Bloqueo, Tramo } from "@/lib/agenda/bloques";
-import { lunesDe, sumarDias } from "@/lib/agenda/calendario";
+import { sumarDias } from "@/lib/agenda/calendario";
 import { textoMeses } from "@/lib/cobro/facturar";
 import { formatoGs } from "@/lib/cobro/formato";
-import { montoPeriodo, rangoMes, rangoSemana } from "@/lib/cobro/periodo";
-import { atraso, diasEntre, imputarPagos, vencimiento } from "@/lib/cobro/saldo";
+import { rangoMes, rangoSemana } from "@/lib/cobro/periodo";
+import { atraso, imputarPagos, vencimiento } from "@/lib/cobro/saldo";
 import type { PlanCobro } from "@/lib/cobro/tipos";
-import { MESES } from "@/lib/pacientes/fecha";
+import { armarMonto, semanaIso, textoMes, textoSemana } from "./monto";
 import {
   actualizarRecordatorio,
   nombrePila,
@@ -27,7 +27,7 @@ export type TutorPendientes = { id: string; nombre: string; apellido: string | n
 export type PacientePendientes = { id: string; nombre: string; responsable_pago_id: string | null; plan_cobro: PlanCobro };
 /** Turno con fecha y hora de Asunción ("AAAA-MM-DD", "HH:MM"). */
 export type TurnoPendientes = { id: string; clase: string; estado: string; paciente_id: string | null; fecha: string; hora: string };
-/** Cargo con lo que necesita el vencimiento: si su tipo de turno cobra en el momento. */
+/** Cargo con lo que necesitan el vencimiento (si su tipo cobra en el momento) y el detalle (estado y tipo). */
 export type CargoPendientes = {
   id: string;
   tutor_id: string;
@@ -35,6 +35,10 @@ export type CargoPendientes = {
   fecha: string;
   monto_gs: number;
   cobra_en_el_momento: boolean;
+  /** Estado del snapshot del cargo; null en un ajuste. */
+  estado: string | null;
+  /** Nombre del tipo de turno; null en un ajuste. */
+  tipo: string | null;
 };
 export type PagoPendientes = { id: string; tutor_id: string; fecha: string; monto_gs: number };
 /** Lo ya mandado; `fecha` = día de Asunción de `enviado_en`. */
@@ -44,6 +48,7 @@ export type DatosPendientes = {
   plantillas: Record<Clave, string>;
   datosPago: string | null;
   diaLimitePago: number;
+  horasAvisoMinimas: number;
   tramos: Pick<Tramo, "dia_semana">[];
   bloqueos: Bloqueo[];
   tutores: TutorPendientes[];
@@ -63,6 +68,8 @@ export type FilaPendiente = MensajeListo & {
   enviado: boolean;
   /** Algo para revisar antes de mandarlo. */
   aviso?: string;
+  /** Solo en los montos: el mismo mensaje con el detalle por sesión (interruptor "Agregar detalle"). */
+  textoConDetalle?: string;
 };
 
 export type Pendientes = {
@@ -81,31 +88,12 @@ export const AVISO_SIN_MARCAR = "Marcá la asistencia de hoy antes de mandarlo";
 /** Un recordatorio de pago se sugiere como máximo una vez cada 7 días por tutor. */
 export const DIAS_ENTRE_RECORDATORIOS_PAGO = 7;
 
-/** Semana ISO "AAAA-Www" de una fecha (referencia del monto semanal). */
-export function semanaIso(fecha: string): string {
-  const jueves = sumarDias(lunesDe(fecha), 3);
-  const anio = jueves.slice(0, 4);
-  const semana = Math.floor(diasEntre(`${anio}-01-01`, jueves) / 7) + 1;
-  return `${anio}-W${String(semana).padStart(2, "0")}`;
-}
-
 /** Qué turnos hay que traer de la base: esta semana, este mes y el próximo día de atención. */
 export function rangoDeTurnos(hoy: string, proximoDia: string | null): { desde: string; hasta: string } {
   const mes = rangoMes(hoy);
   const semana = rangoSemana(hoy);
   const fechas = [mes.desde, mes.hasta, semana.desde, semana.hasta, ...(proximoDia ? [proximoDia] : [])].sort();
   return { desde: fechas[0], hasta: fechas[fechas.length - 1] };
-}
-
-/** "17/11" o "30/10" */
-const diaMes = (fecha: string) => `${Number(fecha.slice(8, 10))}/${Number(fecha.slice(5, 7))}`;
-
-/** "la semana del 2 al 6/11" (o "del 30/11 al 4/12"). Llega al menos hasta el viernes. */
-function textoSemana(lunes: string, ultimo: string): string {
-  const viernes = sumarDias(lunes, 4);
-  const hasta = ultimo > viernes ? ultimo : viernes;
-  const desde = lunes.slice(5, 7) === hasta.slice(5, 7) ? String(Number(lunes.slice(8, 10))) : diaMes(lunes);
-  return `la semana del ${desde} al ${diaMes(hasta)}`;
 }
 
 const nombreCompleto = (t: TutorPendientes) => `${t.nombre} ${t.apellido ?? ""}`.trim();
@@ -203,23 +191,27 @@ export function pendientesDelDia(hoy: string, datos: DatosPendientes): Pendiente
       const deEstePlan = (cargosDe.get(tutor.id) ?? []).filter((c) =>
         c.paciente_id ? pacientes.get(c.paciente_id)?.plan_cobro === plan : plan === "mensual",
       );
-      const total = montoPeriodo({ cargos: deEstePlan, imputacion: imputacionDe(tutor.id), ...rango });
-      if (total <= 0) continue;
-
       const nombres = [...new Set(pilas(lista))];
-      const periodo = plan === "mensual" ? MESES[Number(hoy.slice(5, 7)) - 1] : textoSemana(rango.desde, ultimo);
-      const texto = rellenar(datos.plantillas.monto_periodo, {
+      const textos = armarMonto({
+        plantilla: datos.plantillas.monto_periodo,
         tutor: nombrePila(tutor.nombre),
         paciente: unirNombres(nombres),
-        periodo,
-        total: formatoGs(total),
-        datos_pago: datos.datosPago ?? "",
-        detalle: "",
+        periodo: plan === "mensual" ? textoMes(hoy) : textoSemana(rango.desde, ultimo),
+        datosPago: datos.datosPago,
+        cargos: deEstePlan.map((c) => ({ ...c, paciente: (c.paciente_id && pacientes.get(c.paciente_id)?.nombre) || null })),
+        imputacion: imputacionDe(tutor.id),
+        rango,
+        horasAvisoMinimas: datos.horasAvisoMinimas,
       });
+      if (!textos) continue;
+
       // Si hoy hay turnos de la familia sin marcar, falta su cargo: el total puede cambiar.
       const sinMarcar = turnosConTutor.some((t) => t.tutor.id === tutor.id && t.fecha === hoy && t.estado === "agendado");
       const referencia = plan === "mensual" ? hoy.slice(0, 7) : semanaIso(hoy);
-      montos.push(fila("monto_periodo", referencia, tutor, nombres, texto, sinMarcar ? AVISO_SIN_MARCAR : undefined));
+      montos.push({
+        ...fila("monto_periodo", referencia, tutor, nombres, textos.texto, sinMarcar ? AVISO_SIN_MARCAR : undefined),
+        textoConDetalle: textos.textoConDetalle,
+      });
     }
   }
   montos.sort(porNombre);

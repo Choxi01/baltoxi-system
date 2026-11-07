@@ -203,7 +203,7 @@ Detalle y propuestas en `docs/pedidos-daniela-2026-11.md`. La A11 va antes de la
 > **B5b**: `pendientesDelDia` (`src/lib/mensajes/pendientes.ts`): recordatorios del próximo día de atención
 > (`proximoDiaDeAtencion`, salteando feriados), monto del período el día del último turno (aviso si quedan turnos
 > de hoy sin marcar) y pagos atrasados con `vencimiento` + `atraso` (máximo uno cada 7 días por tutor).
-> Pantalla Mensajes de hoy y contador en el menú. Para la B6 queda el detalle por sesión y la cuenta del tutor._
+> Pantalla Mensajes de hoy y contador en el menú. El detalle por sesión y la cuenta del tutor se hicieron en la B6._
 
 ---
 
@@ -230,10 +230,15 @@ Detalle y propuestas en `docs/pedidos-daniela-2026-11.md`. La A11 va antes de la
 > Configuración que sube la versión, firma en la ficha y estado de cada tutor en el expediente). Probada con
 > datos inventados; **falta probarla con la base y en Safari de iPhone**._
 
-#### [ ] B6 Monto del período
+#### [x] B6 Monto del período
 > En "Mensajes de hoy" y en la cuenta del tutor: mensaje de monto de la semana o del mes, total por
 > familia (hermanos juntos), con interruptor de detalle por sesión. Usa las funciones de
 > `docs/reglas-cobro.md` sección 6.
+
+> _Hecha, sin migración. El mensaje sale de `armarMonto` (`src/lib/mensajes/monto.ts`), que usan la bandeja y la
+> cuenta. Se arregló `montoPeriodo`: un ajuste negativo se descontaba dos veces. También se sumó la pestaña
+> "Turnos y cuenta" del expediente y `mensajes/datos.ts` pasó a `leerTodo`. **Falta probarla con la base en
+> Safari de iPhone.**_
 
 #### [x] B7 Para facturar
 > Pantalla Para facturar según `docs/reglas-cobro.md` sección 7: elegir mes de cobro, una fila por
@@ -241,8 +246,8 @@ Detalle y propuestas en `docs/pedidos-daniela-2026-11.md`. La A11 va antes de la
 > facturado" con número de factura (crea `facturas` y vincula los pagos).
 
 > _Hecha (migración 0012: `crear_factura`, se permite otra factura en el mes y el número no se repite). También
-> se sumó "Ya facturadas" con Deshacer, que no anula la factura en Marangatu. **Falta aplicar la 0012 y probar
-> con la base y en Safari de iPhone** (pasos en el PR). Los tipos de `crear_factura` se escribieron a mano._
+> se sumó "Ya facturadas" con Deshacer, que no anula la factura en Marangatu. La 0012 ya está aplicada en `pruebas`.
+> **Falta probar Marcar facturado y Deshacer con la base, y Safari de iPhone** (pasos en el PR #35). Los tipos de `crear_factura` se escribieron a mano._
 
 ---
 

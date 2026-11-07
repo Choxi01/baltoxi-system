@@ -4,13 +4,13 @@ import {
   cantidadSinEnviar,
   pendientesDelDia,
   rangoDeTurnos,
-  semanaIso,
   type CargoPendientes,
   type DatosPendientes,
   type EnviadoPendientes,
   type PagoPendientes,
   type TurnoPendientes,
 } from "./pendientes";
+import { semanaIso } from "./monto";
 import { PLANTILLAS_POR_DEFECTO } from "./plantillas";
 
 // Datos inventados (regla de oro 8).
@@ -33,6 +33,8 @@ const cargo = (tutor_id: string, paciente_id: string | null, fecha: string, mont
   fecha,
   monto_gs,
   cobra_en_el_momento,
+  estado: "presente",
+  tipo: "Sesión",
 });
 const pago = (tutor_id: string, fecha: string, monto_gs: number): PagoPendientes => ({ id: `pago-${++n}`, tutor_id, fecha, monto_gs });
 
@@ -41,6 +43,7 @@ function datos(extra: Partial<DatosPendientes> = {}): DatosPendientes {
     plantillas: { ...PLANTILLAS_POR_DEFECTO },
     datosPago: "Alias 0000000",
     diaLimitePago: 10,
+    horasAvisoMinimas: 24,
     tramos: LUNES_A_VIERNES,
     bloqueos: [],
     tutores: [
@@ -238,6 +241,41 @@ describe("monto del período", () => {
       cargos: [cargo("t2", "p3", "2026-12-04")],
     });
     expect(pendientesDelDia("2026-12-04", d).montos[0].texto).toContain("la semana del 30/11 al 4/12");
+  });
+});
+
+describe("detalle del monto en la bandeja", () => {
+  const conPago = () =>
+    datos({
+      turnos: [turno("p1", "2026-11-06", "15:00", "presente"), turno("p2", "2026-11-27", "15:45", "presente")],
+      cargos: [cargo("t1", "p1", "2026-11-06"), cargo("t1", "p2", "2026-11-27")],
+      pagos: [pago("t1", "2026-11-10", 290000)],
+    });
+
+  it("por defecto solo el total; con el interruptor suma las líneas de los dos hermanos", () => {
+    const [fila] = pendientesDelDia("2026-11-27", conPago()).montos;
+    expect(fila.texto).not.toContain("•");
+    expect(fila.textoConDetalle).toBe(
+      `${fila.texto}\n\n• 06/11 Tomi – Sesión – Gs. 290.000\n• 27/11 Sofi – Sesión – Gs. 290.000\n• Ya pagado – -Gs. 290.000`,
+    );
+  });
+
+  it("los otros mensajes no tienen detalle", () => {
+    const d = conPago();
+    d.turnos.push(turno("p1", "2026-11-30", "09:00"));
+    const r = pendientesDelDia("2026-11-27", d);
+    expect(r.recordatorios[0].textoConDetalle).toBeUndefined();
+  });
+
+  it("plan mixto: la fila mensual no lista al hermano de plan semanal", () => {
+    const d = conPago();
+    d.pacientes[1] = { ...d.pacientes[1], plan_cobro: "semanal" };
+    d.turnos = [turno("p1", "2026-11-27", "15:00", "presente")];
+    d.cargos = [cargo("t1", "p1", "2026-11-27"), cargo("t1", "p2", "2026-11-27")];
+    d.pagos = [];
+    const [fila] = pendientesDelDia("2026-11-27", d).montos;
+    expect(fila.textoConDetalle).toContain("Tomi");
+    expect(fila.textoConDetalle).not.toContain("Sofi");
   });
 });
 
