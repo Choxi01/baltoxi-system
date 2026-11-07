@@ -21,7 +21,8 @@ Datos **inventados** para probar la app en el proyecto `pruebas`. Nunca en produ
 - **Cobros:**
   - Un cargo por cada turno pasado, según `docs/reglas-cobro.md`. Incluye una excepción manual al 0%.
   - Pagos completos, parciales, una familia sin pagar (Jorge Rolon, en atraso) y una con saldo a favor (Miguel Ayala).
-- **Expediente:** 2 notas (una fijada) y 1 anamnesis con una plantilla de prueba.
+- **Expediente:** 2 notas (una fijada) y 1 anamnesis con una plantilla de prueba que usa los 5 tipos de campo
+  (texto, largo, sí/no, opciones y fecha).
 
 Las fechas se calculan desde el día en que se carga, así que siempre quedan "actuales".
 

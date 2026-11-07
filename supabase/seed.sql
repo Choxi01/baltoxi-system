@@ -394,12 +394,14 @@ begin
       {"id":"semanas","etiqueta":"Semanas de gestación","tipo":"texto"}]},
     {"titulo":"Desarrollo","campos":[
       {"id":"primeras_palabras","etiqueta":"Edad de las primeras palabras","tipo":"texto"},
-      {"id":"jardin","etiqueta":"¿Va al jardín o escuela?","tipo":"si_no"}]}]}'::jsonb)
+      {"id":"jardin","etiqueta":"¿Va al jardín o escuela?","tipo":"si_no"}]},
+    {"titulo":"Entrevista","campos":[
+      {"id":"fecha_entrevista","etiqueta":"Fecha de la entrevista","tipo":"fecha"}]}]}'::jsonb)
   returning id into v_plantilla;
 
   insert into public.anamnesis (consultorio_id, paciente_id, plantilla_id, estructura, respuestas, fecha)
   select c, i.paciente_id, v_plantilla, pl.estructura,
-         '{"embarazo":"Dato de prueba: sin complicaciones.","parto_tipo":"Natural","semanas":"39","primeras_palabras":"14 meses","jardin":true}'::jsonb,
+         ('{"embarazo":"Dato de prueba: sin complicaciones.","parto_tipo":"Natural","semanas":"39","primeras_palabras":"14 meses","jardin":true,"fecha_entrevista":"' || (lunes - 28) || '"}')::jsonb,
          lunes - 28
   from seed_pid i, public.plantillas_anamnesis pl
   where i.n = 1 and pl.id = v_plantilla;

@@ -67,6 +67,23 @@ Estructura JSON:
 Tipos de campo: `texto`, `largo`, `si_no`, `opciones`, `fecha`. Editor simple en Configuración
 (agregar sección, agregar campo, reordenar). La primera plantilla se carga a partir del Word de la
 profesional (tarea A6).
+- **Cómo está hecho (tarea A6a, editor):**
+  - Configuración > Anamnesis: lista de plantillas (nombre, "2 secciones · 5 campos", Activa o
+    Desactivada), "Nueva plantilla" y "Editar". Las plantillas no se borran: se desactivan, porque las
+    anamnesis hechas las referencian.
+  - Editor: nombre, secciones (título) y campos (pregunta y tipo de respuesta: Texto corto, Texto largo,
+    Sí / No, Opciones, Fecha). Para "Opciones", la lista (mínimo 2, sin repetir, hasta 20). Se reordena
+    con flechas ↑ ↓ (sin arrastrar). Nada se guarda hasta tocar "Guardar plantilla"; los errores se
+    marcan al lado de cada campo.
+  - El `id` de cada campo se arma solo a partir de la pregunta al guardarlo por primera vez
+    ("¿Tipo de parto?" → `tipo_de_parto`, `_2` si se repite) y **no cambia** aunque después se corrija
+    la pregunta. Los ids no se repiten en toda la plantilla.
+  - Una plantilla guardada con formato roto no rompe la pantalla: dice "No se pudo leer esta plantilla".
+  - Código: `src/lib/anamnesis/plantilla.ts` (esquema zod, `validarPlantilla`, `leerEstructura`,
+    `idDesdeEtiqueta`, `mover`), `editor.ts` (estado del editor), ambos con tests;
+    `acciones-plantillas.ts`, `datos.ts` y `src/app/(app)/config/tab-anamnesis.tsx`.
+  - Falta la plantilla real a partir del Word de la profesional (todavía no lo tenemos): por ahora el
+    seed trae la "Anamnesis de prueba" con los 5 tipos de campo.
 
 ## Ficha online para familias (`/ficha/<token_ficha>`, pública)
 - Única página pública. Corre en el servidor con el cliente admin; valida el token; límite de 10

@@ -201,6 +201,10 @@ Detalle y propuestas en `docs/pedidos-daniela-2026-11.md`. La A11 va antes de la
 > generado con guardado automático; copia la estructura al crear. Te paso el Word de ejemplo: armá con
 > él la primera plantilla en formato JSON (sin datos de pacientes) y cargala en el seed.
 
+> _En partes. **A6a** hecha: editor de plantillas en Configuración > Anamnesis (detalle en
+> `docs/expediente.md`). **A6b** pendiente: pestaña Anamnesis del expediente con guardado automático y
+> vista para imprimir. **Falta el Word** de la profesional para la primera plantilla real._
+
 #### [x] B5 Plantillas y bandeja de mensajes
 > Según `docs/mensajes.md`: editor de plantillas con variables y vista previa; función pura
 > `pendientesDelDia` con tests (recordatorios de mañana, monto del período en el último turno, atrasos);
