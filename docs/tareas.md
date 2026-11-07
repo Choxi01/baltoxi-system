@@ -213,11 +213,17 @@ Detalle y propuestas en `docs/pedidos-daniela-2026-11.md`. La A11 va antes de la
 > datos inventados (una foto de 4032×3024 queda en 2000×1500 JPEG); **falta probarla en Safari de iPhone**
 > con la base (cámara, subir, ver y borrar). Para la 8.1: archivos que quedan al borrar un paciente._
 
-#### [ ] A8 Ficha online y reglamento
+#### [x] A8 Ficha online y reglamento
 > Página pública `/ficha/<token>` según `docs/expediente.md`: datos editables del tutor y sus hijos,
 > otros tutores, datos de factura y firma del reglamento. Todo en el servidor con el cliente admin y
 > límite de intentos. Nunca mostrar datos clínicos. En Configuración, editor del reglamento (al guardar
 > sube la versión). En la ficha del paciente, estado de la firma.
+
+> _Dividida en dos PRs. **A8a** (hecha): página `/ficha/<token>` con datos del tutor, hijos, factura y
+> otros tutores; límite de intentos (10 links inválidos por hora por IP, 30 guardados por hora por link);
+> aviso "Actualizado por la familia" con Visto (migración 0011). **A8b** (hecha): reglamento (editor en
+> Configuración que sube la versión, firma en la ficha y estado de cada tutor en el expediente). Probada con
+> datos inventados; **falta probarla con la base y en Safari de iPhone**._
 
 #### [ ] B6 Monto del período
 > En "Mensajes de hoy" y en la cuenta del tutor: mensaje de monto de la semana o del mes, total por

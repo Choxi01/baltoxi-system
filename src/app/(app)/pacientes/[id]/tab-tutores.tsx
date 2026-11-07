@@ -24,7 +24,10 @@ export function TabTutores({
   actualizar,
   quitar,
   marcarResponsable,
+  reglamento = {},
 }: {
+  /** Estado del reglamento de cada tutor (A8b): tutorId → texto. */
+  reglamento?: Record<string, string>;
   tutores: Tutor[];
   responsableId: string | null;
   disponibles: Disponible[];
@@ -67,6 +70,7 @@ export function TabTutores({
             key={t.id}
             tutor={t}
             esResponsable={t.id === responsableId}
+            reglamento={reglamento[t.id] ?? null}
             alEditar={() => {
               setAviso(null);
               setAbierto(t.id);
@@ -120,6 +124,7 @@ export function TabTutores({
 function TarjetaTutor({
   tutor,
   esResponsable,
+  reglamento,
   alEditar,
   quitar,
   marcarResponsable,
@@ -127,6 +132,7 @@ function TarjetaTutor({
 }: {
   tutor: Tutor;
   esResponsable: boolean;
+  reglamento: string | null;
   alEditar: () => void;
   quitar: (tutorId: string) => Promise<{ error: string | null }>;
   marcarResponsable: (tutorId: string) => Promise<{ error: string | null }>;
@@ -172,6 +178,7 @@ function TarjetaTutor({
         <Dato etiqueta="Email">{tutor.email}</Dato>
         <Dato etiqueta="Documento">{documento}</Dato>
         <Dato etiqueta="Razón social">{tutor.razon_social}</Dato>
+        {reglamento && <Dato etiqueta="Reglamento">{reglamento}</Dato>}
         {tutor.otrosHijos.length > 0 && <Dato etiqueta="También es tutor de">{tutor.otrosHijos.join(", ")}</Dato>}
       </dl>
       <div className="grid grid-cols-2 gap-2">

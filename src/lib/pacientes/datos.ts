@@ -56,7 +56,7 @@ export async function obtenerPaciente(id: string) {
     ? await Promise.all([
         supabase
           .from("tutores")
-          .select("id, nombre, apellido, telefono_wa, email, doc_tipo, doc_numero, dv, razon_social, token_ficha")
+          .select("id, nombre, apellido, telefono_wa, email, doc_tipo, doc_numero, dv, razon_social, token_ficha, cambios_familia_en")
           .in("id", ids),
         // Otros hijos de estos tutores (para avisar que el cambio les afecta).
         supabase
