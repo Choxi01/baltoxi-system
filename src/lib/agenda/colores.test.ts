@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CLASES_COLOR, COLORES_TIPO, colorDeTipo, colorSugerido, estiloTurno, leyendaTipos } from "./colores";
+import { CLASES_COLOR, COLORES_TIPO, colorDeTipo, colorSugerido, estiloGrupo, estiloTurno, leyendaTipos } from "./colores";
 
 const turno = (datos: Partial<Parameters<typeof estiloTurno>[0]> = {}) => ({
   clase: "turno",
@@ -74,5 +74,31 @@ describe("leyendaTipos", () => {
       { nombre: "Evaluación", color: "arena" },
       { nombre: "Sesión", color: "cielo" },
     ]);
+  });
+});
+
+describe("estiloGrupo (sesión doble o grupal)", () => {
+  const agendado = turno();
+  const vino = turno({ estado: "presente" });
+  const noVino = turno({ estado: "ausente_sin_aviso" });
+
+  it("nadie marcado: como un turno agendado, del color del tipo", () => {
+    expect(estiloGrupo([agendado, agendado])).toEqual(estiloTurno(agendado));
+  });
+
+  it("todos vinieron: ✓ y borde verde; ninguno vino: ✕ y borde rojo", () => {
+    expect(estiloGrupo([vino, vino, vino])).toEqual(estiloTurno(vino));
+    expect(estiloGrupo([noVino, noVino])).toEqual(estiloTurno(noVino));
+  });
+
+  it("asistencia mezclada (o algunos sin marcar): ½ con el borde normal del tipo", () => {
+    for (const grupo of [[vino, noVino], [vino, agendado], [agendado, noVino, vino]]) {
+      expect(estiloGrupo(grupo)).toEqual({ clases: estiloTurno(agendado).clases, marca: "mezcla", excepcion: false });
+    }
+  });
+
+  it("% si alguno tiene excepción de cobro", () => {
+    expect(estiloGrupo([vino, { ...vino, porcentajeManual: 0 }])).toMatchObject({ marca: "vino", excepcion: true });
+    expect(estiloGrupo([agendado, { ...noVino, porcentajeManual: 50 }])).toMatchObject({ marca: "mezcla", excepcion: true });
   });
 });

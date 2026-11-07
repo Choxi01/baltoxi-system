@@ -13,6 +13,7 @@ const turno = (inicio: string, fin: string, datos: Partial<TurnoAgenda> = {}): T
   titulo: "Ana Prueba",
   tipo: "Sesión",
   serieId: null,
+  grupoId: null,
   tipoId: null,
   pacienteId: null,
   modalidad: "consultorio",
@@ -109,6 +110,17 @@ describe("validarReserva", () => {
   it("turno con paciente y tipo", () => {
     expect(validarReserva({ ...base, clase: "turno", paciente_id: uuid, tipo_turno_id: uuid }).ok).toBe(true);
     expect(validarReserva({ ...base, clase: "turno", paciente_id: "x", tipo_turno_id: uuid }).ok).toBe(false);
+  });
+
+  it("sesión doble o grupal: de 2 a 4 chicos distintos", () => {
+    const ids = ["1", "2", "3", "4", "5"].map((n) => `6f1c9a52-3b7e-4d2a-9c1f-0a1b2c3d4e5${n}`);
+    const grupo = (paciente_ids: string[]) => validarReserva({ ...base, clase: "grupo", paciente_ids, tipo_turno_id: uuid });
+    expect(grupo(ids.slice(0, 2)).ok).toBe(true);
+    expect(grupo(ids.slice(0, 4)).ok).toBe(true);
+    expect(grupo(ids.slice(0, 1))).toEqual({ ok: false, error: "Elegí al menos 2 chicos." });
+    expect(grupo(ids)).toEqual({ ok: false, error: "Una sesión es de hasta 4 chicos." });
+    expect(grupo([ids[0], ids[0]])).toEqual({ ok: false, error: "Hay un chico repetido." });
+    expect(grupo([ids[0], "x"]).ok).toBe(false);
   });
 
   it("reservado con nombre suelto (tipo opcional)", () => {

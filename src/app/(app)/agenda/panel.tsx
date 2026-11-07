@@ -10,7 +10,8 @@ import { Select } from "@/components/ui/select";
 import type { ResultadoAgendar } from "@/lib/agenda/acciones-turnos";
 import { horaCorta } from "@/lib/agenda/bloques";
 import { tituloDia } from "@/lib/agenda/calendario";
-import { turnoNuevo } from "@/lib/agenda/optimista";
+import { agruparTurnos, encabezadoGrupo, nombreSesion, validarGrupo } from "@/lib/agenda/grupos";
+import { turnoNuevo, turnosNuevosDelGrupo } from "@/lib/agenda/optimista";
 import { avisosAlAgendar, horaFin, textosAvisos, validarReserva } from "@/lib/agenda/reservas";
 import { fechasParaHasta } from "@/lib/agenda/series";
 import { type FilaDia, type TurnoAgenda } from "@/lib/agenda/turnos";
@@ -22,7 +23,8 @@ import type { Ejecutar } from "./turnos-optimistas";
 import type { AccionesDeTurno } from "./acciones-turno";
 
 export type PacienteParaReservar = { id: string; nombre: string; apellido: string | null };
-export type TipoParaReservar = { id: string; nombre: string; modalidad: string; color: string | null; requiere_paciente: boolean };
+/** `cupo`: chicos por sesión (1 individual, 2 doble, 3 o 4 grupal; migración 0013). */
+export type TipoParaReservar = { id: string; nombre: string; modalidad: string; color: string | null; cupo: number; requiere_paciente: boolean };
 
 export type DatosPanel = {
   pacientes: PacienteParaReservar[];
@@ -37,6 +39,14 @@ export type DatosPanel = {
 
 /** Sesión cancelada por la profesional que se está reponiendo ("Para reponer este mes"). */
 export type Reposicion = { id: string; pacienteId: string | null; tipoId: string | null; titulo: string };
+
+/**
+ * Id solo para la pantalla mientras se guarda (el real lo da la base). No crypto.randomUUID():
+ * en el iPhone por http (npm run dev en la red de casa) no existe. Solo se llama al tocar Agendar.
+ */
+function idDePantalla(): string {
+  return `nuevo-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
 
 /** "lunes", "sábados": para "todos los …". */
 function diasDeLaSemana(fecha: string): string {
@@ -99,16 +109,28 @@ export function PanelFila({
       )}
       {!abierto && modo === "menu" && (
         <>
-          {[...turnos, ...liberados].map((t) => (
-            <AccionesTurno
-              key={t.id}
-              turno={t}
-              hoy={datos.hoy}
-              ocupado={guardando}
-              alAccion={(a) => alAccion(t, a)}
-              alFinalizarSerie={() => finalizarSerie(t)}
-            />
-          ))}
+          {agruparTurnos([...turnos, ...liberados]).map((item) => {
+            const tarjeta = (t: TurnoAgenda) => (
+              <AccionesTurno
+                key={t.id}
+                turno={t}
+                hoy={datos.hoy}
+                ocupado={guardando}
+                alAccion={(a) => alAccion(t, a)}
+                alFinalizarSerie={() => finalizarSerie(t)}
+              />
+            );
+            if (item.tipo === "turno") return tarjeta(item.turno);
+            // Sesión doble o grupal: cada chico con sus acciones (asistencia, cobro y nota son por chico).
+            return (
+              <section key={item.grupoId} className="flex flex-col gap-2 rounded-lg border border-dashed p-2" aria-label={nombreSesion(item.turnos.length)}>
+                <p className="px-1 text-sm font-medium">
+                  {encabezadoGrupo(item.turnos[0].tipo, item.turnos.length)} · {item.turnos.length} chicos
+                </p>
+                {item.turnos.map(tarjeta)}
+              </section>
+            );
+          })}
           {error && (
             <p role="alert" className="text-sm text-destructive">
               {error}
@@ -169,12 +191,17 @@ function FormularioAgendar({
   /** El turno fijo todavía espera al servidor (crea 8 semanas de turnos). */
   alGuardar: (aviso: string) => void;
 }) {
-  const tiposPaciente = datos.tipos.filter((t) => t.requiere_paciente);
   const [busqueda, setBusqueda] = useState("");
   const [paciente, setPaciente] = useState<PacienteParaReservar | null>(
     () => (reponiendo && datos.pacientes.find((p) => p.id === reponiendo.pacienteId)) || null,
   );
   const [nombreSuelto, setNombreSuelto] = useState<string | null>(null);
+  // Sesión doble o grupal: los otros chicos, además de `paciente`.
+  const [companeros, setCompaneros] = useState<PacienteParaReservar[]>([]);
+  // Doble o grupal solo al Reservar un paciente con ficha. El turno fijo grupal y reponer en grupo
+  // todavía no (A11b); sin ficha tampoco: cada chico necesita su familia para el cobro.
+  const admiteGrupo = modo === "reservar" && !reponiendo && nombreSuelto === null;
+  const tiposPaciente = datos.tipos.filter((t) => t.requiere_paciente && (admiteGrupo || t.cupo <= 1));
   const [tipoId, setTipoId] = useState(
     (reponiendo && tiposPaciente.find((t) => t.id === reponiendo.tipoId)?.id) ??
       tiposPaciente.find((t) => t.nombre === "Sesión")?.id ??
@@ -189,18 +216,23 @@ function FormularioAgendar({
   const [enviando, iniciar] = useTransition();
 
   const tipo = datos.tipos.find((t) => t.id === tipoId) ?? null;
+  const cupo = admiteGrupo && paciente ? (tipo?.cupo ?? 1) : 1;
+  const enGrupo = cupo > 1;
+  const chicos = paciente ? [paciente, ...companeros] : [];
+  const elegidos = new Set(chicos.map((p) => p.id));
   const fin = horaFin(inicio, datos.duracion);
   const avisos = textosAvisos(
     avisosAlAgendar({ fecha, inicio, fin, modalidad: modo === "ocupado" ? null : (tipo?.modalidad ?? null) }, turnosDelDia, datos.trasladoMin),
     datos.trasladoMin,
   );
   const confirmar = confirmarServidor ?? avisos.superposicion;
-  const coincidencias = busqueda.trim() ? filtrarPacientes(datos.pacientes.map((p) => ({ ...p, estado: "activo" })), { q: busqueda }).slice(0, 6) : [];
+  const coincidencias = buscar(datos.pacientes, busqueda, elegidos);
   const elegido = modo === "ocupado" || paciente || nombreSuelto !== null;
 
   function guardar() {
     setError(null);
     const base = { fecha, inicio, confirmado: !!confirmar };
+    if (enGrupo && tipo) return guardarGrupo(base, tipo);
     const entrada =
       modo === "ocupado"
         ? { ...base, clase: "ocupado", motivo_ocupado: motivo }
@@ -223,9 +255,7 @@ function FormularioAgendar({
     const validacion = validarReserva(entrada);
     if (!validacion.ok) return setError(validacion.error);
     const nuevo = turnoNuevo({
-      // Id solo para la pantalla (el real lo da la base). No crypto.randomUUID(): en el iPhone
-      // por http (npm run dev en la red de casa) no existe.
-      id: `nuevo-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      id: idDePantalla(),
       fecha,
       inicio,
       fin,
@@ -244,6 +274,33 @@ function FormularioAgendar({
         return r;
       },
       modo === "ocupado" ? "Marcado como ocupado ✓" : reponiendo ? "Sesión repuesta ✓" : "Agendado ✓",
+    );
+  }
+
+  /** Sesión doble o grupal: un turno por chico, todos a la vez (se ve al instante). */
+  function guardarGrupo(base: { fecha: string; inicio: string; confirmado: boolean }, tipoGrupo: TipoParaReservar) {
+    const ids = chicos.map((p) => p.id);
+    const grupo = validarGrupo(ids, tipoGrupo.cupo);
+    if (!grupo.ok) return setError(grupo.error);
+    const entrada = { ...base, clase: "grupo", paciente_ids: ids, tipo_turno_id: tipoGrupo.id };
+    const validacion = validarReserva(entrada);
+    if (!validacion.ok) return setError(validacion.error);
+    const turnos = turnosNuevosDelGrupo({
+      id: idDePantalla(),
+      fecha,
+      inicio,
+      fin,
+      pacientes: chicos,
+      tipo: tipoGrupo,
+    });
+    ejecutar(
+      { tipo: "agregar_grupo", turnos },
+      async () => {
+        const r = await datos.agendar(entrada);
+        if (!r.ok && "confirmar" in r) return { ok: false, error: `${r.confirmar} Abrí el horario de nuevo si querés agendar igual.` };
+        return r;
+      },
+      `${nombreSesion(chicos.length)} agendada ✓`,
     );
   }
 
@@ -287,7 +344,15 @@ function FormularioAgendar({
             </ul>
           )}
           {busqueda.trim() && modo === "reservar" && (
-            <Button variant="ghost" className="h-12 justify-start" onClick={() => setNombreSuelto(busqueda.trim())}>
+            <Button
+              variant="ghost"
+              className="h-12 justify-start"
+              onClick={() => {
+                // Sin ficha no hay sesión doble ni grupal: si el tipo elegido lo era, queda sin elegir.
+                if ((tipo?.cupo ?? 1) > 1) setTipoId("");
+                setNombreSuelto(busqueda.trim());
+              }}
+            >
               Reservar a “{busqueda.trim()}” sin ficha
             </Button>
           )}
@@ -301,19 +366,36 @@ function FormularioAgendar({
               {reponiendo && "Reponer: "}
               {paciente ? `${paciente.nombre} ${paciente.apellido ?? ""}` : `Reservado: ${nombreSuelto}`}
             </span>
-            {!reponiendo && (
+              {!reponiendo && (
               <Button
                 variant="ghost"
                 className="h-10"
                 onClick={() => {
+                  // En un grupo, "Quitar" al primero deja al siguiente en su lugar.
+                  if (enGrupo && companeros.length > 0) {
+                    setPaciente(companeros[0]);
+                    setCompaneros(companeros.slice(1));
+                    return;
+                  }
                   setPaciente(null);
                   setNombreSuelto(null);
                 }}
               >
-                Cambiar
+                {enGrupo && companeros.length > 0 ? "Quitar" : "Cambiar"}
               </Button>
             )}
           </div>
+          {enGrupo &&
+            companeros.map((p) => (
+              <div key={p.id} className="flex items-center justify-between gap-2 rounded-lg border bg-background px-3 py-2">
+                <span>
+                  {p.nombre} {p.apellido ?? ""}
+                </span>
+                <Button variant="ghost" className="h-10" onClick={() => setCompaneros(companeros.filter((c) => c.id !== p.id))}>
+                  Quitar
+                </Button>
+              </div>
+            ))}
           <div className="flex flex-col gap-2">
             <Label htmlFor="tipo-turno">Tipo de turno</Label>
             <Select id="tipo-turno" value={tipoId} onChange={(e) => setTipoId(e.target.value)}>
@@ -325,6 +407,7 @@ function FormularioAgendar({
               ))}
             </Select>
           </div>
+          {enGrupo && <AgregarChico cupo={cupo} chicos={chicos.length} pacientes={datos.pacientes} elegidos={elegidos} alElegir={(p) => setCompaneros([...companeros, p])} />}
           {modo === "fijo" && (
             <div className="flex flex-col gap-2">
               <Label htmlFor="hasta-serie">Hasta</Label>
@@ -373,13 +456,76 @@ function FormularioAgendar({
                   ? "Marcar ocupado"
                   : modo === "fijo"
                     ? "Crear turno fijo"
-                    : "Agendar"}
+                    : enGrupo
+                      ? `Agendar ${nombreSesion(chicos.length).toLowerCase()} (${chicos.length})`
+                      : "Agendar"}
           </Button>
         )}
         <Button variant="ghost" onClick={alVolver} disabled={enviando}>
           Volver
         </Button>
       </div>
+    </div>
+  );
+}
+
+/** Hasta 6 pacientes que coinciden con la búsqueda, sin los que ya están elegidos. */
+function buscar(pacientes: PacienteParaReservar[], busqueda: string, elegidos: Set<string>): PacienteParaReservar[] {
+  if (!busqueda.trim()) return [];
+  return filtrarPacientes(
+    pacientes.filter((p) => !elegidos.has(p.id)).map((p) => ({ ...p, estado: "activo" })),
+    { q: busqueda },
+  ).slice(0, 6);
+}
+
+/** Sesión doble o grupal: buscar y sumar otro chico, hasta el cupo del tipo. */
+function AgregarChico({
+  cupo,
+  chicos,
+  pacientes,
+  elegidos,
+  alElegir,
+}: {
+  cupo: number;
+  chicos: number;
+  pacientes: PacienteParaReservar[];
+  elegidos: Set<string>;
+  alElegir: (p: PacienteParaReservar) => void;
+}) {
+  const [busqueda, setBusqueda] = useState("");
+  const coincidencias = buscar(pacientes, busqueda, elegidos);
+  const ayuda = cupo === 2 ? "Sesión doble: 2 chicos, cada uno con su familia y su cobro." : `Sesión grupal: de 2 a ${cupo} chicos, cada uno con su familia y su cobro.`;
+  if (chicos >= cupo) return <p className="text-xs text-muted-foreground">{ayuda}</p>;
+  return (
+    <div className="flex flex-col gap-2">
+      <Label htmlFor="buscar-companero">{chicos < 2 ? "Agregá otro chico" : "Agregar otro chico (opcional)"}</Label>
+      <Input
+        id="buscar-companero"
+        value={busqueda}
+        onChange={(e) => setBusqueda(e.target.value)}
+        placeholder="Buscá por nombre o apellido"
+        autoComplete="off"
+        enterKeyHint="search"
+      />
+      {coincidencias.length > 0 && (
+        <ul className="divide-y rounded-lg border bg-background">
+          {coincidencias.map((p) => (
+            <li key={p.id}>
+              <button
+                type="button"
+                className="flex h-12 w-full items-center px-3 text-left active:bg-accent"
+                onClick={() => {
+                  alElegir(p);
+                  setBusqueda("");
+                }}
+              >
+                {p.nombre} {p.apellido}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <p className="text-xs text-muted-foreground">{ayuda}</p>
     </div>
   );
 }

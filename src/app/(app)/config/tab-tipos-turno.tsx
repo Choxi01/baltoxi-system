@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { CLASES_COLOR, COLORES_TIPO, NOMBRE_COLOR, colorDeTipo, colorSugerido } from "@/lib/agenda/colores";
 import type { EstadoFormularioConfig } from "@/lib/config/acciones";
-import { MODALIDADES, NOMBRE_MODALIDAD, type Modalidad } from "@/lib/config/validacion";
+import { CUPOS, MODALIDADES, NOMBRE_MODALIDAD, nombreCupo, type Modalidad } from "@/lib/config/validacion";
 import { formatoGs } from "@/lib/cobro/formato";
 import { cn } from "@/lib/utils";
 
@@ -18,6 +18,7 @@ type TipoTurno = {
   nombre: string;
   modalidad: string;
   color: string | null;
+  cupo: number;
   tarifa_id: string | null;
   cobra_en_el_momento: boolean;
   genera_cobro: boolean;
@@ -140,6 +141,7 @@ function FilaTipo({
           {nombreModalidad(tipo.modalidad)} · {tipo.genera_cobro ? textoTarifa : "Sin cobro"}
         </span>
         <div className="flex flex-wrap gap-1">
+          {tipo.cupo > 1 && <Etiqueta>{nombreCupo(tipo.cupo)}</Etiqueta>}
           {tipo.cobra_en_el_momento && <Etiqueta>Cobra en el momento</Etiqueta>}
           {!tipo.requiere_paciente && <Etiqueta>Sin paciente</Etiqueta>}
           {!tipo.activo && <Etiqueta>Desactivado</Etiqueta>}
@@ -257,6 +259,20 @@ function FormularioTipo({
           ))}
         </Select>
         {e.modalidad && <p className="text-sm text-destructive">{e.modalidad}</p>}
+      </div>
+      <div className="flex flex-col gap-2">
+        <Label htmlFor={`${prefijo}-cupo`}>Chicos por sesión</Label>
+        <Select id={`${prefijo}-cupo`} name="cupo" defaultValue={enviado?.cupo ?? String(valores?.cupo ?? 1)} aria-invalid={!!e.cupo}>
+          {CUPOS.map((c) => (
+            <option key={c} value={c}>
+              {c} · {nombreCupo(c)}
+            </option>
+          ))}
+        </Select>
+        <p className="text-xs text-muted-foreground">
+          Doble o grupal: al reservar elegís entre 2 y ese número de chicos. Cada familia paga una sesión entera.
+        </p>
+        {e.cupo && <p className="text-sm text-destructive">{e.cupo}</p>}
       </div>
       <fieldset className="flex flex-col gap-2">
         <legend className="text-sm font-medium">Color en la agenda</legend>
