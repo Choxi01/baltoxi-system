@@ -55,7 +55,7 @@ export type DatosPendientes = {
   pacientes: PacientePendientes[];
   /** Turnos de este mes, esta semana y el próximo día de atención (ver rangoDeTurnos). */
   turnos: TurnoPendientes[];
-  /** Todos los cargos y pagos (la imputación FIFO necesita la historia completa). */
+  /** Cargos y pagos completos de cada tutor de `tutoresConCuentaNecesaria` (la imputación FIFO necesita toda su historia). */
   cargos: CargoPendientes[];
   pagos: PagoPendientes[];
   enviados: EnviadoPendientes[];
@@ -94,6 +94,32 @@ export function rangoDeTurnos(hoy: string, proximoDia: string | null): { desde: 
   const semana = rangoSemana(hoy);
   const fechas = [mes.desde, mes.hasta, semana.desde, semana.hasta, ...(proximoDia ? [proximoDia] : [])].sort();
   return { desde: fechas[0], hasta: fechas[fechas.length - 1] };
+}
+
+/**
+ * De qué tutores hay que leer cargos y pagos para armar los mensajes de hoy. El resto no cambia el resultado:
+ * - con saldo <= 0 la imputación FIFO no deja nada pendiente, así que no hay atraso;
+ * - el monto del período solo sale si hoy es el último turno, y eso exige un turno hoy.
+ */
+export function tutoresConCuentaNecesaria(
+  hoy: string,
+  {
+    saldos,
+    turnos,
+    pacientes,
+  }: {
+    saldos: { tutor_id: string; saldo_gs: number }[];
+    turnos: Pick<TurnoPendientes, "paciente_id" | "fecha">[];
+    pacientes: Pick<PacientePendientes, "id" | "responsable_pago_id">[];
+  },
+): string[] {
+  const ids = new Set(saldos.filter((s) => s.saldo_gs > 0).map((s) => s.tutor_id));
+  const responsable = new Map(pacientes.map((p) => [p.id, p.responsable_pago_id]));
+  for (const t of turnos) {
+    const tutorId = t.fecha === hoy && t.paciente_id ? responsable.get(t.paciente_id) : null;
+    if (tutorId) ids.add(tutorId);
+  }
+  return [...ids];
 }
 
 const nombreCompleto = (t: TutorPendientes) => `${t.nombre} ${t.apellido ?? ""}`.trim();

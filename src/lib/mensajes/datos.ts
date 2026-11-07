@@ -4,6 +4,7 @@ import "server-only";
 // No es "use server": son funciones del servidor que no puede llamar el navegador.
 
 import { unstable_rethrow } from "next/navigation";
+import { cache } from "react";
 
 import { proximoDiaDeAtencion } from "@/lib/agenda/atencion";
 import { sumarDias } from "@/lib/agenda/calendario";
@@ -16,7 +17,7 @@ import { esIdValido } from "@/lib/pacientes/datos";
 import { leerTodo } from "@/lib/supabase/paginar";
 import { crearClienteServidor } from "@/lib/supabase/servidor";
 import { montosDeTutor, opcionesPeriodo, periodoInicial } from "./monto";
-import { DIAS_ENTRE_RECORDATORIOS_PAGO, cantidadSinEnviar, pendientesDelDia, rangoDeTurnos, type DatosPendientes } from "./pendientes";
+import { DIAS_ENTRE_RECORDATORIOS_PAGO, cantidadSinEnviar, pendientesDelDia, rangoDeTurnos, tutoresConCuentaNecesaria, type DatosPendientes } from "./pendientes";
 import { CLAVES, PLANTILLAS_POR_DEFECTO, esClave, type Clave } from "./plantillas";
 import type { MensajeListo } from "./tipos";
 import { textoMensajeTurno } from "./turno";
@@ -94,17 +95,19 @@ async function leerPacientes(supabase: Supabase, consultorioId: string) {
  * Cargos con lo que usan el vencimiento y el detalle del monto. Del snapshot se trae solo el estado y
  * nunca `concepto` ni `motivo`, que son texto libre (regla de oro 7).
  */
-async function leerCargos(supabase: Supabase, consultorioId: string, tutorId?: string) {
-  const filas = await leerTodo((a, b) => {
-    let q = supabase
+async function leerCargos(supabase: Supabase, consultorioId: string, tutorIds: string[]) {
+  if (tutorIds.length === 0) return [];
+  const filas = await leerTodo((a, b) =>
+    supabase
       .from("cargos")
       .select(
         "id, tutor_id, paciente_id, fecha, monto_gs, estado:snapshot->>estado, turnos!cargos_consultorio_id_turno_id_fkey(tipos_turno!turnos_consultorio_id_tipo_turno_id_fkey(nombre, cobra_en_el_momento))",
       )
-      .eq("consultorio_id", consultorioId);
-    if (tutorId) q = q.eq("tutor_id", tutorId);
-    return q.order("id").range(a, b);
-  });
+      .eq("consultorio_id", consultorioId)
+      .in("tutor_id", tutorIds)
+      .order("id")
+      .range(a, b),
+  );
   return filas.map((c) => ({
     id: c.id,
     tutor_id: c.tutor_id,
@@ -117,20 +120,20 @@ async function leerCargos(supabase: Supabase, consultorioId: string, tutorId?: s
   }));
 }
 
-async function leerPagos(supabase: Supabase, consultorioId: string, tutorId?: string) {
-  const filas = await leerTodo((a, b) => {
-    let q = supabase.from("pagos").select("id, tutor_id, fecha, monto_gs").eq("consultorio_id", consultorioId);
-    if (tutorId) q = q.eq("tutor_id", tutorId);
-    return q.order("id").range(a, b);
-  });
+async function leerPagos(supabase: Supabase, consultorioId: string, tutorIds: string[]) {
+  if (tutorIds.length === 0) return [];
+  const filas = await leerTodo((a, b) =>
+    supabase.from("pagos").select("id, tutor_id, fecha, monto_gs").eq("consultorio_id", consultorioId).in("tutor_id", tutorIds).order("id").range(a, b),
+  );
   return filas.map((p) => ({ ...p, monto_gs: Number(p.monto_gs) }));
 }
 
 /**
  * Todo lo que necesita pendientesDelDia (Mensajes de hoy). Solo datos administrativos:
  * nombres, teléfonos, turnos, cargos y pagos. Nada clínico (regla de oro 7).
+ * `cache()`: lo piden el contador del menú y la página; se lee una vez por pedido.
  */
-export async function obtenerDatosPendientes(hoy: string): Promise<DatosPendientes> {
+export const obtenerDatosPendientes = cache(async (hoy: string): Promise<DatosPendientes> => {
   const consultorio = await exigirConsultorio();
   const supabase = await crearClienteServidor();
   const { tramos, bloqueos } = await obtenerHorario();
@@ -139,7 +142,7 @@ export async function obtenerDatosPendientes(hoy: string): Promise<DatosPendient
   const desdeEnviados = [rango.desde, sumarDias(hoy, -DIAS_ENTRE_RECORDATORIOS_PAGO)].sort()[0];
   const id = consultorio.id;
 
-  const [{ data: config, error: errorConfig }, plantillas, tutores, pacientes, turnos, cargos, pagos, enviados] = await Promise.all([
+  const [{ data: config, error: errorConfig }, plantillas, tutores, pacientes, turnosBase, saldos, enviados] = await Promise.all([
     supabase.from("consultorios").select("datos_pago, dia_limite_pago, horas_aviso_minimas").eq("id", id).single(),
     textosDePlantillas(supabase, id),
     leerTodo((a, b) => supabase.from("tutores").select("id, nombre, apellido, telefono_wa").eq("consultorio_id", id).order("id").range(a, b)),
@@ -154,8 +157,7 @@ export async function obtenerDatosPendientes(hoy: string): Promise<DatosPendient
         .order("id")
         .range(a, b),
     ),
-    leerCargos(supabase, id),
-    leerPagos(supabase, id),
+    leerTodo((a, b) => supabase.from("saldos_tutores").select("tutor_id, saldo_gs").eq("consultorio_id", id).order("tutor_id").range(a, b)),
     leerTodo((a, b) =>
       supabase
         .from("mensajes_enviados")
@@ -168,6 +170,18 @@ export async function obtenerDatosPendientes(hoy: string): Promise<DatosPendient
   ]);
   if (errorConfig || !config) throw new Error("No se pudo leer el consultorio");
 
+  const turnos = turnosBase.map((t) => {
+    const local = aHoraLocal(t.inicio);
+    return { id: t.id, clase: t.clase, estado: t.estado, paciente_id: t.paciente_id, fecha: local.fecha, hora: local.hora };
+  });
+  // Sin esto, cada pantalla traería la historia entera de todas las familias para el contador del menú.
+  const tutorIds = tutoresConCuentaNecesaria(hoy, {
+    saldos: saldos.flatMap((s) => (s.tutor_id ? [{ tutor_id: s.tutor_id, saldo_gs: Number(s.saldo_gs) }] : [])),
+    turnos,
+    pacientes,
+  });
+  const [cargos, pagos] = await Promise.all([leerCargos(supabase, id, tutorIds), leerPagos(supabase, id, tutorIds)]);
+
   return {
     plantillas,
     datosPago: config.datos_pago,
@@ -177,15 +191,12 @@ export async function obtenerDatosPendientes(hoy: string): Promise<DatosPendient
     bloqueos,
     tutores,
     pacientes,
-    turnos: turnos.map((t) => {
-      const local = aHoraLocal(t.inicio);
-      return { id: t.id, clase: t.clase, estado: t.estado, paciente_id: t.paciente_id, fecha: local.fecha, hora: local.hora };
-    }),
+    turnos,
     cargos,
     pagos,
     enviados: enviados.map((e) => ({ clave: e.clave, referencia: e.referencia, tutor_id: e.tutor_id, fecha: aHoraLocal(e.enviado_en).fecha })),
   };
-}
+});
 
 /**
  * Mensaje de monto de un tutor para cada período (esta semana, este mes y el mes pasado), con la
@@ -204,8 +215,8 @@ export async function obtenerMontosTutor(tutorId: string, hoy: string) {
     supabase.from("tutores").select("id, nombre, apellido, telefono_wa").eq("consultorio_id", id).eq("id", tutorId).maybeSingle(),
     textosDePlantillas(supabase, id),
     leerPacientes(supabase, id),
-    leerCargos(supabase, id, tutorId),
-    leerPagos(supabase, id, tutorId),
+    leerCargos(supabase, id, [tutorId]),
+    leerPagos(supabase, id, [tutorId]),
     leerTodo((a, b) =>
       supabase
         .from("mensajes_enviados")

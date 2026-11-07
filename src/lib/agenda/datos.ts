@@ -1,5 +1,7 @@
 import "server-only";
 
+import { cache } from "react";
+
 import { exigirConsultorio } from "@/lib/auth/servidor";
 import { cobroDelCargo, puedeCobrarAhora } from "@/lib/cobro/pago";
 import { imputarPagos } from "@/lib/cobro/saldo";
@@ -15,7 +17,8 @@ import { aHoraLocal, inicioDelDiaUtc, type ClaseTurno, type EstadoTurno, type Tu
 // Lecturas del horario de atención y de los feriados/vacaciones.
 // Todo pasa por RLS y además se filtra por el consultorio.
 
-export async function obtenerHorario() {
+// `cache()`: lo piden el contador del menú y varias páginas; se lee una vez por pedido.
+export const obtenerHorario = cache(async () => {
   const consultorio = await exigirConsultorio();
   const supabase = await crearClienteServidor();
   const [{ data: config, error }, { data: tramos }, { data: bloqueos }] = await Promise.all([
@@ -29,7 +32,7 @@ export async function obtenerHorario() {
     tramos: (tramos ?? []).map((t) => ({ dia_semana: t.dia_semana, desde: horaDeBase(t.desde), hasta: horaDeBase(t.hasta) })),
     bloqueos: bloqueos ?? [],
   };
-}
+});
 
 /**
  * Turnos de un rango de días (de Asunción), ya pasados a la hora local.
