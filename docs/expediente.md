@@ -67,6 +67,24 @@ Estructura JSON:
 Tipos de campo: `texto`, `largo`, `si_no`, `opciones`, `fecha`. Editor simple en Configuración
 (agregar sección, agregar campo, reordenar). La primera plantilla se carga a partir del Word de la
 profesional (tarea A6).
+- **Editor (tarea A6a)**, Configuración > Anamnesis:
+  - Lista de plantillas con "Editar" y "Activar/Desactivar". Las plantillas **no se borran** (cada
+    anamnesis guarda de qué plantilla viene): se desactivan y dejan de ofrecerse para anamnesis nuevas.
+  - El editor ocupa toda la pestaña: nombre, secciones con título y preguntas con su tipo (Texto corto,
+    Texto largo, Sí / No, Elegir una opción, Fecha). Botones grandes para subir, bajar y quitar
+    secciones y preguntas (con confirmación si tienen contenido). Las opciones se escriben una por
+    renglón. Se guarda con el botón "Guardar plantilla"; si salís con cambios, pregunta antes.
+  - Validación (`validarPlantilla`, zod): nombre hasta 100 letras; de 1 a 40 secciones con título
+    (hasta 150); de 1 a 60 preguntas por sección y hasta 400 en total; pregunta hasta 300 letras;
+    opciones de 2 a 30, sin vacías ni repetidas, hasta 100 letras cada una. Los problemas se muestran al
+    lado de cada campo y en una lista arriba del botón. El servidor vuelve a validar todo.
+  - El `id` de cada pregunta se arma con el texto al crearla ("¿Tipo de parto?" → `tipo_de_parto`,
+    `tipo_de_parto_2` si ya existe) y **no cambia** aunque después la renombres: las respuestas se
+    guardan por `id`. Debe ser único en toda la plantilla.
+  - Cambiar una plantilla no modifica las anamnesis ya creadas (cada una tiene su copia).
+  - Código: `src/lib/anamnesis/estructura.ts` (esquema, `validarEstructura`, `validarPlantilla`,
+    `idParaCampo`, `mover`, `copiarEstructura`) y `borrador.ts` (operaciones del editor), con tests;
+    `acciones-plantillas.ts`, `datos-plantillas.ts` y `src/app/(app)/config/tab-anamnesis.tsx`.
 
 ## Ficha online para familias (`/ficha/<token_ficha>`, pública)
 - Única página pública. Corre en el servidor con el cliente admin; valida el token; límite de 10
