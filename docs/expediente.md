@@ -92,7 +92,18 @@ profesional (tarea A6).
     La página no se indexa y no manda el link a otras páginas (`referrer: no-referrer`).
   - **"Actualizado por la familia"** (migración 0011, `cambios_familia_en` en tutores y pacientes):
     el expediente muestra un aviso con quién cambió y el botón **Visto**, que lo borra.
-  - El reglamento (firma en la ficha, editor en Configuración y estado en el expediente) es la A8b.
+- **Reglamento (tarea A8b):**
+  - Configuración > Reglamento: el texto se edita ahí. Si cambia (sin contar espacios al final), la
+    versión sube y las familias lo tienen que volver a aceptar; la primera carga (sin texto antes) no
+    sube la versión. Si otra pestaña lo cambió mientras tanto, no se pisa (`guardarReglamento`).
+  - En la ficha: el texto, nombre completo, cédula y "Leí y acepto". Se guarda en `reglamento_firmas`
+    una copia exacta del texto, la versión y el hash de la IP. Si la versión cambió mientras la familia
+    leía, no se firma y se le pide recargar. Si ya aceptó la versión actual: "Ya aceptaste el reglamento
+    el 7/11/2026". Sin texto cargado, la ficha no muestra la sección.
+  - En el expediente, pestaña Tutores, cada tutor muestra "Aceptado el … (versión N)", "Aceptó la
+    versión 1; falta aceptar la 2" o "Sin aceptar".
+  - Código: `src/lib/ficha/reglamento.ts` (con tests), `firmarReglamento` en `src/lib/ficha/acciones.ts`,
+    `src/lib/config/acciones-reglamento.ts` y `src/lib/ficha/datos-expediente.ts`.
 
 ## Seguridad
 - Ingreso con email + contraseña + código TOTP (Supabase MFA, app Autenticador del iPhone).

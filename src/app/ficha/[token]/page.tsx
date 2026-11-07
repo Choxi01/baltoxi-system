@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { connection } from "next/server";
 
-import { agregarOtroTutor, guardarDatosTutor, guardarHijo } from "@/lib/ficha/acciones";
+import { agregarOtroTutor, firmarReglamento, guardarDatosTutor, guardarHijo } from "@/lib/ficha/acciones";
 import { MAXIMO_FALLIDOS_POR_IP, claveFallidos, superaLimite } from "@/lib/ficha/reglas";
 import { buscarTutorPorToken, cargarFicha, contarIntentos, hashIpDeLaSolicitud, registrarIntento } from "@/lib/ficha/servidor";
 import { hoyEnAsuncion } from "@/lib/fechas";
@@ -39,6 +39,7 @@ export default async function PaginaFicha({ params }: PageProps<"/ficha/[token]"
       guardarTutor={guardarDatosTutor.bind(null, token)}
       guardarHijo={(pacienteId) => guardarHijo.bind(null, token, pacienteId)}
       agregarOtro={agregarOtroTutor.bind(null, token)}
+      firmar={firmarReglamento.bind(null, token, ficha.reglamento.version)}
     />
   );
 }

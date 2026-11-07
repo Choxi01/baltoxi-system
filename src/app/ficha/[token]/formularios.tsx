@@ -217,3 +217,28 @@ export function FormularioOtroTutor({ accion }: { accion: Accion }) {
     </form>
   );
 }
+
+/** Aceptar el reglamento: nombre completo, cédula y "Leí y acepto". */
+export function FormularioReglamento({ accion, nombreSugerido }: { accion: Accion; nombreSugerido: string }) {
+  const [estado, enviar, enviando] = useActionState(accion, INICIAL);
+  const e = estado.errores;
+  const v = (campo: string, porDefecto = "") => estado.enviado?.[campo] ?? porDefecto;
+  return (
+    <form key={estado.revision ?? 0} action={enviar} className="flex flex-col gap-4" noValidate>
+      <Campo id="r-nombre" etiqueta="Tu nombre completo" error={e.nombre}>
+        <Input id="r-nombre" name="nombre" autoComplete="name" defaultValue={v("nombre", nombreSugerido)} aria-invalid={!!e.nombre} />
+      </Campo>
+      <Campo id="r-cedula" etiqueta="Tu número de cédula" error={e.cedula}>
+        <Input id="r-cedula" name="cedula" inputMode="numeric" autoComplete="off" defaultValue={v("cedula")} aria-invalid={!!e.cedula} />
+      </Campo>
+      <div className="flex flex-col gap-1">
+        <label htmlFor="r-acepto" className="flex min-h-11 items-center gap-3">
+          <input id="r-acepto" type="checkbox" name="acepto" className="size-5" defaultChecked={v("acepto") === "on"} aria-invalid={!!e.acepto} />
+          <span>Leí y acepto el reglamento</span>
+        </label>
+        {e.acepto && <p className="text-sm text-destructive">{e.acepto}</p>}
+      </div>
+      <Pie estado={estado} enviando={enviando} texto="Aceptar el reglamento" />
+    </form>
+  );
+}

@@ -88,13 +88,15 @@ export type FichaFamilia = {
   hijos: { id: string; nombre: string; apellido: string | null; fecha_nacimiento: string | null; colegio: string | null; parentesco: string }[];
   /** Los otros tutores de sus hijos: solo nombre y parentesco (sin teléfonos ni documentos). */
   otros: { nombre: string; parentesco: string; hijo: string }[];
+  /** Reglamento actual (A8b) y la firma de este tutor para esa versión, si ya lo aceptó. */
+  reglamento: { texto: string | null; version: number; firma: { aceptado_en: string; nombre_firmante: string } | null };
 };
 
 /** Todo lo que muestra la ficha. Nunca: motivo de consulta, notas, anamnesis, documentos, tarifas, cobros ni turnos. */
 export async function cargarFicha(tutor: TutorFicha): Promise<FichaFamilia> {
   const admin = crearClienteAdmin();
   const [{ data: consultorio }, { data: vinculos }] = await Promise.all([
-    admin.from("consultorios").select("nombre, profesional").eq("id", tutor.consultorio_id).single(),
+    admin.from("consultorios").select("nombre, profesional, reglamento_texto, reglamento_version").eq("id", tutor.consultorio_id).single(),
     admin.from("paciente_tutores").select("paciente_id, parentesco").eq("consultorio_id", tutor.consultorio_id).eq("tutor_id", tutor.id),
   ]);
   const ids = (vinculos ?? []).map((v) => v.paciente_id);
@@ -119,6 +121,17 @@ export async function cargarFicha(tutor: TutorFicha): Promise<FichaFamilia> {
     ? await admin.from("tutores").select("id, nombre, apellido").eq("consultorio_id", tutor.consultorio_id).in("id", idsOtros)
     : { data: [] };
 
+  const version = consultorio?.reglamento_version ?? 1;
+  const { data: firma } = await admin
+    .from("reglamento_firmas")
+    .select("aceptado_en, nombre_firmante")
+    .eq("consultorio_id", tutor.consultorio_id)
+    .eq("tutor_id", tutor.id)
+    .eq("version", version)
+    .order("aceptado_en", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
   const parentesco = new Map((vinculos ?? []).map((v) => [v.paciente_id, v.parentesco]));
   const nombreTutor = new Map((otrosTutores ?? []).map((t) => [t.id, `${t.nombre} ${t.apellido ?? ""}`.trim()]));
   const nombreHijo = new Map((pacientes ?? []).map((p) => [p.id, p.nombre]));
@@ -132,5 +145,6 @@ export async function cargarFicha(tutor: TutorFicha): Promise<FichaFamilia> {
       parentesco: v.parentesco,
       hijo: nombreHijo.get(v.paciente_id) ?? "",
     })),
+    reglamento: { texto: consultorio?.reglamento_texto?.trim() ? consultorio.reglamento_texto : null, version, firma: firma ?? null },
   };
 }

@@ -1,6 +1,7 @@
 import type { EstadoFicha } from "@/lib/ficha/acciones";
+import { fechaCorta } from "@/lib/ficha/reglamento";
 import type { FichaFamilia } from "@/lib/ficha/servidor";
-import { FormularioHijo, FormularioOtroTutor, FormularioTutorFicha } from "./formularios";
+import { FormularioHijo, FormularioOtroTutor, FormularioReglamento, FormularioTutorFicha } from "./formularios";
 
 // Lo que ve la familia. SOLO datos administrativos (regla de oro 10): los datos llegan ya
 // filtrados de cargarFicha (src/lib/ficha/servidor.ts).
@@ -13,14 +14,16 @@ export function VistaFicha({
   guardarTutor,
   guardarHijo,
   agregarOtro,
+  firmar,
 }: {
   ficha: FichaFamilia;
   hoy: string;
   guardarTutor: Accion;
   guardarHijo: (pacienteId: string) => Accion;
   agregarOtro: Accion;
+  firmar: Accion;
 }) {
-  const { tutor, consultorio, hijos, otros } = ficha;
+  const { tutor, consultorio, hijos, otros, reglamento } = ficha;
   return (
     <main className="mx-auto flex w-full max-w-xl flex-col gap-8 px-4 py-8 pb-[max(2rem,env(safe-area-inset-bottom))]">
       <header className="flex flex-col gap-2">
@@ -64,6 +67,24 @@ export function VistaFicha({
         )}
         <FormularioOtroTutor accion={agregarOtro} />
       </section>
+
+      {reglamento.texto && (
+        <section className="flex flex-col gap-4" aria-labelledby="titulo-reglamento">
+          <h2 id="titulo-reglamento" className="text-lg font-semibold">
+            Reglamento
+          </h2>
+          <div className="max-h-[60vh] overflow-y-auto whitespace-pre-wrap break-words rounded-lg border bg-muted/30 p-4 text-sm leading-relaxed">
+            {reglamento.texto}
+          </div>
+          {reglamento.firma ? (
+            <p role="status" className="rounded-lg border border-primary/50 bg-primary/5 p-3 text-sm">
+              ✓ Ya aceptaste el reglamento el {fechaCorta(reglamento.firma.aceptado_en)} ({reglamento.firma.nombre_firmante}). ¡Gracias!
+            </p>
+          ) : (
+            <FormularioReglamento accion={firmar} nombreSugerido={[tutor.nombre, tutor.apellido].filter(Boolean).join(" ")} />
+          )}
+        </section>
+      )}
 
       <p className="text-center text-xs text-muted-foreground">Este link es personal: no lo compartas.</p>
     </main>

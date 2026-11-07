@@ -7,6 +7,7 @@ import { Pestanas } from "@/components/app/pestanas";
 import { formatoGs } from "@/lib/cobro/formato";
 import { borrarDocumento, descartarSubida, linkDocumento, prepararSubida, registrarDocumento } from "@/lib/documentos/acciones";
 import { listarDocumentos } from "@/lib/documentos/datos";
+import { estadoReglamentoDeTutores } from "@/lib/ficha/datos-expediente";
 import { aHoraLocal } from "@/lib/agenda/turnos";
 import { hoyEnAsuncion } from "@/lib/fechas";
 import { actualizarPaciente, marcarCambiosVistos } from "@/lib/pacientes/acciones";
@@ -45,7 +46,10 @@ export default async function PaginaPaciente({ params, searchParams }: PageProps
     typeof turno === "string" ? obtenerTurnoParaNota(turno, id) : null,
   ]);
   if (!ficha) notFound();
-  const tarifas = await listarTarifas(ficha.paciente.tarifa_id);
+  const [tarifas, reglamento] = await Promise.all([
+    listarTarifas(ficha.paciente.tarifa_id),
+    estadoReglamentoDeTutores(ficha.tutores.map((t) => t.id)),
+  ]);
   const { paciente, tutores } = ficha;
   const hoy = hoyEnAsuncion();
   const edad = textoEdad(paciente.fecha_nacimiento, hoy);
@@ -140,6 +144,7 @@ export default async function PaginaPaciente({ params, searchParams }: PageProps
               <TabTutores
                 tutores={tutores}
                 responsableId={paciente.responsable_pago_id}
+                reglamento={reglamento}
                 disponibles={disponibles}
                 agregarNuevo={agregarTutorNuevo.bind(null, paciente.id)}
                 vincularExistente={vincularTutorExistente.bind(null, paciente.id)}

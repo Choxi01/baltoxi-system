@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { hoyEnAsuncion } from "@/lib/fechas";
 import { crearClienteAdmin } from "@/lib/supabase/admin";
 import { validarDatosTutor } from "@/lib/tutores/validacion";
+import { validarFirma } from "./reglamento";
 import {
   MAXIMO_FALLIDOS_POR_IP,
   MAXIMO_GUARDADOS_POR_LINK,
@@ -139,5 +140,49 @@ export async function agregarOtroTutor(token: string, _anterior: EstadoFicha, fo
     return conError({ general: NO_SE_PUDO }, formulario);
   }
   await admin.from("pacientes").update({ cambios_familia_en: ahora }).eq("consultorio_id", consultorioId).in("id", hijos);
+  return guardado(token);
+}
+
+/**
+ * Aceptar el reglamento (A8b). `version`: la que la familia leyó; si mientras tanto cambió, no se
+ * firma (tiene que leer el texto nuevo). Guarda una copia exacta del texto, la versión y el hash de la IP.
+ */
+export async function firmarReglamento(token: string, version: number, _anterior: EstadoFicha, formulario: FormData): Promise<EstadoFicha> {
+  const validacion = validarFirma(formulario);
+  if (!validacion.ok) return conError(validacion.errores, formulario);
+  const previo = await antesDeGuardar(token);
+  if ("error" in previo) return conError({ general: previo.error }, formulario);
+
+  const admin = crearClienteAdmin();
+  const consultorioId = previo.tutor.consultorio_id;
+  const { data: consultorio } = await admin
+    .from("consultorios")
+    .select("reglamento_texto, reglamento_version")
+    .eq("id", consultorioId)
+    .single();
+  if (!consultorio?.reglamento_texto?.trim()) return conError({ general: NO_SE_PUDO }, formulario);
+  if (consultorio.reglamento_version !== version) {
+    return conError({ general: "El reglamento se actualizó mientras lo leías. Recargá la página y leelo de nuevo." }, formulario);
+  }
+  const { data: yaFirmo } = await admin
+    .from("reglamento_firmas")
+    .select("id")
+    .eq("consultorio_id", consultorioId)
+    .eq("tutor_id", previo.tutor.id)
+    .eq("version", version)
+    .limit(1)
+    .maybeSingle();
+  if (!yaFirmo) {
+    const { error } = await admin.from("reglamento_firmas").insert({
+      consultorio_id: consultorioId,
+      tutor_id: previo.tutor.id,
+      version,
+      texto_firmado: consultorio.reglamento_texto,
+      nombre_firmante: validacion.datos.nombre,
+      doc_firmante: validacion.datos.cedula,
+      ip_hash: await hashIpDeLaSolicitud(),
+    });
+    if (error) return conError({ general: NO_SE_PUDO }, formulario);
+  }
   return guardado(token);
 }
