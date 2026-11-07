@@ -1,6 +1,6 @@
 # Supabase: variables, migraciones y tipos
 
-Proyectos: `pruebas` (ref `onwdydztprleaijfnycr`, ya tiene las migraciones 0001 a 0011).
+Proyectos: `pruebas` (ref `onwdydztprleaijfnycr`, ya tiene las migraciones 0001 a 0012).
 Para confirmarlo: `npx supabase migration list` (columnas Local y Remote iguales).
 `pruebas` está en la región Oregón (`us-west-2`). `produccion` se crea en la semana 8 en la región
 **Ohio (`us-east-2`)**, plan Pro: la misma región que las funciones de Netlify (ver sección 6).
