@@ -11,33 +11,35 @@ import { fechasDeSerie } from "./series";
  * La ventana de 8 semanas avanza un día por día: alcanza con hacerlo una vez por día.
  * Es solo un atajo en memoria: si el servidor se reinicia (o Netlify usa otro), se
  * vuelve a hacer una vez, sin problema, porque no duplica. Una serie nueva no espera:
- * `crearSerie` llama con su `serieId` y eso siempre se hace.
+ * `crearSerie` llama con sus series y eso siempre se hace.
  */
 const completadoEl = new Map<string, string>();
 
 /**
- * Crea los turnos de las próximas 8 semanas de las series activas (o de una).
+ * Crea los turnos de las próximas 8 semanas de las series activas (o de las que se pasan: un turno
+ * fijo grupal tiene una serie por chico). Cada turno lleva el `grupo_id` de su serie, así las
+ * series de una misma sesión se ven juntas todas las semanas.
  * Se llama al abrir la agenda y Hoy (una vez por día) y al crear una serie. No
  * duplica: si el turno de esa serie a esa hora ya existe (aunque se haya movido
  * o cancelado), no se vuelve a crear (unique (serie_id, inicio)).
  */
-export async function materializarSeries(hoy: string, serieId?: string): Promise<{ error: string | null }> {
+export async function materializarSeries(hoy: string, serieIds?: string[]): Promise<{ error: string | null }> {
   const consultorio = await exigirConsultorio();
-  if (!serieId && completadoEl.get(consultorio.id) === hoy) return { error: null };
-  const resultado = await crearTurnosDeSeries(consultorio.id, hoy, serieId);
-  if (!serieId && !resultado.error) completadoEl.set(consultorio.id, hoy);
+  if (!serieIds && completadoEl.get(consultorio.id) === hoy) return { error: null };
+  const resultado = await crearTurnosDeSeries(consultorio.id, hoy, serieIds);
+  if (!serieIds && !resultado.error) completadoEl.set(consultorio.id, hoy);
   return resultado;
 }
 
-async function crearTurnosDeSeries(consultorioId: string, hoy: string, serieId?: string): Promise<{ error: string | null }> {
+async function crearTurnosDeSeries(consultorioId: string, hoy: string, serieIds?: string[]): Promise<{ error: string | null }> {
   const consultorio = { id: consultorioId };
   const supabase = await crearClienteServidor();
   let consulta = supabase
     .from("series_turnos")
-    .select("id, paciente_id, tipo_turno_id, dia_semana, hora, duracion_min, desde, hasta")
+    .select("id, paciente_id, tipo_turno_id, grupo_id, dia_semana, hora, duracion_min, desde, hasta")
     .eq("consultorio_id", consultorio.id)
     .eq("estado", "activa");
-  if (serieId) consulta = consulta.eq("id", serieId);
+  if (serieIds) consulta = consulta.in("id", serieIds);
   const [{ data: series, error }, { data: bloqueos }] = await Promise.all([
     consulta,
     supabase.from("bloqueos").select("desde, hasta").eq("consultorio_id", consultorio.id).gte("hasta", hoy),
@@ -52,6 +54,7 @@ async function crearTurnosDeSeries(consultorioId: string, hoy: string, serieId?:
       paciente_id: s.paciente_id,
       tipo_turno_id: s.tipo_turno_id,
       serie_id: s.id,
+      grupo_id: s.grupo_id,
       inicio: instanteUtc(fecha, hora),
       fin: instanteUtc(fecha, horaFin(hora, s.duracion_min)),
     }));

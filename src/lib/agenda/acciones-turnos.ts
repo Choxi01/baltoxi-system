@@ -15,7 +15,7 @@ import { diaSemana } from "./bloques";
 import { inicioDeMes } from "./calendario";
 import { datosCancelacion, pendientesDeReponer, validarNoSeCobra, type MontoAvisoTardio } from "./cancelacion";
 import { listarTurnos, obtenerHorario } from "./datos";
-import { turnosDelGrupo, validarGrupo } from "./grupos";
+import { CUPO_MAXIMO, turnosDelGrupo, validarGrupo } from "./grupos";
 import { avisosAlAgendar, horaFin, instanteUtc, textosAvisos, validarReserva } from "./reservas";
 import { fechasDeSerie } from "./series";
 import { materializarSeries } from "./series-servidor";
@@ -160,7 +160,10 @@ const esId = z.uuid();
  * `aviso`: se guardó, pero hay algo para contarle a la profesional.
  * `mensaje`: al mover o cancelar, el WhatsApp para avisarle a la familia (B5).
  */
-export type ResultadoSimple = { ok: true; aviso?: string; mensaje?: MensajeListo } | { ok: false; error: string };
+export type ResultadoSimple =
+  /** `mensajes`: al mover la sesión entera, uno por familia. */
+  | { ok: true; aviso?: string; mensaje?: MensajeListo; mensajes?: MensajeListo[] }
+  | { ok: false; error: string };
 
 function revalidar() {
   revalidatePath("/agenda");
@@ -324,6 +327,118 @@ export async function cancelarTurno(
 }
 
 // ---------------------------------------------------------------------
+// Sesión doble o grupal entera (A11b)
+// ---------------------------------------------------------------------
+
+/**
+ * Los turnos agendados de una sesión: mismo `grupo_id` y misma hora de inicio (un turno fijo
+ * grupal repite el `grupo_id` todas las semanas). Igual que agendadosDeLaSesion en la pantalla.
+ */
+async function agendadosDeSesion(grupoId: string, fecha: string, inicio: string) {
+  const consultorio = await exigirConsultorio();
+  const supabase = await crearClienteServidor();
+  const { data, error } = await supabase
+    .from("turnos")
+    .select("id, inicio, fin")
+    .eq("consultorio_id", consultorio.id)
+    .eq("grupo_id", grupoId)
+    .eq("inicio", instanteUtc(fecha, inicio))
+    .eq("clase", "turno")
+    .eq("estado", "agendado");
+  return { consultorio, supabase, turnos: error ? null : (data ?? []) };
+}
+
+const esSesion = (grupoId: string, fecha: string, inicio: string) =>
+  esId.safeParse(grupoId).success && esFecha.safeParse(fecha).success && esHora.safeParse(inicio).success;
+
+/**
+ * Mover la sesión entera: todos los chicos agendados pasan juntos al horario nuevo, en un grupo
+ * nuevo y fuera del turno fijo (función mover_grupo, migración 0014). Cada original queda
+ * 'reprogramado' con su cargo de Gs. 0, y se ofrece el mensaje de cada familia.
+ */
+export async function moverGrupo(
+  grupoId: string,
+  sesion: { fecha: string; inicio: string },
+  fecha: string,
+  inicio: string,
+): Promise<ResultadoSimple> {
+  if (!esSesion(grupoId, sesion.fecha, sesion.inicio) || !esFecha.safeParse(fecha).success || !esHora.safeParse(inicio).success) {
+    return { ok: false, error: "Faltan datos para mover." };
+  }
+  const { consultorio, supabase, turnos } = await agendadosDeSesion(grupoId, sesion.fecha, sesion.inicio);
+  if (!turnos) return { ok: false, error: NO_SE_PUDO };
+  if (turnos.length === 0) return { ok: false, error: "Esa sesión ya no se puede mover." };
+  if (await mesCerrado(supabase, consultorio.id, turnos[0].inicio)) return { ok: false, error: MES_CERRADO };
+
+  const duracion = Math.round((new Date(turnos[0].fin).getTime() - new Date(turnos[0].inicio).getTime()) / 60_000);
+  const fin = horaFin(inicio, duracion > 0 ? duracion : 45);
+  const { data: movidos, error } = await supabase.rpc("mover_grupo", {
+    p_grupo: grupoId,
+    p_inicio_actual: turnos[0].inicio,
+    p_inicio: instanteUtc(fecha, inicio),
+    p_fin: instanteUtc(fecha, fin),
+  });
+  if (error || !movidos?.length) return { ok: false, error: NO_SE_PUDO };
+  revalidar();
+
+  const resultados = await Promise.all(
+    movidos.map(async ({ original, nuevo }) => {
+      const [cargo, mensaje] = await Promise.all([
+        aplicarEstadoTurno(supabase, consultorio.id, original),
+        mensajeOfrecido(supabase, consultorio.id, nuevo, "cambio_turno"),
+      ]);
+      return { cargo, mensaje };
+    }),
+  );
+  const mensajes = resultados.flatMap((r) => (r.mensaje ? [r.mensaje] : []));
+  const fallo = resultados.find((r) => !r.cargo.ok)?.cargo;
+  if (fallo && !fallo.ok) return { ok: true, mensajes, aviso: `Sesión movida ✓ pero no se anotó algún cobro de Gs. 0: ${fallo.error}` };
+  return { ok: true, mensajes };
+}
+
+/**
+ * Cancelar la sesión entera. Solo "Cancelé yo" (si cancela una familia, se cancela solo a su
+ * chico): todos los chicos agendados quedan para reponer, cada uno con su cargo. Si algún cargo
+ * falla, toda la sesión vuelve a quedar agendada.
+ */
+export async function cancelarGrupo(grupoId: string, sesion: { fecha: string; inicio: string }): Promise<ResultadoSimple> {
+  if (!esSesion(grupoId, sesion.fecha, sesion.inicio)) return { ok: false, error: "Faltan datos para cancelar." };
+  const { consultorio, supabase, turnos } = await agendadosDeSesion(grupoId, sesion.fecha, sesion.inicio);
+  if (!turnos) return { ok: false, error: NO_SE_PUDO };
+  if (turnos.length === 0) return { ok: false, error: "Esa sesión ya no se puede cancelar." };
+  if (await mesCerrado(supabase, consultorio.id, turnos[0].inicio)) return { ok: false, error: MES_CERRADO };
+
+  const cambios = datosCancelacion("profesional", { inicio: new Date(turnos[0].inicio) }, new Date(), 0);
+  const ids = turnos.map((t) => t.id);
+  const { data: cancelados, error } = await supabase
+    .from("turnos")
+    .update({ ...cambios, marcado_en: new Date().toISOString() })
+    .eq("consultorio_id", consultorio.id)
+    .in("id", ids)
+    .eq("estado", "agendado")
+    .select("id");
+  if (error) return { ok: false, error: NO_SE_PUDO };
+  if (!cancelados?.length) return { ok: false, error: "La sesión cambió en otro dispositivo. Recargá la página." };
+
+  const hechos = cancelados.map((c) => c.id);
+  const cargos = await Promise.all(hechos.map((id) => aplicarEstadoTurno(supabase, consultorio.id, id)));
+  const fallo = cargos.find((c) => !c.ok);
+  if (fallo && !fallo.ok) {
+    // Deshacer: todos vuelven a agendado y se borran los cargos que sí se crearon.
+    await supabase
+      .from("turnos")
+      .update({ estado: "agendado", aviso_en: null, reponer: false, marcado_en: null })
+      .eq("consultorio_id", consultorio.id)
+      .in("id", hechos);
+    await Promise.all(hechos.map((id, i) => (cargos[i].ok ? aplicarEstadoTurno(supabase, consultorio.id, id) : null)));
+    revalidar();
+    return { ok: false, error: fallo.error };
+  }
+  revalidar();
+  return { ok: true };
+}
+
+// ---------------------------------------------------------------------
 // Asistencia (B3): Vino / No vino / volver a agendado / excepción
 // ---------------------------------------------------------------------
 
@@ -412,6 +527,8 @@ export async function quitarTurno(id: string): Promise<ResultadoSimple> {
 
 const esquemaSerie = z.object({
   paciente_id: esId,
+  /** Turno fijo doble o grupal (A11b): los otros chicos, además de `paciente_id`. */
+  companeros: z.array(esId).max(CUPO_MAXIMO - 1).optional(),
   tipo_turno_id: esId,
   /** Primer día de la serie (el del bloque tocado): define el día de la semana. */
   fecha: esFecha,
@@ -420,20 +537,24 @@ const esquemaSerie = z.object({
   confirmado: z.boolean(),
 });
 
-/** Crea un turno fijo semanal y sus turnos de las próximas 8 semanas. */
+/**
+ * Crea un turno fijo semanal y sus turnos de las próximas 8 semanas. Doble o grupal: una serie por
+ * chico, todas con el mismo `grupo_id` (y sus turnos también, todas las semanas).
+ */
 export async function crearSerie(entrada: unknown): Promise<ResultadoAgendar> {
   const r = esquemaSerie.safeParse(entrada);
   if (!r.success) return { ok: false, error: "Faltan datos para el turno fijo." };
   const datos = r.data;
   if (datos.hasta && datos.hasta < datos.fecha) return { ok: false, error: "El “hasta” tiene que ser después del primer día." };
 
+  const pacienteIds = [datos.paciente_id, ...(datos.companeros ?? [])];
   const consultorio = await exigirConsultorio();
   const supabase = await crearClienteServidor();
-  const [{ data: paciente }, { data: tipo }, { data: config }, { bloqueos }] = await Promise.all([
-    supabase.from("pacientes").select("id").eq("consultorio_id", consultorio.id).eq("id", datos.paciente_id).maybeSingle(),
+  const [{ data: pacientes }, { data: tipo }, { data: config }, { bloqueos }] = await Promise.all([
+    supabase.from("pacientes").select("id").eq("consultorio_id", consultorio.id).in("id", pacienteIds),
     supabase
       .from("tipos_turno")
-      .select("modalidad")
+      .select("modalidad, cupo")
       .eq("consultorio_id", consultorio.id)
       .eq("id", datos.tipo_turno_id)
       .eq("activo", true)
@@ -441,8 +562,12 @@ export async function crearSerie(entrada: unknown): Promise<ResultadoAgendar> {
     supabase.from("consultorios").select("duracion_bloque_min, traslado_domicilio_min").eq("id", consultorio.id).single(),
     obtenerHorario(),
   ]);
-  if (!paciente) return { ok: false, error: "Paciente no encontrado." };
   if (!tipo) return { ok: false, error: "Elegí un tipo de turno." };
+  if (pacienteIds.length > 1) {
+    const grupo = validarGrupo(pacienteIds, tipo.cupo);
+    if (!grupo.ok) return grupo;
+  }
+  if ((pacientes ?? []).length !== new Set(pacienteIds).size) return { ok: false, error: "Paciente no encontrado." };
   if (!config) return { ok: false, error: NO_SE_PUDO };
   const fin = horaFin(datos.inicio, config.duracion_bloque_min);
 
@@ -463,22 +588,29 @@ export async function crearSerie(entrada: unknown): Promise<ResultadoAgendar> {
     }
   }
 
-  const { data: nueva, error } = await supabase
+  // Una serie por chico en un solo insert: se guardan todas o ninguna.
+  const grupoId = pacienteIds.length > 1 ? crypto.randomUUID() : null;
+  const { data: nuevas, error } = await supabase
     .from("series_turnos")
-    .insert({
-      consultorio_id: consultorio.id,
-      paciente_id: datos.paciente_id,
-      tipo_turno_id: datos.tipo_turno_id,
-      dia_semana: serie.dia_semana,
-      hora: datos.inicio,
-      duracion_min: config.duracion_bloque_min,
-      desde: datos.fecha,
-      hasta: datos.hasta,
-    })
-    .select("id")
-    .single();
-  if (error || !nueva) return { ok: false, error: NO_SE_PUDO };
-  const materializado = await materializarSeries(hoy, nueva.id);
+    .insert(
+      pacienteIds.map((pacienteId) => ({
+        consultorio_id: consultorio.id,
+        paciente_id: pacienteId,
+        tipo_turno_id: datos.tipo_turno_id,
+        grupo_id: grupoId,
+        dia_semana: serie.dia_semana,
+        hora: datos.inicio,
+        duracion_min: config.duracion_bloque_min,
+        desde: datos.fecha,
+        hasta: datos.hasta,
+      })),
+    )
+    .select("id");
+  if (error || !nuevas?.length) return { ok: false, error: NO_SE_PUDO };
+  const materializado = await materializarSeries(
+    hoy,
+    nuevas.map((n) => n.id),
+  );
   if (materializado.error) return { ok: false, error: materializado.error };
   revalidar();
   return { ok: true };
@@ -490,31 +622,43 @@ export async function crearSerie(entrada: unknown): Promise<ResultadoAgendar> {
  */
 export async function finalizarSerie(serieId: string): Promise<ResultadoSimple> {
   if (!esId.safeParse(serieId).success) return { ok: false, error: "Turno fijo no encontrado." };
+  return finalizarSeries({ serieId });
+}
+
+/** Finalizar el turno fijo de una sesión doble o grupal: las series de todos los chicos (A11b). */
+export async function finalizarSeriesDelGrupo(grupoId: string): Promise<ResultadoSimple> {
+  if (!esId.safeParse(grupoId).success) return { ok: false, error: "Turno fijo no encontrado." };
+  return finalizarSeries({ grupoId });
+}
+
+async function finalizarSeries(cuales: { serieId: string } | { grupoId: string }): Promise<ResultadoSimple> {
   const consultorio = await exigirConsultorio();
   const supabase = await crearClienteServidor();
-  const { data: serie } = await supabase
-    .from("series_turnos")
-    .select("id, desde")
-    .eq("consultorio_id", consultorio.id)
-    .eq("id", serieId)
-    .eq("estado", "activa")
-    .maybeSingle();
-  if (!serie) return { ok: false, error: "Ese turno fijo ya está finalizado." };
+  let consulta = supabase.from("series_turnos").select("id, desde").eq("consultorio_id", consultorio.id).eq("estado", "activa");
+  consulta = "serieId" in cuales ? consulta.eq("id", cuales.serieId) : consulta.eq("grupo_id", cuales.grupoId);
+  const { data: series, error: errorLeer } = await consulta;
+  if (errorLeer) return { ok: false, error: NO_SE_PUDO };
+  if (!series?.length) return { ok: false, error: "Ese turno fijo ya está finalizado." };
 
   const hoy = hoyEnAsuncion();
-  const { error } = await supabase
-    .from("series_turnos")
-    // hasta >= desde (lo pide la base): si la serie todavía no empezó, termina el día que empezaba.
-    .update({ estado: "finalizada", hasta: serie.desde > hoy ? serie.desde : hoy })
-    .eq("consultorio_id", consultorio.id)
-    .eq("id", serieId);
-  if (error) return { ok: false, error: NO_SE_PUDO };
+  for (const serie of series) {
+    const { error } = await supabase
+      .from("series_turnos")
+      // hasta >= desde (lo pide la base): si la serie todavía no empezó, termina el día que empezaba.
+      .update({ estado: "finalizada", hasta: serie.desde > hoy ? serie.desde : hoy })
+      .eq("consultorio_id", consultorio.id)
+      .eq("id", serie.id);
+    if (error) return { ok: false, error: NO_SE_PUDO };
+  }
 
   const { error: errorBorrar } = await supabase
     .from("turnos")
     .delete()
     .eq("consultorio_id", consultorio.id)
-    .eq("serie_id", serieId)
+    .in(
+      "serie_id",
+      series.map((s) => s.id),
+    )
     .eq("estado", "agendado")
     .gte("inicio", new Date().toISOString());
   if (errorBorrar) return { ok: false, error: NO_SE_PUDO };

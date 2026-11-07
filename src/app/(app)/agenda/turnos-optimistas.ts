@@ -50,6 +50,8 @@ export function useTurnosOptimistas(
       if (!r.ok) return al.error(`${r.error} Quedó como estaba.`);
       if (r.aviso) al.aviso(r.aviso);
       if (r.mensaje) al.mensaje(r.mensaje);
+      // Mover la sesión entera: un mensaje por familia.
+      for (const m of r.mensajes ?? []) al.mensaje(m);
     });
   };
 

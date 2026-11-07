@@ -78,7 +78,9 @@ export function Agenda({
   const [abierta, setAbierta] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
   // Después de mover o cancelar: el WhatsApp para la familia.
-  const [ofrecido, setOfrecido] = useState<MensajeListo | null>(null);
+  // Mensajes para avisar a las familias (después de mover o cancelar; al mover una sesión, uno por familia).
+  const [ofrecidos, setOfrecidos] = useState<MensajeListo[]>([]);
+  const setOfrecido = (m: MensajeListo | null) => setOfrecidos(m ? [m] : []);
   const [reponiendo, setReponiendo] = useState<Reposicion | null>(null);
   const [copiando, setCopiando] = useState(false);
   // Si el servidor no pudo guardar un cambio (el turno ya volvió a como estaba).
@@ -94,7 +96,7 @@ export function Agenda({
       setReponiendo(null);
     },
     aviso: setAviso,
-    mensaje: setOfrecido,
+    mensaje: (m) => setOfrecidos((antes) => [...antes.filter((x) => x.referencia !== m.referencia), m]),
     error: (texto) => {
       setAviso(null);
       setOfrecido(null);
@@ -224,7 +226,13 @@ export function Agenda({
           {errorAccion}
         </p>
       )}
-      {ofrecido && <MensajeFamilia key={`${ofrecido.clave}-${ofrecido.referencia}`} mensaje={ofrecido} alCerrar={() => setOfrecido(null)} />}
+      {ofrecidos.map((m) => (
+        <MensajeFamilia
+          key={`${m.clave}-${m.referencia}`}
+          mensaje={m}
+          alCerrar={() => setOfrecidos((antes) => antes.filter((x) => x.referencia !== m.referencia))}
+        />
+      ))}
       {!listo || cargando ? (
         <p className="text-muted-foreground">Cargando…</p>
       ) : (

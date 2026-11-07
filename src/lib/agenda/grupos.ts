@@ -119,3 +119,47 @@ export function encabezadoGrupo(tipo: string | null, cantidad: number): string {
   if (!tipo || tipo.trim().toLowerCase().startsWith(nombre.toLowerCase())) return nombre;
   return `${nombre} · ${tipo}`;
 }
+
+// ---------------------------------------------------------------------
+// Acciones de la sesión entera (A11b)
+// ---------------------------------------------------------------------
+
+/**
+ * Los chicos de una sesión a los que les llega "Mover la sesión" o "Cancelar la sesión": los que
+ * siguen agendados, con el mismo `grupoId`, fecha y hora (un turno fijo grupal usa el mismo
+ * `grupoId` todas las semanas, así que la fecha y la hora hacen falta). Los que ya vinieron, no
+ * vinieron o cancelaron quedan como están.
+ */
+export function agendadosDeLaSesion(
+  turnos: TurnoAgenda[],
+  sesion: Pick<TurnoAgenda, "grupoId" | "fecha" | "inicio">,
+): TurnoAgenda[] {
+  if (!sesion.grupoId) return [];
+  return turnos.filter(
+    (t) => t.clase === "turno" && t.grupoId === sesion.grupoId && t.fecha === sesion.fecha && t.inicio === sesion.inicio && t.estado === "agendado",
+  );
+}
+
+export type AccionSesion = "mover_sesion" | "cancelar_sesion" | "finalizar_fijo";
+
+/**
+ * Botones de la sesión entera, arriba de los chicos. Mover y cancelar, si quedan al menos 2
+ * agendados (con uno solo se usa el botón de ese chico). Finalizar el turno fijo, si algún chico
+ * viene de un turno fijo grupal. Ninguna mientras se guarda un cambio de la sesión.
+ */
+export function accionesDeLaSesion(turnos: TurnoAgenda[]): AccionSesion[] {
+  if (turnos.some((t) => t.guardando)) return [];
+  const acciones: AccionSesion[] = [];
+  const agendados = turnos.filter((t) => t.clase === "turno" && t.estado === "agendado");
+  if (agendados.length >= 2) acciones.push("mover_sesion", "cancelar_sesion");
+  if (turnos.some((t) => t.serieId)) acciones.push("finalizar_fijo");
+  return acciones;
+}
+
+/** Los chicos de una sesión por su nombre de pila, para las confirmaciones: "Mateo, Lucas y Tomas". */
+export function nombresDeLaSesion(turnos: Pick<TurnoAgenda, "titulo">[]): string {
+  const nombres = turnos.map((t) => primerNombre(t.titulo));
+  // Si dos se llaman igual, con apellido para no confundirlos.
+  const lista = new Set(nombres).size === nombres.length ? nombres : turnos.map((t) => t.titulo.trim());
+  return lista.length <= 1 ? (lista[0] ?? "") : `${lista.slice(0, -1).join(", ")} y ${lista.at(-1)}`;
+}

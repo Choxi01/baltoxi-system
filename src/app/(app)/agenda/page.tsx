@@ -4,12 +4,15 @@ import { connection } from "next/server";
 import { rangoParaCargar, type Vista } from "@/lib/agenda/calendario";
 import {
   agendar,
+  cancelarGrupo,
   cancelarTurno,
   crearSerie,
   finalizarSerie,
+  finalizarSeriesDelGrupo,
   libresDelDia,
   marcarAsistencia,
   montoSiSeCobra,
+  moverGrupo,
   moverTurno,
   quitarTurno,
 } from "@/lib/agenda/acciones-turnos";
@@ -73,6 +76,7 @@ export default async function Pagina({ searchParams }: PageProps<"/agenda">) {
           hoy,
           agendar,
           acciones: { libresDelDia, moverTurno, montoSiSeCobra, cancelarTurno, quitarTurno, marcarAsistencia, crearSerie, finalizarSerie, registrarPago },
+          sesion: { moverGrupo, cancelarGrupo, finalizarSeriesDelGrupo },
         }}
       />
     </div>

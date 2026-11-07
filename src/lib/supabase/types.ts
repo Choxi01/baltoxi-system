@@ -1412,6 +1412,18 @@ export type Database = {
         Returns: string
       }
       mis_consultorios: { Args: never; Returns: string[] }
+      mover_grupo: {
+        Args: {
+          p_fin: string
+          p_grupo: string
+          p_inicio: string
+          p_inicio_actual: string
+        }
+        Returns: {
+          nuevo: string
+          original: string
+        }[]
+      }
       mover_turno: {
         Args: { p_fin: string; p_inicio: string; p_turno: string }
         Returns: string

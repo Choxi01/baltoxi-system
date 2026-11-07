@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { agruparTurnos, encabezadoGrupo, nombreSesion, textoGrupo, turnosDelGrupo, validarGrupo } from "./grupos";
+import { accionesDeLaSesion, agendadosDeLaSesion, agruparTurnos, encabezadoGrupo, nombreSesion, nombresDeLaSesion, textoGrupo, turnosDelGrupo, validarGrupo } from "./grupos";
 import type { TurnoAgenda } from "./turnos";
 
 // Datos inventados.
@@ -133,5 +133,59 @@ describe("textoGrupo y nombreSesion", () => {
     expect(nombreSesion(2)).toBe("Sesión doble");
     expect(nombreSesion(3)).toBe("Sesión grupal");
     expect(nombreSesion(4)).toBe("Sesión grupal");
+  });
+});
+
+describe("agendadosDeLaSesion", () => {
+  const sesion = { grupoId: "g1", fecha: LUNES, inicio: "09:00" };
+
+  it("solo los agendados de ese grupo, día y hora", () => {
+    const turnos = [
+      turno("a", { grupoId: "g1" }),
+      turno("b", { grupoId: "g1" }),
+      turno("vino", { grupoId: "g1", estado: "presente" }),
+      turno("cancelo", { grupoId: "g1", estado: "ausente_con_aviso" }),
+      turno("otraSemana", { grupoId: "g1", fecha: "2026-11-09" }),
+      turno("otraHora", { grupoId: "g1", inicio: "09:45" }),
+      turno("otroGrupo", { grupoId: "g2" }),
+      turno("individual"),
+    ];
+    expect(agendadosDeLaSesion(turnos, sesion).map((t) => t.id)).toEqual(["a", "b"]);
+  });
+
+  it("sin grupo, nada", () => {
+    expect(agendadosDeLaSesion([turno("a")], { ...sesion, grupoId: null })).toEqual([]);
+  });
+});
+
+describe("accionesDeLaSesion", () => {
+  it("con 2 o más agendados: mover y cancelar la sesión", () => {
+    expect(accionesDeLaSesion([turno("a", { grupoId: "g1" }), turno("b", { grupoId: "g1" })])).toEqual(["mover_sesion", "cancelar_sesion"]);
+  });
+
+  it("con un solo agendado no hay acciones de sesión: se usa la del chico", () => {
+    expect(accionesDeLaSesion([turno("a", { grupoId: "g1" }), turno("b", { grupoId: "g1", estado: "presente" })])).toEqual([]);
+  });
+
+  it("turno fijo grupal: finalizarlo, aunque ya hayan venido", () => {
+    const fijos = [turno("a", { grupoId: "g1", serieId: "s1", estado: "presente" }), turno("b", { grupoId: "g1", serieId: "s2", estado: "presente" })];
+    expect(accionesDeLaSesion(fijos)).toEqual(["finalizar_fijo"]);
+  });
+
+  it("mientras se guarda un cambio de la sesión, ninguna", () => {
+    expect(accionesDeLaSesion([turno("a", { grupoId: "g1", guardando: true }), turno("b", { grupoId: "g1" })])).toEqual([]);
+  });
+});
+
+describe("nombresDeLaSesion", () => {
+  const t = (titulo: string) => ({ titulo });
+  it("nombres de pila con «y» al final", () => {
+    expect(nombresDeLaSesion([t("Juan Inventado"), t("Pedro Prueba")])).toBe("Juan y Pedro");
+    expect(nombresDeLaSesion([t("Ana A"), t("Bea B"), t("Caro C")])).toBe("Ana, Bea y Caro");
+    expect(nombresDeLaSesion([t("Ana A")])).toBe("Ana");
+  });
+
+  it("si se llaman igual, con apellido", () => {
+    expect(nombresDeLaSesion([t("Juan Inventado"), t("Juan Prueba")])).toBe("Juan Inventado y Juan Prueba");
   });
 });

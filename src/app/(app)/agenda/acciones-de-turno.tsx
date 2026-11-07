@@ -37,6 +37,7 @@ export function AccionesTurno({
   ocupado,
   alAccion,
   alFinalizarSerie,
+  enSesion = false,
 }: {
   turno: TurnoAgenda;
   hoy: string;
@@ -44,6 +45,8 @@ export function AccionesTurno({
   alAccion: (accion: AccionTarjeta) => void;
   /** Si viene, un turno fijo muestra "Finalizar turno fijo" (en la agenda sí, en Hoy no). */
   alFinalizarSerie?: () => void;
+  /** Es un chico de una sesión doble o grupal: su turno fijo se "saca" (los demás siguen). */
+  enSesion?: boolean;
 }) {
   const acciones = accionesDelTurno(turno, hoy);
   const estado = textoEstado(turno);
@@ -108,7 +111,7 @@ export function AccionesTurno({
       )}
       {turno.serieId && alFinalizarSerie && (
         <Button variant="ghost" className="h-12 text-destructive" onClick={alFinalizarSerie} disabled={enCurso}>
-          Finalizar turno fijo
+          {enSesion ? "Sacar del turno fijo" : "Finalizar turno fijo"}
         </Button>
       )}
     </div>
@@ -165,14 +168,17 @@ export function useAccionesTurno({
   }
 
   /** Turno fijo (A3c): la serie termina y se borran sus turnos futuros agendados. */
-  function finalizarSerie(t: TurnoAgenda) {
+  function finalizarSerie(t: TurnoAgenda, enSesion = false) {
     if (!t.serieId) return;
     const dia = tituloDia(t.fecha).split(" ")[0].toLowerCase();
-    if (!window.confirm(`¿Finalizar el turno fijo de ${t.titulo} (${dia} ${horaCorta(t.inicio)})? Se borran sus turnos futuros agendados; los pasados quedan.`)) return;
+    const pregunta = enSesion
+      ? `¿Sacar a ${t.titulo} del turno fijo de los ${dia} ${horaCorta(t.inicio)}? Se borran sus turnos futuros agendados; los demás chicos siguen.`
+      : `¿Finalizar el turno fijo de ${t.titulo} (${dia} ${horaCorta(t.inicio)})? Se borran sus turnos futuros agendados; los pasados quedan.`;
+    if (!window.confirm(pregunta)) return;
     setError(null);
     iniciar(async () => {
       const r = await acciones.finalizarSerie(t.serieId!);
-      if (r.ok) alGuardar("Turno fijo finalizado ✓");
+      if (r.ok) alGuardar(enSesion ? `${t.titulo} salió del turno fijo ✓` : "Turno fijo finalizado ✓");
       else setError(r.error);
     });
   }
