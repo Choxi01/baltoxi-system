@@ -1,16 +1,16 @@
 "use client";
 
-import { Repeat, X } from "lucide-react";
+import { ArrowRightLeft, Ban, Repeat, X } from "lucide-react";
 import { useState, useTransition } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
-import type { ResultadoAgendar } from "@/lib/agenda/acciones-turnos";
+import type { ResultadoAgendar, ResultadoSimple } from "@/lib/agenda/acciones-turnos";
 import { horaCorta } from "@/lib/agenda/bloques";
 import { tituloDia } from "@/lib/agenda/calendario";
-import { agruparTurnos, encabezadoGrupo, nombreSesion, validarGrupo } from "@/lib/agenda/grupos";
+import { accionesDeLaSesion, agendadosDeLaSesion, agruparTurnos, encabezadoGrupo, nombreSesion, nombresDeLaSesion, validarGrupo } from "@/lib/agenda/grupos";
 import { turnoNuevo, turnosNuevosDelGrupo } from "@/lib/agenda/optimista";
 import { avisosAlAgendar, horaFin, textosAvisos, validarReserva } from "@/lib/agenda/reservas";
 import { fechasParaHasta } from "@/lib/agenda/series";
@@ -20,7 +20,7 @@ import { filtrarPacientes } from "@/lib/pacientes/busqueda";
 import { cn } from "@/lib/utils";
 import { AccionesTurno, FormularioTurno, useAccionesTurno } from "./acciones-de-turno";
 import type { Ejecutar } from "./turnos-optimistas";
-import type { AccionesDeTurno } from "./acciones-turno";
+import { FormularioCancelarSesion, FormularioMover, type AccionesDeTurno } from "./acciones-turno";
 
 export type PacienteParaReservar = { id: string; nombre: string; apellido: string | null };
 /** `cupo`: chicos por sesión (1 individual, 2 doble, 3 o 4 grupal; migración 0013). */
@@ -35,7 +35,18 @@ export type DatosPanel = {
   horasAvisoMinimas: number;
   agendar: (entrada: unknown) => Promise<ResultadoAgendar>;
   acciones: AccionesDeTurno;
+  /** Acciones de la sesión doble o grupal entera (A11b): solo en la Agenda. */
+  sesion: AccionesSesion;
 };
+
+export type AccionesSesion = {
+  moverGrupo: (grupoId: string, sesion: { fecha: string; inicio: string }, fecha: string, inicio: string) => Promise<ResultadoSimple>;
+  cancelarGrupo: (grupoId: string, sesion: { fecha: string; inicio: string }) => Promise<ResultadoSimple>;
+  finalizarSeriesDelGrupo: (grupoId: string) => Promise<ResultadoSimple>;
+};
+
+/** Un formulario abierto para la sesión entera: mover o cancelar a los chicos agendados. */
+type SesionAbierta = { accion: "mover" | "cancelar"; grupoId: string; turnos: TurnoAgenda[] };
 
 /** Sesión cancelada por la profesional que se está reponiendo ("Para reponer este mes"). */
 export type Reposicion = { id: string; pacienteId: string | null; tipoId: string | null; titulo: string };
@@ -83,6 +94,24 @@ export function PanelFila({
   const liberados = fila.tipo === "bloque" ? fila.liberados.filter((t) => t.clase === "turno") : [];
   const [modo, setModo] = useState<Modo>(reponiendo && turnos.length === 0 ? "reservar" : "menu");
   const { abierto, cerrar, error, guardando, alAccion, finalizarSerie } = useAccionesTurno({ acciones: datos.acciones, ejecutar, alGuardar });
+  const [sesionAbierta, setSesionAbierta] = useState<SesionAbierta | null>(null);
+  const [errorSesion, setErrorSesion] = useState<string | null>(null);
+  const [finalizando, iniciarFinalizar] = useTransition();
+
+  /** Turno fijo grupal: terminan las series de todos los chicos de la sesión. */
+  function finalizarFijoDeLaSesion(turnosSesion: TurnoAgenda[]) {
+    const t = turnosSesion[0];
+    if (!t?.grupoId) return;
+    const dia = tituloDia(t.fecha).split(" ")[0].toLowerCase();
+    const texto = `¿Finalizar el turno fijo de ${nombresDeLaSesion(turnosSesion)} (${dia} ${horaCorta(t.inicio)})? Se borran los turnos futuros agendados de todos los chicos; los pasados quedan.`;
+    if (!window.confirm(texto)) return;
+    setErrorSesion(null);
+    iniciarFinalizar(async () => {
+      const r = await datos.sesion.finalizarSeriesDelGrupo(t.grupoId!);
+      if (r.ok) alGuardar("Turno fijo de la sesión finalizado ✓");
+      else setErrorSesion(r.error);
+    });
+  }
 
   return (
     <div className="flex flex-col gap-3 rounded-lg border bg-muted/40 p-3">
@@ -96,6 +125,28 @@ export function PanelFila({
         </Button>
       </div>
 
+      {!abierto && sesionAbierta?.accion === "mover" && (
+        <FormularioMover
+          turno={sesionAbierta.turnos[0]}
+          hoy={datos.hoy}
+          acciones={datos.acciones}
+          ejecutar={ejecutar}
+          alVolver={() => setSesionAbierta(null)}
+          sesion={{
+            turnos: sesionAbierta.turnos,
+            mover: (nuevaFecha, nuevoInicio) =>
+              datos.sesion.moverGrupo(sesionAbierta.grupoId, { fecha, inicio: sesionAbierta.turnos[0].inicio }, nuevaFecha, nuevoInicio),
+          }}
+        />
+      )}
+      {!abierto && sesionAbierta?.accion === "cancelar" && (
+        <FormularioCancelarSesion
+          turnos={sesionAbierta.turnos}
+          cancelar={() => datos.sesion.cancelarGrupo(sesionAbierta.grupoId, { fecha, inicio: sesionAbierta.turnos[0].inicio })}
+          ejecutar={ejecutar}
+          alVolver={() => setSesionAbierta(null)}
+        />
+      )}
       {abierto && (
         <FormularioTurno
           abierto={abierto}
@@ -107,27 +158,66 @@ export function PanelFila({
           alGuardar={alGuardar}
         />
       )}
-      {!abierto && modo === "menu" && (
+      {!abierto && !sesionAbierta && modo === "menu" && (
         <>
           {agruparTurnos([...turnos, ...liberados]).map((item) => {
-            const tarjeta = (t: TurnoAgenda) => (
+            const tarjeta = (t: TurnoAgenda, enSesion = false) => (
               <AccionesTurno
                 key={t.id}
                 turno={t}
                 hoy={datos.hoy}
-                ocupado={guardando}
+                ocupado={guardando || finalizando}
                 alAccion={(a) => alAccion(t, a)}
-                alFinalizarSerie={() => finalizarSerie(t)}
+                alFinalizarSerie={() => finalizarSerie(t, enSesion)}
+                enSesion={enSesion}
               />
             );
             if (item.tipo === "turno") return tarjeta(item.turno);
-            // Sesión doble o grupal: cada chico con sus acciones (asistencia, cobro y nota son por chico).
+            // Sesión doble o grupal: arriba lo de la sesión entera; abajo cada chico con sus acciones
+            // (asistencia, cobro y nota son por chico; su Mover o Cancelar lo saca de la sesión).
+            const accionesSesion = accionesDeLaSesion(item.turnos);
+            const agendados = agendadosDeLaSesion(item.turnos, item.turnos[0]);
             return (
               <section key={item.grupoId} className="flex flex-col gap-2 rounded-lg border border-dashed p-2" aria-label={nombreSesion(item.turnos.length)}>
                 <p className="px-1 text-sm font-medium">
                   {encabezadoGrupo(item.turnos[0].tipo, item.turnos.length)} · {item.turnos.length} chicos
                 </p>
-                {item.turnos.map(tarjeta)}
+                {(accionesSesion.includes("mover_sesion") || accionesSesion.includes("cancelar_sesion")) && (
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button
+                      variant="outline"
+                      className="h-12"
+                      disabled={guardando || finalizando}
+                      onClick={() => setSesionAbierta({ accion: "mover", grupoId: item.grupoId, turnos: agendados })}
+                    >
+                      <ArrowRightLeft /> Mover sesión
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="h-12 text-destructive"
+                      disabled={guardando || finalizando}
+                      onClick={() => setSesionAbierta({ accion: "cancelar", grupoId: item.grupoId, turnos: agendados })}
+                    >
+                      <Ban /> Cancelar sesión
+                    </Button>
+                  </div>
+                )}
+                {accionesSesion.includes("finalizar_fijo") && (
+                  <Button
+                    variant="ghost"
+                    className="h-12 text-destructive"
+                    disabled={guardando || finalizando}
+                    onClick={() => finalizarFijoDeLaSesion(item.turnos)}
+                  >
+                    <Repeat /> {finalizando ? "Finalizando…" : "Finalizar turno fijo de la sesión"}
+                  </Button>
+                )}
+                {errorSesion && (
+                  <p role="alert" className="px-1 text-sm text-destructive">
+                    {errorSesion}
+                  </p>
+                )}
+                {item.turnos.map((t) => tarjeta(t, true))}
               </section>
             );
           })}
@@ -198,9 +288,9 @@ function FormularioAgendar({
   const [nombreSuelto, setNombreSuelto] = useState<string | null>(null);
   // Sesión doble o grupal: los otros chicos, además de `paciente`.
   const [companeros, setCompaneros] = useState<PacienteParaReservar[]>([]);
-  // Doble o grupal solo al Reservar un paciente con ficha. El turno fijo grupal y reponer en grupo
-  // todavía no (A11b); sin ficha tampoco: cada chico necesita su familia para el cobro.
-  const admiteGrupo = modo === "reservar" && !reponiendo && nombreSuelto === null;
+  // Doble o grupal al Reservar o en un Turno fijo, con pacientes con ficha (cada chico necesita su
+  // familia para el cobro). Reponer una sesión es siempre individual.
+  const admiteGrupo = (modo === "reservar" || modo === "fijo") && !reponiendo && nombreSuelto === null;
   const tiposPaciente = datos.tipos.filter((t) => t.requiere_paciente && (admiteGrupo || t.cupo <= 1));
   const [tipoId, setTipoId] = useState(
     (reponiendo && tiposPaciente.find((t) => t.id === reponiendo.tipoId)?.id) ??
@@ -232,7 +322,7 @@ function FormularioAgendar({
   function guardar() {
     setError(null);
     const base = { fecha, inicio, confirmado: !!confirmar };
-    if (enGrupo && tipo) return guardarGrupo(base, tipo);
+    if (enGrupo && tipo && modo === "reservar") return guardarGrupo(base, tipo);
     const entrada =
       modo === "ocupado"
         ? { ...base, clase: "ocupado", motivo_ocupado: motivo }
@@ -242,9 +332,24 @@ function FormularioAgendar({
     if (modo === "fijo") {
       // El turno fijo espera al servidor: crea los turnos de las próximas 8 semanas.
       if (!paciente) return;
+      // Doble o grupal: una serie por chico, todas juntas (el servidor vuelve a revisar el cupo).
+      if (enGrupo && tipo) {
+        const grupo = validarGrupo(
+          chicos.map((p) => p.id),
+          tipo.cupo,
+        );
+        if (!grupo.ok) return setError(grupo.error);
+      }
+      const companerosIds = enGrupo ? companeros.map((p) => p.id) : [];
       iniciar(async () => {
-        const r = await datos.acciones.crearSerie({ ...base, paciente_id: paciente.id, tipo_turno_id: tipoId, hasta: hasta || null });
-        if (r.ok) alGuardar("Turno fijo creado ✓");
+        const r = await datos.acciones.crearSerie({
+          ...base,
+          paciente_id: paciente.id,
+          companeros: companerosIds,
+          tipo_turno_id: tipoId,
+          hasta: hasta || null,
+        });
+        if (r.ok) alGuardar(enGrupo ? `Turno fijo de la ${nombreSesion(chicos.length).toLowerCase()} creado ✓` : "Turno fijo creado ✓");
         else if ("confirmar" in r) setConfirmarServidor(r.confirmar);
         else setError(r.error);
       });
@@ -455,7 +560,9 @@ function FormularioAgendar({
                 : modo === "ocupado"
                   ? "Marcar ocupado"
                   : modo === "fijo"
-                    ? "Crear turno fijo"
+                    ? enGrupo
+                      ? `Crear turno fijo (${chicos.length} chicos)`
+                      : "Crear turno fijo"
                     : enGrupo
                       ? `Agendar ${nombreSesion(chicos.length).toLowerCase()} (${chicos.length})`
                       : "Agendar"}

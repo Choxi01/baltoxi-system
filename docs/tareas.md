@@ -153,7 +153,7 @@ Detalle y propuestas en `docs/pedidos-daniela-2026-11.md`. La A11 va antes de la
 > sugiere uno libre; selector en Configuración > Tipos de turno), estado en el borde con ✓ / ✕ / "%" y
 > leyenda (`src/lib/agenda/colores.ts`, con tests)._
 
-#### [ ] A11 Sesiones dobles y grupales (A11a hecha, falta A11b)
+#### [x] A11 Sesiones dobles y grupales
 > Según `docs/pedidos-daniela-2026-11.md` (pedido 2), con las respuestas de Daniela. Modelo: **un turno
 > por chico unidos por `grupo_id`** (también en series), así la asistencia y el cargo siguen siendo por
 > paciente. El tipo de turno define el cupo (1 individual, 2 doble, N grupal). Reservar y Turno fijo
@@ -170,8 +170,10 @@ Detalle y propuestas en `docs/pedidos-daniela-2026-11.md`. La A11 va antes de la
 > doble o grupal pide de 2 al cupo de pacientes y crea un turno por chico con el mismo `grupo_id`; en Día y
 > Semana se ven como un solo rectángulo ("Juan + Pedro" o "Grupal · 4", borde ✓ / ✕ / ½) y el panel muestra
 > a cada chico con sus acciones (`src/lib/agenda/grupos.ts`, `estiloGrupo`, caso `agregar_grupo` en
-> `aplicarCambio`, con tests). **A11b**: turno fijo grupal, mover o cancelar el grupo entero y sacar a un
-> solo chico (aunque quede solo)._
+> `aplicarCambio`, con tests). **A11b** (hecha): turno fijo doble o grupal (una serie por chico con el
+> mismo `grupo_id`, que pasa a sus turnos); en la sesión, "Mover sesión" (migración 0014 `mover_grupo`),
+> "Cancelar sesión" (solo "Cancelé yo") y "Finalizar turno fijo de la sesión"; cada chico se saca con sus
+> botones de siempre (Mover, Cancelar, "Sacar del turno fijo"), aunque quede solo._
 
 #### [x] B9 "¿Se cobra?" al cancelar tarde
 > Según `docs/pedidos-daniela-2026-11.md` (pedido 1). En el formulario Cancelar, si la clasificación da

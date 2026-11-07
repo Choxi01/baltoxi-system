@@ -183,6 +183,37 @@ describe("Reservar y Cobrar ahora", () => {
     expect(despues.find((t) => t.id === "b")?.grupoId).toBe("g1");
   });
 
+  it("Mover la sesión entera: los agendados quedan reprogramados y aparecen juntos en el horario nuevo", () => {
+    const antes = [
+      turno("a", "09:00", { grupoId: "g1", serieId: "s1" }),
+      turno("b", "09:00", { grupoId: "g1", serieId: "s2", pacienteId: "paciente-2" }),
+      turno("c", "09:00", { grupoId: "g1", estado: "ausente_con_aviso", pacienteId: "paciente-3" }),
+    ];
+    const despues = aplicarCambio(antes, { tipo: "mover_grupo", ids: ["a", "b"], fecha: MARTES, inicio: "09:45", fin: "10:30" });
+    expect(despues.filter((t) => t.fecha === LUNES).map((t) => [t.id, t.estado])).toEqual([
+      ["a", "reprogramado"],
+      ["b", "reprogramado"],
+      ["c", "ausente_con_aviso"],
+    ]);
+    const nuevos = despues.filter((t) => t.fecha === MARTES);
+    expect(nuevos.map((t) => t.id)).toEqual([idMovido("a"), idMovido("b")]);
+    for (const t of nuevos) expect(t).toMatchObject({ inicio: "09:45", estado: "agendado", serieId: null, grupoId: idMovido("g1"), guardando: true });
+    // El lunes queda libre (el que canceló ya lo había liberado) y el martes ocupa un solo bloque.
+    expect(libres(despues, LUNES)).toBe(3);
+    expect(libres(despues, MARTES)).toBe(2);
+  });
+
+  it("Cancelar la sesión entera: todos quedan «Cancelé yo» y liberan el horario", () => {
+    const antes = [turno("a", "09:00", { grupoId: "g1", porcentajeManual: 50 }), turno("b", "09:00", { grupoId: "g1" }), turno("x", "09:45")];
+    const despues = aplicarCambio(antes, { tipo: "cancelar_grupo", ids: ["a", "b"] });
+    expect(despues.map((t) => [t.id, t.estado, t.porcentajeManual, t.guardando ?? false])).toEqual([
+      ["a", "cancelado_profesional", null, true],
+      ["b", "cancelado_profesional", null, true],
+      ["x", "agendado", null, false],
+    ]);
+    expect(libres(despues)).toBe(2);
+  });
+
   it("Cobrar ahora: el botón se va y el turno queda guardando, sin cambiar el estado", () => {
     const antes = [turno("a", "09:00", { estado: "presente", cobro: { tutorId: "t", tutorNombre: "Tutor Inventado", pendiente: 290000, deudaAnterior: 0 } })];
     expect(aplicarCambio(antes, { tipo: "cobrado", id: "a" })[0]).toMatchObject({ estado: "presente", cobro: undefined, guardando: true });

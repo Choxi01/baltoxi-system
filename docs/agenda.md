@@ -57,27 +57,44 @@ separados por menos de `traslado_domicilio_min`, mostrar aviso (no bloquear).
 Pedido 2 de `docs/pedidos-daniela-2026-11.md`. Respuestas de la profesional: hasta 4 chicos, duran lo
 mismo que una individual, cada familia paga una sesión entera (no se reparte) y la doble nunca es de
 hermanos (son compañeritos, cada uno con su familia y su cobro).
-- **Modelo:** un turno por chico, unidos por `turnos.grupo_id` (migración 0013; también
-  `series_turnos.grupo_id`, para la A11b). Cada chico tiene su propio estado (vino, no vino,
-  canceló) y su propio cargo: el motor de cobro no cambia.
+- **Modelo:** un turno por chico, unidos por `turnos.grupo_id` (migración 0013). Cada chico tiene su
+  propio estado (vino, no vino, canceló) y su propio cargo: el motor de cobro no cambia.
+- **Una sesión** = los turnos con el mismo `grupo_id` **y la misma hora de inicio**: un turno fijo
+  grupal usa el mismo `grupo_id` todas las semanas.
 - **Tipo de turno:** `tipos_turno.cupo` = chicos por sesión (1 individual, 2 doble, 3 o 4 grupal). Se
   elige en Configuración > Tipos de turno ("Chicos por sesión"). Un tipo sin paciente es siempre de 1.
 - **Reservar:** con un tipo de cupo mayor a 1 se eligen entre 2 y `cupo` pacientes distintos, todos con
   ficha ("Agregá otro chico"). Se guardan todos los turnos en un solo insert (o todos o ninguno) con el
   mismo `grupo_id`. Un nombre suelto (sin ficha) o una reposición son siempre individuales.
+- **Turno fijo doble o grupal:** igual que Reservar, con 2 a `cupo` chicos. Se crea una serie por chico
+  (`series_turnos.grupo_id` igual para todas) y cada turno que se materializa copia el `grupo_id` de su
+  serie, así todas las semanas se ven como un solo rectángulo.
 - **Grilla (Día y Semana):** los turnos con el mismo `grupo_id`, fecha y hora de inicio son un solo
   rectángulo. El texto depende de cuántos chicos quedan en ese horario (no del cupo): 2 → "Juan + Pedro"
   (nombres de pila; si se llaman igual, con apellido), 3 o 4 → "Grupal · 3". Si queda uno solo (los
   otros cancelaron), se ve como individual. Relleno del color del tipo; borde e ícono: todos vinieron ✓,
   ninguno vino ✕, mezclado (o algunos sin marcar) "½"; "%" si alguno tiene excepción.
-- **Al tocarlo:** el panel muestra "Sesión doble" o "Sesión grupal" y a cada chico con sus acciones de
-  siempre (asistencia, cobrar, ver expediente, nota de la sesión). Mover o cancelar actúa sobre ese
-  chico solo: si se mueve, el turno nuevo sale del grupo.
+- **Al tocarlo:** el panel muestra "Sesión doble" o "Sesión grupal", arriba las acciones de la sesión
+  entera y abajo a cada chico con sus acciones de siempre (asistencia, cobrar, ver expediente, nota de
+  la sesión).
+- **Acciones de la sesión entera** (con 2 o más chicos agendados; `accionesDeLaSesion`):
+  - **Mover sesión:** los chicos agendados pasan juntos al horario nuevo (función `mover_grupo`,
+    migración 0014): cada original queda reprogramado con su cargo de Gs. 0 y se crea uno nuevo por
+    chico, en un grupo nuevo y fuera del turno fijo. Se ofrece el mensaje de cada familia.
+  - **Cancelar sesión:** solo "Cancelé yo" (todos quedan en «Para reponer», cada uno con su cargo; si
+    algún cargo falla, la sesión entera vuelve a agendado). Si cancela una familia, se cancela solo a
+    su chico.
+  - **Finalizar turno fijo de la sesión:** terminan las series de todos los chicos.
+- **Sacar a un solo chico:** con sus botones de siempre. Mover lo saca de la sesión (el nuevo turno no
+  tiene grupo); Cancelar lo cancela solo a él; "Sacar del turno fijo" termina solo su serie. Los demás
+  siguen, aunque quede uno solo (entonces se ve como individual).
 - **Reportes:** una sesión grupal cuenta una sola vez en las horas trabajadas (persona B,
   `src/lib/cobro/criterios-reportes.ts`).
 - Código: `src/lib/agenda/grupos.ts` (`validarGrupo`, `turnosDelGrupo`, `agruparTurnos`, `textoGrupo`,
-  `encabezadoGrupo`) y `estiloGrupo` en `colores.ts`, con tests.
-- **Falta (A11b):** turno fijo grupal, mover o cancelar el grupo entero y sacar a un solo chico.
+  `encabezadoGrupo`, `agendadosDeLaSesion`, `accionesDeLaSesion`, `nombresDeLaSesion`), `estiloGrupo` en
+  `colores.ts` y los casos `agregar_grupo`, `mover_grupo` y `cancelar_grupo` de `aplicarCambio`, con
+  tests. Servidor: `moverGrupo`, `cancelarGrupo` y `finalizarSeriesDelGrupo` en `acciones-turnos.ts`.
+- La pantalla Hoy sigue mostrando una tarjeta por chico.
 
 ## Acciones
 - Bloque libre → **Reservar** (buscar paciente o escribir un nombre suelto; con un tipo doble o grupal,
@@ -103,6 +120,8 @@ hermanos (son compañeritos, cada uno con su familia y su cobro).
   `useOptimistic` y vive en la pantalla (el formulario se cierra enseguida).
 - **Una acción nueva** sobre un turno: sumá su caso en `aplicarCambio` (con test) y llamala con
   `ejecutar(cambio, () => accion(...), "Aviso ✓")`.
+- Mover y Cancelar la sesión doble o grupal entera también son optimistas (`mover_grupo` y
+  `cancelar_grupo`).
 - Todavía esperan al servidor: crear o finalizar un turno fijo (crean o borran 8 semanas de turnos).
   Registrar un pago desde las pantallas de Cobros también espera (`FormularioPago` sin `enviarOptimista`).
 - Reservar: si otro dispositivo agendó en ese horario justo antes, el turno nuevo desaparece y se
