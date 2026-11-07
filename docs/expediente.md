@@ -78,6 +78,33 @@ profesional (tarea A6).
   un tilde "Leí y acepto". Guarda en `reglamento_firmas` con copia del texto, versión y hash de IP.
 - Los cambios hechos por la familia quedan en auditoría y se marcan "actualizado por la familia" en la
   ficha hasta que la profesional los vea.
+- **Cómo está hecho (tarea A8a):**
+  - `src/app/ficha/[token]/page.tsx` carga todo en el servidor con el cliente admin
+    (`src/lib/ficha/servidor.ts`). Cada consulta pide solo columnas administrativas: el tutor
+    (nombre, contacto, factura), sus hijos (nombre, apellido, nacimiento, colegio) y los otros tutores
+    de esos hijos (solo nombre y parentesco, sin teléfonos).
+  - Guardar (`src/lib/ficha/acciones.ts`): datos del tutor (reutiliza `validarDatosTutor`), de cada
+    hijo (`validarHijoFicha`) y agregar otro tutor con parentesco y WhatsApp (`validarOtroTutor`),
+    que queda vinculado a todos sus hijos.
+  - **Límite de intentos** (`intentos_publicos`, claves con hash): 10 links inválidos por hora por IP
+    (frena a quien prueba links) y 30 guardados por hora por link. Mirar la ficha no cuenta. La IP y
+    el token se guardan solo como hash (HMAC con la service role).
+  - Link inválido, tutor dado de baja o demasiados intentos: la misma pantalla, sin decir cuál.
+    La página no se indexa y no manda el link a otras páginas (`referrer: no-referrer`).
+  - **"Actualizado por la familia"** (migración 0011, `cambios_familia_en` en tutores y pacientes):
+    el expediente muestra un aviso con quién cambió y el botón **Visto**, que lo borra.
+- **Reglamento (tarea A8b):**
+  - Configuración > Reglamento: el texto se edita ahí. Si cambia (sin contar espacios al final), la
+    versión sube y las familias lo tienen que volver a aceptar; la primera carga (sin texto antes) no
+    sube la versión. Si otra pestaña lo cambió mientras tanto, no se pisa (`guardarReglamento`).
+  - En la ficha: el texto, nombre completo, cédula y "Leí y acepto". Se guarda en `reglamento_firmas`
+    una copia exacta del texto, la versión y el hash de la IP. Si la versión cambió mientras la familia
+    leía, no se firma y se le pide recargar. Si ya aceptó la versión actual: "Ya aceptaste el reglamento
+    el 7/11/2026". Sin texto cargado, la ficha no muestra la sección.
+  - En el expediente, pestaña Tutores, cada tutor muestra "Aceptado el … (versión N)", "Aceptó la
+    versión 1; falta aceptar la 2" o "Sin aceptar".
+  - Código: `src/lib/ficha/reglamento.ts` (con tests), `firmarReglamento` en `src/lib/ficha/acciones.ts`,
+    `src/lib/config/acciones-reglamento.ts` y `src/lib/ficha/datos-expediente.ts`.
 
 ## Seguridad
 - Ingreso con email + contraseña + código TOTP (Supabase MFA, app Autenticador del iPhone).

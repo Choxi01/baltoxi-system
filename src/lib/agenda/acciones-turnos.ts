@@ -5,7 +5,7 @@ import { z } from "zod";
 
 import { exigirConsultorio } from "@/lib/auth/servidor";
 import { MES_CERRADO } from "@/lib/cobro/aplicar";
-import { aplicarEstadoTurno } from "@/lib/cobro/aplicar-estado";
+import { aplicarEstadoTurno, montoAvisoTardio } from "@/lib/cobro/aplicar-estado";
 import { hoyEnAsuncion } from "@/lib/fechas";
 import { mensajeParaTurno } from "@/lib/mensajes/datos";
 import type { MensajeListo } from "@/lib/mensajes/tipos";
@@ -13,7 +13,7 @@ import { crearClienteServidor } from "@/lib/supabase/servidor";
 import { ACCIONES_ASISTENCIA, accionesDelTurno, cambiosAsistencia, validarExcepcion, type AccionAsistencia, type Excepcion } from "./asistencia";
 import { diaSemana } from "./bloques";
 import { inicioDeMes } from "./calendario";
-import { datosCancelacion, pendientesDeReponer } from "./cancelacion";
+import { datosCancelacion, pendientesDeReponer, validarNoSeCobra, type MontoAvisoTardio } from "./cancelacion";
 import { listarTurnos, obtenerHorario } from "./datos";
 import { avisosAlAgendar, horaFin, instanteUtc, textosAvisos, validarReserva } from "./reservas";
 import { fechasDeSerie } from "./series";
@@ -229,15 +229,25 @@ export async function moverTurno(id: string, fecha: string, inicio: string): Pro
   return { ok: true };
 }
 
+/** El monto del botón "Se cobra" (B9). Solo lectura: si algo falla, la pregunta va sin el número. */
+export async function montoSiSeCobra(id: string): Promise<MontoAvisoTardio> {
+  if (!esId.safeParse(id).success) return "desconocido";
+  const { consultorio, supabase, turno } = await turnoAgendado(id);
+  if (!turno) return "desconocido";
+  return montoAvisoTardio(supabase, consultorio.id, id);
+}
+
 /**
  * Cancelar un turno con paciente. La familia: se clasifica según cuándo avisó
- * (48 h). La profesional: queda para reponer. Después crea el cargo (aplicarEstadoTurno);
- * si eso falla, el turno vuelve a quedar agendado.
+ * (`horas_aviso_minimas`). La profesional: queda para reponer. `noSeCobra`: en un aviso tardío,
+ * guarda la excepción de 0% (B9). Después crea el cargo (aplicarEstadoTurno); si eso falla, el
+ * turno vuelve a quedar agendado.
  */
 export async function cancelarTurno(
   id: string,
   quien: "familia" | "profesional",
   aviso: { fecha: string; hora: string } | null,
+  noSeCobra: unknown = null,
 ): Promise<ResultadoSimple> {
   if (!esId.safeParse(id).success || (quien !== "familia" && quien !== "profesional")) {
     return { ok: false, error: "Faltan datos para cancelar." };
@@ -245,6 +255,8 @@ export async function cancelarTurno(
   if (quien === "familia" && (!aviso || !esFecha.safeParse(aviso.fecha).success || !esHora.safeParse(aviso.hora).success)) {
     return { ok: false, error: "Elegí cuándo avisó." };
   }
+  const sinCobro = validarNoSeCobra(noSeCobra);
+  if (!sinCobro.ok) return sinCobro;
   const { consultorio, supabase, turno } = await turnoAgendado(id);
   if (!turno || turno.clase !== "turno") return { ok: false, error: "Ese turno ya no se puede cancelar." };
   if (await mesCerrado(supabase, consultorio.id, turno.inicio)) return { ok: false, error: MES_CERRADO };
@@ -252,7 +264,7 @@ export async function cancelarTurno(
   const { data: config } = await supabase.from("consultorios").select("horas_aviso_minimas").eq("id", consultorio.id).single();
   if (!config) return { ok: false, error: NO_SE_PUDO };
   const avisoEn = aviso ? new Date(instanteUtc(aviso.fecha, aviso.hora)) : new Date();
-  const cambios = datosCancelacion(quien, { inicio: new Date(turno.inicio) }, avisoEn, config.horas_aviso_minimas);
+  const cambios = datosCancelacion(quien, { inicio: new Date(turno.inicio) }, avisoEn, config.horas_aviso_minimas, sinCobro.datos);
 
   const { data: cancelados, error } = await supabase
     .from("turnos")
@@ -269,7 +281,7 @@ export async function cancelarTurno(
     // Deshacer: el turno vuelve a como estaba (estaba agendado, sin excepción).
     await supabase
       .from("turnos")
-      .update({ estado: "agendado", aviso_en: null, reponer: false, marcado_en: null })
+      .update({ estado: "agendado", aviso_en: null, reponer: false, marcado_en: null, porcentaje_manual: null, motivo_excepcion: null })
       .eq("consultorio_id", consultorio.id)
       .eq("id", id);
     revalidar();

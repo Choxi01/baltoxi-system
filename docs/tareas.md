@@ -161,14 +161,19 @@ Detalle y propuestas en `docs/pedidos-daniela-2026-11.md`. La A11 va antes de la
 > ("Juan + Pedro" o "Grupal · 4"); la asistencia se marca por chico. Mover y cancelar mueven el grupo
 > entero, con opción de sacar a un solo chico. Tests en `src/lib/agenda`.
 
-> _Antes de empezar, preguntarle a Daniela: ¿cuántos chicos como máximo en una grupal? ¿Duran lo mismo
-> que una individual? ¿La tarifa es por chico, de grupo o una parte? ¿La doble es siempre de hermanos?_
+> _Respuestas de Daniela: máximo 4 chicos en una grupal; duran lo mismo que una individual; cada familia
+> paga una sesión entera, sin repartir el precio; la doble nunca es de hermanos, son compañeritos, así
+> que cada chico tiene su propia familia y su propio cobro (confirma un turno por chico con `grupo_id`)._
 
-#### [ ] B9 "¿Se cobra?" al cancelar tarde
+#### [x] B9 "¿Se cobra?" al cancelar tarde
 > Según `docs/pedidos-daniela-2026-11.md` (pedido 1). En el formulario Cancelar, si la clasificación da
 > `aviso_tardio`, mostrar **Se cobra (Gs. …)** / **No se cobra** (por defecto Se cobra). "No se cobra"
 > guarda `aviso_tardio` con `porcentaje_manual = 0` y motivo ("Excepción al cancelar" por defecto). Es
 > la misma excepción de la B3: `calcularCargoTurno` y los 22 casos no cambian. Test del armado de datos.
+
+> _Hecha. El monto del botón sale de `montoAvisoTardio` (`src/lib/cobro/aplicar-estado.ts`), la misma cuenta
+> que el cargo. Si no hay nada para cobrar, no pregunta; si no se pudo calcular, pregunta sin el número.
+> Funciona en Agenda y en Hoy. El "Otro %" opcional no se hizo: sigue la acción Excepción._
 
 ---
 
@@ -213,11 +218,17 @@ Detalle y propuestas en `docs/pedidos-daniela-2026-11.md`. La A11 va antes de la
 > datos inventados (una foto de 4032×3024 queda en 2000×1500 JPEG); **falta probarla en Safari de iPhone**
 > con la base (cámara, subir, ver y borrar). Para la 8.1: archivos que quedan al borrar un paciente._
 
-#### [ ] A8 Ficha online y reglamento
+#### [x] A8 Ficha online y reglamento
 > Página pública `/ficha/<token>` según `docs/expediente.md`: datos editables del tutor y sus hijos,
 > otros tutores, datos de factura y firma del reglamento. Todo en el servidor con el cliente admin y
 > límite de intentos. Nunca mostrar datos clínicos. En Configuración, editor del reglamento (al guardar
 > sube la versión). En la ficha del paciente, estado de la firma.
+
+> _Dividida en dos PRs. **A8a** (hecha): página `/ficha/<token>` con datos del tutor, hijos, factura y
+> otros tutores; límite de intentos (10 links inválidos por hora por IP, 30 guardados por hora por link);
+> aviso "Actualizado por la familia" con Visto (migración 0011). **A8b** (hecha): reglamento (editor en
+> Configuración que sube la versión, firma en la ficha y estado de cada tutor en el expediente). Probada con
+> datos inventados; **falta probarla con la base y en Safari de iPhone**._
 
 #### [x] B6 Monto del período
 > En "Mensajes de hoy" y en la cuenta del tutor: mensaje de monto de la semana o del mes, total por
@@ -229,10 +240,14 @@ Detalle y propuestas en `docs/pedidos-daniela-2026-11.md`. La A11 va antes de la
 > "Turnos y cuenta" del expediente y `mensajes/datos.ts` pasó a `leerTodo`. **Falta probarla con la base en
 > Safari de iPhone.**_
 
-#### [ ] B7 Para facturar
+#### [x] B7 Para facturar
 > Pantalla Para facturar según `docs/reglas-cobro.md` sección 7: elegir mes de cobro, una fila por
 > familia con todos los datos y botones copiar por campo, descarga en Excel (exceljs), y "Marcar
 > facturado" con número de factura (crea `facturas` y vincula los pagos).
+
+> _Hecha (migración 0012: `crear_factura`, se permite otra factura en el mes y el número no se repite). También
+> se sumó "Ya facturadas" con Deshacer, que no anula la factura en Marangatu. La 0012 ya está aplicada en `pruebas`.
+> **Falta probar Marcar facturado y Deshacer con la base, y Safari de iPhone** (pasos en el PR #35). Los tipos de `crear_factura` se escribieron a mano._
 
 ---
 
@@ -247,7 +262,7 @@ Detalle y propuestas en `docs/pedidos-daniela-2026-11.md`. La A11 va antes de la
 #### [ ] A10 App instalable
 > PWA instalable en iPhone, iPad y Mac (manifest, íconos, pantalla de inicio), sin modo offline.
 
-#### [ ] B8 Reportes
+#### [x] B8 Reportes
 > Pantalla Reportes según `docs/reglas-cobro.md` sección 8: generado hoy y en el mes, proyección,
 > cobrado, pendiente, horas trabajadas, comparación de 6 meses (gráfico de barras). Exportar a Excel.
 > Además (pedido 6 de `docs/pedidos-daniela-2026-11.md`): vista Semana con el generado de cada día

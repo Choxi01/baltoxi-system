@@ -8,8 +8,10 @@ import { obtenerCuentaTutor } from "@/lib/cobro/datos";
 import { formatoGs } from "@/lib/cobro/formato";
 import { borrarDocumento, descartarSubida, linkDocumento, prepararSubida, registrarDocumento } from "@/lib/documentos/acciones";
 import { listarDocumentos } from "@/lib/documentos/datos";
+import { aHoraLocal } from "@/lib/agenda/turnos";
 import { ahoraEnAsuncion } from "@/lib/fechas";
-import { actualizarPaciente } from "@/lib/pacientes/acciones";
+import { estadoReglamentoDeTutores } from "@/lib/ficha/datos-expediente";
+import { actualizarPaciente, marcarCambiosVistos } from "@/lib/pacientes/acciones";
 import { actualizarNota, borrarNota, crearNota, fijarNota } from "@/lib/pacientes/acciones-notas";
 import { NOMBRE_ESTADO, type EstadoPaciente } from "@/lib/pacientes/busqueda";
 import {
@@ -32,6 +34,7 @@ import {
   quitarTutor,
   vincularTutorExistente,
 } from "@/lib/tutores/acciones";
+import { AvisoFamilia } from "./aviso-familia";
 import { FichaDatos, type FilaResumen } from "./ficha-datos";
 import { TabDocumentos } from "./tab-documentos";
 import { DatosNota, TabNotas } from "./tab-notas";
@@ -57,9 +60,10 @@ export default async function PaginaPaciente({ params, searchParams }: PageProps
   ]);
   if (!ficha) notFound();
   const { paciente, tutores } = ficha;
-  const [tarifas, cuentaResponsable] = await Promise.all([
+  const [tarifas, cuentaResponsable, reglamento] = await Promise.all([
     listarTarifas(paciente.tarifa_id),
     paciente.responsable_pago_id ? obtenerCuentaTutor(paciente.responsable_pago_id, hoy) : null,
+    estadoReglamentoDeTutores(tutores.map((t) => t.id)),
   ]);
   const edad = textoEdad(paciente.fecha_nacimiento, hoy);
   const nombreDe = (t: { nombre: string; apellido: string | null }) => `${t.nombre} ${t.apellido ?? ""}`.trim();
@@ -87,6 +91,13 @@ export default async function PaginaPaciente({ params, searchParams }: PageProps
 
   const { fijada, resto } = ordenarNotas(notas);
 
+  // Cambios que hizo la familia desde la ficha online y la profesional todavía no vio.
+  const cambiosFamilia = [
+    ...(paciente.cambios_familia_en ? [{ quien: `datos de ${paciente.nombre}`, en: paciente.cambios_familia_en }] : []),
+    ...tutores.flatMap((t) => (t.cambios_familia_en ? [{ quien: nombreDe(t), en: t.cambios_familia_en }] : [])),
+  ];
+  const ultimoCambio = cambiosFamilia.map((c) => c.en).sort().at(-1);
+
   const proximamente = (tarea: string) => <p className="text-muted-foreground">Próximamente (tarea {tarea}).</p>;
 
   return (
@@ -102,6 +113,14 @@ export default async function PaginaPaciente({ params, searchParams }: PageProps
           {[edad, NOMBRE_ESTADO[paciente.estado as EstadoPaciente]].filter(Boolean).join(" · ")}
         </p>
       </div>
+
+      {ultimoCambio && (
+        <AvisoFamilia
+          cuando={textoFecha(aHoraLocal(ultimoCambio).fecha) ?? ""}
+          quien={cambiosFamilia.map((c) => c.quien).join(", ")}
+          alVer={marcarCambiosVistos.bind(null, paciente.id)}
+        />
+      )}
 
       {fijada && (
         // Nota fijada: siempre visible arriba de la ficha, en todas las pestañas.
@@ -138,6 +157,7 @@ export default async function PaginaPaciente({ params, searchParams }: PageProps
               <TabTutores
                 tutores={tutores}
                 responsableId={paciente.responsable_pago_id}
+                reglamento={reglamento}
                 disponibles={disponibles}
                 agregarNuevo={agregarTutorNuevo.bind(null, paciente.id)}
                 vincularExistente={vincularTutorExistente.bind(null, paciente.id)}

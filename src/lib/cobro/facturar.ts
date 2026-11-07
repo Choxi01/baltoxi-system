@@ -1,11 +1,13 @@
-// Para facturar (docs/reglas-cobro.md sección 7): una factura por familia por mes,
-// sobre los pagos del mes que todavía no tienen factura.
+// Para facturar (docs/reglas-cobro.md sección 7): una fila por familia con los pagos del mes
+// que todavía no tienen factura. Lo normal es una factura por familia por mes.
 // OJO regla de oro 7: el concepto nunca lleva datos clínicos, solo los meses de servicio.
 
+import { finDeMes, inicioDeMes } from "@/lib/agenda/calendario";
 import { MESES } from "@/lib/pacientes/fecha";
 import { iva10 } from "./formato";
+import { NOMBRE_MEDIO } from "./pago";
+import { imputarPagos, type Imputacion } from "./saldo";
 import type { Cargo, MedioPago, Pago } from "./tipos";
-import type { Imputacion } from "./saldo";
 
 export type TutorFactura = {
   id: string;
@@ -20,6 +22,8 @@ export type TutorFactura = {
 
 export type FilaFacturar = {
   tutor_id: string;
+  /** Nombre y apellido del tutor. */
+  tutor: string;
   doc_tipo: "RUC" | "CI" | null;
   documento: string | null;
   razon_social: string;
@@ -94,11 +98,13 @@ export function paraFacturar({
     const monto = suyos.reduce((s, p) => s + p.monto_gs, 0);
     const fechas = suyos.flatMap((p) => cargosDePago.get(p.id) ?? []).flatMap((id) => fechaCargo.get(id) ?? []);
     const meses = textoMeses(fechas);
+    const nombre = [tutor.nombre, tutor.apellido].filter(Boolean).join(" ");
     return {
       tutor_id: tutorId,
+      tutor: nombre,
       doc_tipo: tutor.doc_tipo,
       documento: documentoTutor(tutor),
-      razon_social: tutor.razon_social || [tutor.nombre, tutor.apellido].filter(Boolean).join(" "),
+      razon_social: tutor.razon_social || nombre,
       email: tutor.email,
       monto,
       iva: iva10(monto),
@@ -107,4 +113,63 @@ export function paraFacturar({
       pago_ids: suyos.map((p) => p.id),
     };
   });
+}
+
+/**
+ * Las filas del mes a partir de toda la historia del consultorio, ordenadas por tutor.
+ * La imputación se hace tutor por tutor: con todos juntos, los pagos de una familia
+ * cubrirían cargos de otra. `pagos` y `cargos` tienen que ser TODOS (también los ya
+ * facturados y los de otros meses), porque FIFO arranca desde el cargo más viejo.
+ */
+export function armarParaFacturar({
+  mes,
+  pagos,
+  cargos,
+  tutores,
+  conceptoFactura,
+}: {
+  mes: string;
+  pagos: Pago[];
+  cargos: Cargo[];
+  tutores: TutorFactura[];
+  conceptoFactura: string;
+}): FilaFacturar[] {
+  const delTutor = <T extends { tutor_id: string }>(xs: T[], id: string) => xs.filter((x) => x.tutor_id === id);
+  const imputacion = [...new Set(pagos.map((p) => p.tutor_id))].flatMap((id) =>
+    imputarPagos({ cargos: delTutor(cargos, id), pagos: delTutor(pagos, id) }),
+  );
+  return paraFacturar({ mes, pagos, imputacion, cargos, tutores, conceptoFactura }).sort((a, b) => a.tutor.localeCompare(b.tutor, "es"));
+}
+
+/** "Efectivo, Transferencia". */
+export function textoMedios(medios: MedioPago[]): string {
+  return medios.map((m) => NOMBRE_MEDIO[m] ?? m).join(", ");
+}
+
+/** Lee el mes de la URL ("AAAA-MM") y devuelve su primer día. null si no es un mes o todavía no empezó. */
+export function mesValido(valor: unknown, hoy: string): string | null {
+  if (typeof valor !== "string" || !/^\d{4}-(0[1-9]|1[0-2])$/.test(valor)) return null;
+  const mes = `${valor}-01`;
+  return mes <= inicioDeMes(hoy) ? mes : null;
+}
+
+/** ¿Todavía pueden entrar pagos en ese mes? (la lista se hace el último día del mes). */
+export function mesSinTerminar(mes: string, hoy: string): boolean {
+  return hoy < finDeMes(mes);
+}
+
+/** Número de factura "001-001-0000123". Se acepta sin guiones (es más fácil de escribir en el iPhone). */
+export function validarNumeroFactura(texto: string): { ok: true; numero: string } | { ok: false; error: string } {
+  const partes = /^(\d{3})-?(\d{3})-?(\d{7})$/.exec(texto.trim());
+  if (!partes) return { ok: false, error: "Poné el número completo, por ejemplo 001-001-0000123." };
+  return { ok: true, numero: `${partes[1]}-${partes[2]}-${partes[3]}` };
+}
+
+/** Deshacer borra el registro de la app: la factura sigue existiendo en Marangatu. */
+export function textoDeshacer(numero: string): string {
+  return `¿Deshacer la factura ${numero}?\n\nEsto no anula la factura en Marangatu: solo la saca de la app.\n\nLos pagos vuelven a la lista para facturar.`;
+}
+
+export function nombreExcel(mes: string): string {
+  return `para-facturar-${mes.slice(0, 7)}.xlsx`;
 }

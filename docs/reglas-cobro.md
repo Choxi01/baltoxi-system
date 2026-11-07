@@ -10,7 +10,7 @@ Todo caso de esta página tiene su test.
 | `agendado` | No pasó o no se marcó | Sin cargo |
 | `presente` | Vino | 100% |
 | `ausente_con_aviso` | Canceló con `horas_aviso_minimas` o más (Daniela usa 24 h) | 0% |
-| `aviso_tardio` | Canceló con menos de `horas_aviso_minimas` | 100% (al cancelar se pregunta "¿Se cobra?", tarea B9) |
+| `aviso_tardio` | Canceló con menos de `horas_aviso_minimas` | 100% (al cancelar se pregunta "¿Se cobra?", sección 3) |
 | `ausente_sin_aviso` | No vino ni avisó | 100% |
 | `cancelado_profesional` | Canceló la profesional (queda `reponer = true`) | 0% |
 | `reprogramado` | Se movió a otro horario; se cobra el turno nuevo | 0% |
@@ -38,6 +38,12 @@ regla del paciente para ese estado
 regla general del consultorio
 ninguna -> error (no inventar)
 ```
+
+**"¿Se cobra?" al cancelar tarde.** Si la familia avisa tarde, el formulario Cancelar pregunta
+**Se cobra (Gs. …)** / **No se cobra** (por defecto, Se cobra). El monto sale de la misma cuenta que el
+cargo. Si no hay nada para cobrar (regla en 0% o tipo sin cobro), no pregunta. "No se cobra" guarda
+`aviso_tardio` con `porcentaje_manual = 0` y motivo ("Excepción al cancelar" si no se escribe otro): es
+la misma excepción de siempre, y después se puede cambiar o quitar con la acción Excepción.
 
 ## 4. Cargo de un turno
 - Solo `clase = 'turno'` cuyo tipo tenga `genera_cobro = true`.
@@ -74,14 +80,27 @@ ninguna -> error (no inventar)
   IVA 10% (`Math.round(monto / 11)`), medios de pago, concepto.
 - Concepto: `"{concepto_factura} – sesiones de {meses}"`, donde `{meses}` sale de la imputación: los meses
   de servicio de los cargos que cubrieron esos pagos (ej. "septiembre 2026" o "septiembre y octubre 2026").
-- Al cargar el número de factura: crear `facturas` y poner `factura_id` en esos pagos.
+- Al cargar el número de factura (`001-001-0000123`, no se repite en el consultorio): crear `facturas` y poner `factura_id` en esos pagos, todo junto (función `crear_factura`, migración 0012). `emitida_en` = día en Asunción.
+- Si una familia paga después de facturar, esos pagos forman una fila nueva con el aviso "Ya tiene factura este mes" y llevan otra factura. Lo normal sigue siendo una por familia y mes.
+- Deshacer saca la factura de la app y sus pagos vuelven a la lista. **No la anula en Marangatu**, y la confirmación lo dice.
 
 ## 8. Reportes
 - Generado (día / mes) = suma de cargos con esa fecha.
 - Proyección del mes = generado del mes + Σ(monto base de turnos `agendado` que quedan en el mes) ×
   (1 − tasa de ausencias sin cobro de los últimos 3 meses). Con menos de 20 turnos de historia, tasa 0.
+  - "Que quedan" = clase `turno`, tipo con `genera_cobro`, desde hoy inclusive hasta fin de mes. Los de
+    días pasados sin marcar no entran y la pantalla avisa cuántos son. Un paciente sin tarifa tampoco
+    entra, y también se avisa. Los meses que ya terminaron no muestran proyección.
+  - "Últimos 3 meses" = los 3 meses calendario anteriores al mes del reporte. Solo cuentan los turnos
+    con cargo: un tipo que no genera cobro no es una ausencia.
 - Cobrado del mes = suma de pagos con fecha en el mes.
-- Horas trabajadas = duración de turnos `presente` + bloques `ocupado` de tipo reunión o colegio.
+- Pendiente del mes = lo generado en ese mes que todavía no se pagó, con la imputación FIFO de la
+  sección 5. Puede no coincidir con el total de Cobros, que suma las deudas de todos los meses.
+- Horas trabajadas = duración de turnos `presente` + bloques `ocupado` de reunión o colegio, solo los
+  que ya terminaron. "Marcar ocupado" no guarda tipo de turno: se reconocen por las palabras "reunión"
+  o "colegio" en el motivo. El motivo se usa solo para esto: no se muestra ni se exporta.
+- **Sin confirmar por Daniela:** los criterios de horas trabajadas y de ausencias sin cobro. Se cambian
+  en `src/lib/cobro/criterios-reportes.ts`.
 
 ## Casos de prueba obligatorios
 Datos: Regular Gs. 290.000, Económica 280.000, Domicilio 350.000, Evaluación 280.000; aviso mínimo 48 h (solo para los

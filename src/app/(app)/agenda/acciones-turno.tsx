@@ -10,18 +10,20 @@ import type { ResultadoAgendar, ResultadoSimple } from "@/lib/agenda/acciones-tu
 import { validarExcepcion, type AccionAsistencia, type Excepcion } from "@/lib/agenda/asistencia";
 import { aHora, aMinutos, horaCorta } from "@/lib/agenda/bloques";
 import { fechasEntre, sumarDias, tituloDia } from "@/lib/agenda/calendario";
-import { datosCancelacion, type QuienCancela } from "@/lib/agenda/cancelacion";
+import { datosCancelacion, mostrarSeCobra, MOTIVO_AL_CANCELAR, validarNoSeCobra, type MontoAvisoTardio, type NoSeCobra, type QuienCancela } from "@/lib/agenda/cancelacion";
 import { horaFin, instanteUtc } from "@/lib/agenda/reservas";
 import { aHoraLocal, NOMBRE_ESTADO_TURNO, textoTurno, type TurnoAgenda } from "@/lib/agenda/turnos";
 import type { ResultadoPago } from "@/lib/cobro/acciones-pagos";
 import { clasificarCancelacion } from "@/lib/cobro/cancelacion";
+import { formatoGs } from "@/lib/cobro/formato";
 import { cn } from "@/lib/utils";
 import type { Ejecutar } from "./turnos-optimistas";
 
 export type AccionesDeTurno = {
   libresDelDia: (fecha: string) => Promise<{ ok: true; libres: string[]; bloqueo: string | null } | { ok: false; error: string }>;
   moverTurno: (id: string, fecha: string, inicio: string) => Promise<ResultadoSimple>;
-  cancelarTurno: (id: string, quien: QuienCancela, aviso: { fecha: string; hora: string } | null) => Promise<ResultadoSimple>;
+  montoSiSeCobra: (id: string) => Promise<MontoAvisoTardio>;
+  cancelarTurno: (id: string, quien: QuienCancela, aviso: { fecha: string; hora: string } | null, noSeCobra?: NoSeCobra | null) => Promise<ResultadoSimple>;
   quitarTurno: (id: string) => Promise<ResultadoSimple>;
   marcarAsistencia: (id: string, accion: AccionAsistencia, excepcion?: Excepcion | null) => Promise<ResultadoSimple>;
   crearSerie: (entrada: unknown) => Promise<ResultadoAgendar>;
@@ -149,7 +151,7 @@ export function FormularioMover({
   );
 }
 
-/** Cancelar: quién canceló y, si fue la familia, cuándo avisó. */
+/** Cancelar: quién canceló y, si fue la familia, cuándo avisó y (si avisó tarde) si se cobra. */
 export function FormularioCancelar({
   turno,
   hoy,
@@ -173,6 +175,25 @@ export function FormularioCancelar({
     return aHora(ahora - (ahora % 15));
   });
 
+  // "¿Se cobra?" (B9). Por defecto sí; el monto lo calcula el servidor.
+  const [monto, setMonto] = useState<MontoAvisoTardio | undefined>(undefined);
+  const [seCobra, setSeCobra] = useState(true);
+  const [motivo, setMotivo] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [buscandoMonto, iniciarMonto] = useTransition();
+
+  function elegirQuien(valor: QuienCancela) {
+    setQuien(valor);
+    if (valor !== "familia" || monto !== undefined || buscandoMonto) return;
+    iniciarMonto(async () => {
+      try {
+        setMonto(await acciones.montoSiSeCobra(turno.id));
+      } catch {
+        setMonto("desconocido");
+      }
+    });
+  }
+
   // Días para elegir: dos semanas antes del turno (o de hoy) hasta hoy.
   const desde = sumarDias(turno.fecha < hoy ? turno.fecha : hoy, -14);
   const dias = fechasEntre(desde, hoy).reverse();
@@ -184,20 +205,28 @@ export function FormularioCancelar({
     horasAvisoMinimas,
   });
 
+  // Mientras llega el monto la pregunta ya se ve (sin el número): así no se confirma sin verla.
+  const preguntar = mostrarSeCobra(quien, clasificacion, monto);
+
   function confirmar() {
     if (!quien) return;
+    setError(null);
+    const v = validarNoSeCobra(preguntar && !seCobra ? { motivo } : null);
+    if (!v.ok) return setError(v.error);
+    const noSeCobra = v.datos;
     const aviso = quien === "familia" ? { fecha: avisoFecha, hora: avisoHora } : null;
-    // El mismo estado que va a guardar el servidor (con aviso, aviso tardío o "Cancelé yo").
-    const { estado } = datosCancelacion(
+    // Lo mismo que va a guardar el servidor (con aviso, aviso tardío o "Cancelé yo").
+    const { estado, porcentaje_manual: porcentaje } = datosCancelacion(
       quien,
       { inicio: new Date(instanteUtc(turno.fecha, turno.inicio)) },
       aviso ? new Date(instanteUtc(aviso.fecha, aviso.hora)) : new Date(),
       horasAvisoMinimas,
+      noSeCobra,
     );
     ejecutar(
-      { tipo: "cancelar", id: turno.id, estado },
-      () => acciones.cancelarTurno(turno.id, quien, aviso),
-      quien === "profesional" ? "Cancelado ✓ Quedó en «Para reponer»." : "Cancelado ✓",
+      { tipo: "cancelar", id: turno.id, estado, porcentaje },
+      () => acciones.cancelarTurno(turno.id, quien, aviso, noSeCobra),
+      quien === "profesional" ? "Cancelado ✓ Quedó en «Para reponer»." : noSeCobra ? "Cancelado ✓ No se cobra." : "Cancelado ✓",
     );
   }
 
@@ -217,7 +246,7 @@ export function FormularioCancelar({
             key={valor}
             type="button"
             aria-pressed={quien === valor}
-            onClick={() => setQuien(valor)}
+            onClick={() => elegirQuien(valor)}
             className={cn("h-12 rounded-lg border px-2 text-sm active:bg-accent", quien === valor && "border-primary bg-primary text-primary-foreground")}
           >
             {texto}
@@ -251,10 +280,52 @@ export function FormularioCancelar({
           </p>
         </fieldset>
       )}
+      {preguntar && (
+        <fieldset className="flex flex-col gap-2">
+          <legend className="mb-2 text-sm font-medium">¿Se cobra?</legend>
+          <div className="grid grid-cols-2 gap-2">
+            {(
+              [
+                [true, typeof monto === "number" ? `Se cobra (${formatoGs(monto)})` : "Se cobra"],
+                [false, "No se cobra"],
+              ] as const
+            ).map(([valor, texto]) => (
+              <button
+                key={String(valor)}
+                type="button"
+                aria-pressed={seCobra === valor}
+                onClick={() => setSeCobra(valor)}
+                className={cn("min-h-12 rounded-lg border px-2 py-1 text-sm active:bg-accent", seCobra === valor && "border-primary bg-primary text-primary-foreground")}
+              >
+                {texto}
+              </button>
+            ))}
+          </div>
+          {!seCobra && (
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="cancelar-motivo">Motivo (opcional)</Label>
+              <Input
+                id="cancelar-motivo"
+                value={motivo}
+                onChange={(e) => setMotivo(e.target.value)}
+                placeholder={MOTIVO_AL_CANCELAR}
+                maxLength={200}
+                autoComplete="off"
+              />
+              <p className="text-xs text-muted-foreground">Sin datos clínicos: este texto se guarda junto al cobro.</p>
+            </div>
+          )}
+        </fieldset>
+      )}
       {quien === "profesional" && (
         <p className="rounded-md bg-muted px-3 py-2 text-sm">Va a aparecer en «Para reponer este mes» hasta que le des otro turno.</p>
       )}
 
+      {error && (
+        <p role="alert" className="text-sm text-destructive">
+          {error}
+        </p>
+      )}
       <div className="flex flex-col gap-2">
         {quien && (
           <Button size="touch" variant="destructive" onClick={confirmar}>

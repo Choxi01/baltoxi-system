@@ -15,7 +15,9 @@ import {
   guardarReglas,
   quitarExcepcion,
 } from "@/lib/config/acciones";
+import { guardarReglamentoConsultorio } from "@/lib/config/acciones-reglamento";
 import { listarTiposTurno, listarTodasLasTarifas, obtenerConsultorio, obtenerReglas } from "@/lib/config/datos";
+import { obtenerReglamento } from "@/lib/config/datos-reglamento";
 import { hoyEnAsuncion } from "@/lib/fechas";
 import { guardarPlantilla } from "@/lib/mensajes/acciones";
 import { listarPlantillas } from "@/lib/mensajes/datos";
@@ -23,6 +25,7 @@ import { Feriados } from "./feriados";
 import { Horario } from "./horario";
 import { TabConsultorio } from "./tab-consultorio";
 import { TabMensajes } from "./tab-mensajes";
+import { TabReglamento } from "./tab-reglamento";
 import { TabReglas } from "./tab-reglas";
 import { TabTarifas } from "./tab-tarifas";
 import { TabTiposTurno } from "./tab-tipos-turno";
@@ -31,13 +34,14 @@ export const metadata: Metadata = { title: "Configuración · Consultorio" };
 
 export default async function Pagina({ searchParams }: PageProps<"/config">) {
   const { pestana } = await searchParams;
-  const [consultorio, tarifas, { duracion, tramos, bloqueos }, tipos, reglas, plantillas] = await Promise.all([
+  const [consultorio, tarifas, { duracion, tramos, bloqueos }, tipos, reglas, plantillas, reglamento] = await Promise.all([
     obtenerConsultorio(),
     listarTodasLasTarifas(),
     obtenerHorario(),
     listarTiposTurno(),
     obtenerReglas(),
     listarPlantillas(),
+    obtenerReglamento(),
   ]);
 
   return (
@@ -111,6 +115,18 @@ export default async function Pagina({ searchParams }: PageProps<"/config">) {
             id: "mensajes",
             titulo: "Mensajes",
             contenido: <TabMensajes plantillas={plantillas} guardar={guardarPlantilla} />,
+          },
+          {
+            id: "reglamento",
+            titulo: "Reglamento",
+            contenido: (
+              <TabReglamento
+                texto={reglamento.texto}
+                version={reglamento.version}
+                firmasVersionActual={reglamento.firmasVersionActual}
+                guardar={guardarReglamentoConsultorio}
+              />
+            ),
           },
         ]}
       />

@@ -715,6 +715,7 @@ export type Database = {
         Row: {
           apellido: string | null
           colegio: string | null
+          cambios_familia_en: string | null
           consultorio_id: string
           creado_en: string
           derivado_por: string | null
@@ -731,6 +732,7 @@ export type Database = {
         Insert: {
           apellido?: string | null
           colegio?: string | null
+          cambios_familia_en?: string | null
           consultorio_id: string
           creado_en?: string
           derivado_por?: string | null
@@ -747,6 +749,7 @@ export type Database = {
         Update: {
           apellido?: string | null
           colegio?: string | null
+          cambios_familia_en?: string | null
           consultorio_id?: string
           creado_en?: string
           derivado_por?: string | null
@@ -1309,6 +1312,7 @@ export type Database = {
         Row: {
           activo: boolean
           apellido: string | null
+          cambios_familia_en: string | null
           consultorio_id: string
           creado_en: string
           doc_numero: string | null
@@ -1324,6 +1328,7 @@ export type Database = {
         Insert: {
           activo?: boolean
           apellido?: string | null
+          cambios_familia_en?: string | null
           consultorio_id: string
           creado_en?: string
           doc_numero?: string | null
@@ -1339,6 +1344,7 @@ export type Database = {
         Update: {
           activo?: boolean
           apellido?: string | null
+          cambios_familia_en?: string | null
           consultorio_id?: string
           creado_en?: string
           doc_numero?: string | null
@@ -1385,6 +1391,17 @@ export type Database = {
     }
     Functions: {
       crear_consultorio: { Args: { p_nombre: string }; Returns: string }
+      crear_factura: {
+        Args: {
+          p_concepto: string
+          p_emitida_en: string
+          p_mes: string
+          p_numero: string
+          p_pagos: string[]
+          p_tutor: string
+        }
+        Returns: string
+      }
       mis_consultorios: { Args: never; Returns: string[] }
       mover_turno: {
         Args: { p_fin: string; p_inicio: string; p_turno: string }

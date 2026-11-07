@@ -61,6 +61,20 @@ describe("aplicarCambio", () => {
     expect(libres(despues)).toBe(2);
   });
 
+  it("Cancelar con No se cobra: la tarjeta ya muestra la excepción de 0%", () => {
+    const antes = [turno("a", "09:00")];
+    expect(aplicarCambio(antes, { tipo: "cancelar", id: "a", estado: "aviso_tardio", porcentaje: 0 })[0]).toMatchObject({
+      estado: "aviso_tardio",
+      porcentajeManual: 0,
+      guardando: true,
+    });
+  });
+
+  it("Cancelar con Se cobra: sin excepción", () => {
+    const antes = [turno("a", "09:00")];
+    expect(aplicarCambio(antes, { tipo: "cancelar", id: "a", estado: "aviso_tardio" })[0].porcentajeManual).toBeNull();
+  });
+
   it("Quitar: el turno desaparece", () => {
     const antes = [turno("a", "09:00", { clase: "reservado", pacienteId: null }), turno("b", "09:45")];
     expect(aplicarCambio(antes, { tipo: "quitar", id: "a" }).map((t) => t.id)).toEqual(["b"]);
