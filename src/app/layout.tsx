@@ -14,6 +14,8 @@ const publicSans = Public_Sans({ subsets: ["latin"], variable: "--font-public-sa
 export const metadata: Metadata = {
   title: "Consultorio",
   description: "Agenda, expediente y cobros del consultorio",
+  // iPhone y iPad: al agregarla a la pantalla de inicio abre sin la barra de Safari.
+  appleWebApp: { capable: true, title: "Consultorio", statusBarStyle: "default" },
 };
 
 export const viewport: Viewport = {

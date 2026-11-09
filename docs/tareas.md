@@ -269,8 +269,13 @@ Detalle y propuestas en `docs/pedidos-daniela-2026-11.md`. La A11 va antes de la
 > la copia semanal de los archivos del bucket `documentos` (script con el cliente admin que lista y
 > descarga todo, comprime y cifra). Explicame cómo restaurar.
 
-#### [ ] A10 App instalable
+#### [x] A10 App instalable
 > PWA instalable en iPhone, iPad y Mac (manifest, íconos, pantalla de inicio), sin modo offline.
+
+> _Hecha, sin migración. `src/app/manifest.ts` (abre en `/hoy`, pantalla completa, colores del tema), íconos
+> dibujados con `next/og` en `src/components/app/icono-app.tsx` (C blanca sobre turquesa; si hay logo, se
+> cambia ahí) y `appleWebApp` en el layout. El proxy deja pasar el manifest y los íconos sin sesión. Sin
+> pantallas de arranque de iOS (mientras carga se ve el fondo). **Falta instalarla en iPhone, iPad y Mac.**_
 
 #### [x] B8 Reportes
 > Pantalla Reportes según `docs/reglas-cobro.md` sección 8: generado hoy y en el mes, proyección,
