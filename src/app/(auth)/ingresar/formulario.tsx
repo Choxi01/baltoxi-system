@@ -1,17 +1,14 @@
 "use client";
 
-import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { mensajeErrorIngreso } from "@/lib/auth/ingreso";
 
 // Formulario "de verdad" (method="post"): el navegador lo envía y cambia de
 // página, así Safari reconoce el login y ofrece guardar la contraseña.
-export function FormularioIngreso() {
-  const error = mensajeErrorIngreso(useSearchParams().get("error"));
+export function FormularioIngreso({ error }: { error: string | null }) {
   const [enviando, setEnviando] = useState(false);
 
   // Si vuelve con el botón "atrás", Safari restaura la página tal cual:
