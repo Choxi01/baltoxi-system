@@ -4,6 +4,9 @@ import { notFound } from "next/navigation";
 import { ChevronLeft, Pin } from "lucide-react";
 
 import { Pestanas } from "@/components/app/pestanas";
+import { crearAnamnesis, guardarRespuestas } from "@/lib/anamnesis/acciones-anamnesis";
+import { listarAnamnesis } from "@/lib/anamnesis/datos-anamnesis";
+import { listarPlantillasAnamnesis } from "@/lib/anamnesis/datos-plantillas";
 import { obtenerCuentaTutor } from "@/lib/cobro/datos";
 import { formatoGs } from "@/lib/cobro/formato";
 import { borrarDocumento, descartarSubida, linkDocumento, prepararSubida, registrarDocumento } from "@/lib/documentos/acciones";
@@ -35,6 +38,7 @@ import {
   vincularTutorExistente,
 } from "@/lib/tutores/acciones";
 import { AvisoFamilia } from "./aviso-familia";
+import { TabAnamnesis } from "./tab-anamnesis";
 import { FichaDatos, type FilaResumen } from "./ficha-datos";
 import { TabDocumentos } from "./tab-documentos";
 import { DatosNota, TabNotas } from "./tab-notas";
@@ -49,7 +53,7 @@ export default async function PaginaPaciente({ params, searchParams }: PageProps
 
   const ahora = ahoraEnAsuncion();
   const hoy = ahora.fecha;
-  const [ficha, disponibles, notas, documentos, turnos, sesion] = await Promise.all([
+  const [ficha, disponibles, notas, documentos, turnos, sesion, anamnesis, plantillas] = await Promise.all([
     obtenerPaciente(id),
     listarTutoresParaVincular(id),
     listarNotas(id),
@@ -57,6 +61,8 @@ export default async function PaginaPaciente({ params, searchParams }: PageProps
     listarTurnosPaciente(id),
     // "Agregar nota de esta sesión" (agenda y Hoy): ?pestana=notas&turno=<id>
     typeof turno === "string" ? obtenerTurnoParaNota(turno, id) : null,
+    listarAnamnesis(id),
+    listarPlantillasAnamnesis(),
   ]);
   if (!ficha) notFound();
   const { paciente, tutores } = ficha;
@@ -97,8 +103,6 @@ export default async function PaginaPaciente({ params, searchParams }: PageProps
     ...tutores.flatMap((t) => (t.cambios_familia_en ? [{ quien: nombreDe(t), en: t.cambios_familia_en }] : [])),
   ];
   const ultimoCambio = cambiosFamilia.map((c) => c.en).sort().at(-1);
-
-  const proximamente = (tarea: string) => <p className="text-muted-foreground">Próximamente (tarea {tarea}).</p>;
 
   return (
     <div className="flex flex-col gap-4">
@@ -167,7 +171,19 @@ export default async function PaginaPaciente({ params, searchParams }: PageProps
               />
             ),
           },
-          { id: "anamnesis", titulo: "Anamnesis", contenido: proximamente("A6") },
+          {
+            id: "anamnesis",
+            titulo: "Anamnesis",
+            contenido: (
+              <TabAnamnesis
+                pacienteId={paciente.id}
+                anamnesis={anamnesis}
+                plantillas={plantillas.filter((p) => p.activa && p.estructura).map((p) => ({ id: p.id, nombre: p.nombre }))}
+                crear={crearAnamnesis.bind(null, paciente.id)}
+                guardar={guardarRespuestas.bind(null, paciente.id)}
+              />
+            ),
+          },
           {
             id: "notas",
             titulo: "Notas",

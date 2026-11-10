@@ -202,8 +202,9 @@ Detalle y propuestas en `docs/pedidos-daniela-2026-11.md`. La A11 va antes de la
 > él la primera plantilla en formato JSON (sin datos de pacientes) y cargala en el seed.
 
 > _En partes. **A6a hecha**: editor de plantillas en Configuración > Anamnesis (ver `docs/expediente.md`).
-> Falta **A6b** (pestaña Anamnesis del expediente: crear con copia de la estructura, formulario con guardado
-> automático, vista para imprimir) y **A6c** (primera plantilla a partir del Word, en el seed)._
+> **A6b hecha**: pestaña Anamnesis del expediente (crear con copia de la estructura, formulario con guardado
+> automático, varias por paciente, vista para leer e imprimir), sin migración. **Falta probarla con la base y
+> en Safari de iPhone.** Falta **A6c** (primera plantilla a partir del Word, en el seed)._
 
 #### [x] B5 Plantillas y bandeja de mensajes
 > Según `docs/mensajes.md`: editor de plantillas con variables y vista previa; función pura
