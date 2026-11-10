@@ -84,8 +84,11 @@ const GRIS = "border border-border bg-muted text-muted-foreground";
 const BORDE_VINO = "border-2 border-emerald-600 dark:border-emerald-400";
 const BORDE_NO_VINO = "border-2 border-rose-600 dark:border-rose-400";
 
-/** Ícono del estado: ✓ vino, ✕ no vino. Agendado no lleva. */
-export type MarcaEstado = "vino" | "no_vino" | null;
+/**
+ * Ícono del estado: ✓ vino, ✕ no vino. Agendado no lleva.
+ * `mezcla` (½): solo en una sesión doble o grupal donde los chicos no tienen todos la misma marca.
+ */
+export type MarcaEstado = "vino" | "no_vino" | "mezcla" | null;
 
 export type EstiloTurno = { clases: string; marca: MarcaEstado; excepcion: boolean };
 
@@ -97,6 +100,23 @@ export function estiloTurno(t: { clase: string; estado: string; color: string | 
   if (t.estado === "presente") return { clases: `${BORDE_VINO} ${color.relleno}`, marca: "vino", excepcion };
   if (t.estado === "ausente_sin_aviso") return { clases: `${BORDE_NO_VINO} ${color.relleno}`, marca: "no_vino", excepcion };
   return { clases: `border ${color.borde} ${color.relleno}`, marca: null, excepcion };
+}
+
+/**
+ * Una sesión doble o grupal (un solo rectángulo, src/lib/agenda/grupos.ts): relleno del tipo y
+ * borde según la asistencia de los chicos. Todos vinieron: verde y ✓. Ninguno vino: rojo y ✕.
+ * Algunos marcados y otros no (o distinto): borde normal del tipo y "½". Nadie marcado: como agendado.
+ * "%" si alguno tiene excepción de cobro.
+ */
+export function estiloGrupo(turnos: { clase: string; estado: string; color: string | null; porcentajeManual: number | null }[]): EstiloTurno {
+  const estilos = turnos.map(estiloTurno);
+  const excepcion = estilos.some((e) => e.excepcion);
+  const marcas = new Set(estilos.map((e) => e.marca));
+  if (estilos.length === 0) return { clases: GRIS, marca: null, excepcion: false };
+  // Todos con la misma marca: el estilo de cualquiera de ellos.
+  if (marcas.size === 1) return { ...estilos[0], excepcion };
+  const agendado = estiloTurno({ ...turnos[0], estado: "agendado" });
+  return { clases: agendado.clases, marca: "mezcla", excepcion };
 }
 
 /** Leyenda de la grilla: los tipos de turno que aparecen (sin repetir), por nombre. */

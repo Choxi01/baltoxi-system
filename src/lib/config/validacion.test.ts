@@ -5,6 +5,7 @@ import {
   validarExcepcion,
   validarReglas,
   validarTarifa,
+  nombreCupo,
   validarTipoTurno,
 } from "./validacion";
 
@@ -94,6 +95,12 @@ describe("validarTarifa", () => {
 const tipo = (datos: Record<string, string> = {}) =>
   formulario({ nombre: "Sesión", modalidad: "consultorio", color: "durazno", tarifa_id: "", genera_cobro: "on", requiere_paciente: "on", ...datos });
 
+describe("nombreCupo", () => {
+  it("individual, doble y grupal", () => {
+    expect([1, 2, 3, 4].map(nombreCupo)).toEqual(["Individual", "Doble", "Grupal de 3", "Grupal de 4"]);
+  });
+});
+
 describe("validarTipoTurno", () => {
   it("tarifa vacía es la del paciente y los checkboxes se leen", () => {
     expect(validarTipoTurno(tipo())).toEqual({
@@ -106,8 +113,26 @@ describe("validarTipoTurno", () => {
         cobra_en_el_momento: false,
         genera_cobro: true,
         requiere_paciente: true,
+        cupo: 1,
       },
     });
+  });
+
+  it("lee los chicos por sesión: 2 doble, 4 grupal", () => {
+    const doble = validarTipoTurno(tipo({ cupo: "2" }));
+    expect(doble.ok && doble.datos.cupo).toBe(2);
+    const grupal = validarTipoTurno(tipo({ cupo: "4" }));
+    expect(grupal.ok && grupal.datos.cupo).toBe(4);
+  });
+
+  it.each(["0", "5", "2.5", "dos"])("rechaza %s chicos por sesión", (cupo) => {
+    const r = validarTipoTurno(tipo({ cupo }));
+    expect(!r.ok && r.errores.cupo).toBe("Elegí cuántos chicos por sesión (1 a 4).");
+  });
+
+  it("un tipo sin paciente no puede ser doble ni grupal", () => {
+    const r = validarTipoTurno(tipo({ requiere_paciente: "", genera_cobro: "", cupo: "2" }));
+    expect(!r.ok && r.errores.cupo).toBe("Un tipo sin paciente es de un solo turno: dejalo en 1.");
   });
 
   it("acepta una tarifa fija", () => {

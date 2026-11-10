@@ -153,7 +153,7 @@ Detalle y propuestas en `docs/pedidos-daniela-2026-11.md`. La A11 va antes de la
 > sugiere uno libre; selector en Configuración > Tipos de turno), estado en el borde con ✓ / ✕ / "%" y
 > leyenda (`src/lib/agenda/colores.ts`, con tests)._
 
-#### [ ] A11 Sesiones dobles y grupales
+#### [x] A11 Sesiones dobles y grupales
 > Según `docs/pedidos-daniela-2026-11.md` (pedido 2), con las respuestas de Daniela. Modelo: **un turno
 > por chico unidos por `grupo_id`** (también en series), así la asistencia y el cargo siguen siendo por
 > paciente. El tipo de turno define el cupo (1 individual, 2 doble, N grupal). Reservar y Turno fijo
@@ -164,6 +164,16 @@ Detalle y propuestas en `docs/pedidos-daniela-2026-11.md`. La A11 va antes de la
 > _Respuestas de Daniela: máximo 4 chicos en una grupal; duran lo mismo que una individual; cada familia
 > paga una sesión entera, sin repartir el precio; la doble nunca es de hermanos, son compañeritos, así
 > que cada chico tiene su propia familia y su propio cobro (confirma un turno por chico con `grupo_id`)._
+
+> _Dividida en dos PRs. **A11a** (hecha): migración 0013 (`tipos_turno.cupo` de 1 a 4 y `grupo_id` en
+> `turnos` y `series_turnos`); "Chicos por sesión" en Configuración > Tipos de turno; Reservar con un tipo
+> doble o grupal pide de 2 al cupo de pacientes y crea un turno por chico con el mismo `grupo_id`; en Día y
+> Semana se ven como un solo rectángulo ("Juan + Pedro" o "Grupal · 4", borde ✓ / ✕ / ½) y el panel muestra
+> a cada chico con sus acciones (`src/lib/agenda/grupos.ts`, `estiloGrupo`, caso `agregar_grupo` en
+> `aplicarCambio`, con tests). **A11b** (hecha): turno fijo doble o grupal (una serie por chico con el
+> mismo `grupo_id`, que pasa a sus turnos); en la sesión, "Mover sesión" (migración 0014 `mover_grupo`),
+> "Cancelar sesión" (solo "Cancelé yo") y "Finalizar turno fijo de la sesión"; cada chico se saca con sus
+> botones de siempre (Mover, Cancelar, "Sacar del turno fijo"), aunque quede solo._
 
 #### [x] B9 "¿Se cobra?" al cancelar tarde
 > Según `docs/pedidos-daniela-2026-11.md` (pedido 1). En el formulario Cancelar, si la clasificación da
@@ -263,8 +273,13 @@ Detalle y propuestas en `docs/pedidos-daniela-2026-11.md`. La A11 va antes de la
 > la copia semanal de los archivos del bucket `documentos` (script con el cliente admin que lista y
 > descarga todo, comprime y cifra). Explicame cómo restaurar.
 
-#### [ ] A10 App instalable
+#### [x] A10 App instalable
 > PWA instalable en iPhone, iPad y Mac (manifest, íconos, pantalla de inicio), sin modo offline.
+
+> _Hecha, sin migración. `src/app/manifest.ts` (abre en `/hoy`, pantalla completa, colores del tema), íconos
+> dibujados con `next/og` en `src/components/app/icono-app.tsx` (C blanca sobre turquesa; si hay logo, se
+> cambia ahí) y `appleWebApp` en el layout. El proxy deja pasar el manifest y los íconos sin sesión. Sin
+> pantallas de arranque de iOS (mientras carga se ve el fondo). **Falta instalarla en iPhone, iPad y Mac.**_
 
 #### [x] B8 Reportes
 > Pantalla Reportes según `docs/reglas-cobro.md` sección 8: generado hoy y en el mes, proyección,

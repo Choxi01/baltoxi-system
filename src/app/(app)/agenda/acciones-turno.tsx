@@ -11,6 +11,7 @@ import { validarExcepcion, type AccionAsistencia, type Excepcion } from "@/lib/a
 import { aHora, aMinutos, horaCorta } from "@/lib/agenda/bloques";
 import { fechasEntre, sumarDias, tituloDia } from "@/lib/agenda/calendario";
 import { datosCancelacion, mostrarSeCobra, MOTIVO_AL_CANCELAR, validarNoSeCobra, type MontoAvisoTardio, type NoSeCobra, type QuienCancela } from "@/lib/agenda/cancelacion";
+import { nombresDeLaSesion } from "@/lib/agenda/grupos";
 import { horaFin, instanteUtc } from "@/lib/agenda/reservas";
 import { aHoraLocal, NOMBRE_ESTADO_TURNO, textoTurno, type TurnoAgenda } from "@/lib/agenda/turnos";
 import type { ResultadoPago } from "@/lib/cobro/acciones-pagos";
@@ -44,19 +45,22 @@ function RuedaDia({ id, dias, valor, alCambiar }: { id: string; dias: string[]; 
   );
 }
 
-/** Mover: elegir el día y uno de sus bloques libres. */
+/** Mover: elegir el día y uno de sus bloques libres. Con `sesion`, la sesión doble o grupal entera. */
 export function FormularioMover({
   turno,
   hoy,
   acciones,
   ejecutar,
   alVolver,
+  sesion,
 }: {
   turno: TurnoAgenda;
   hoy: string;
   acciones: AccionesDeTurno;
   ejecutar: Ejecutar;
   alVolver: () => void;
+  /** Los chicos agendados de la sesión (agendadosDeLaSesion) y cómo moverlos juntos. */
+  sesion?: { turnos: TurnoAgenda[]; mover: (fecha: string, inicio: string) => Promise<ResultadoSimple> };
 }) {
   // De hoy a 3 meses (y el día del turno, si ya pasó).
   const dias = fechasEntre(turno.fecha < hoy ? turno.fecha : hoy, sumarDias(hoy, 90));
@@ -85,19 +89,31 @@ export function FormularioMover({
     // Misma duración que el turno (igual que el servidor).
     const duracion = aMinutos(turno.fin) - aMinutos(turno.inicio);
     const fin = horaFin(elegido, duracion > 0 ? duracion : 45);
+    const aviso = `Movido al ${tituloDia(fecha).toLowerCase()} a las ${horaCorta(elegido)} ✓`;
+    if (sesion) {
+      ejecutar({ tipo: "mover_grupo", ids: sesion.turnos.map((t) => t.id), fecha, inicio: elegido, fin }, () => sesion.mover(fecha, elegido), aviso);
+      return;
+    }
     ejecutar(
       { tipo: "mover", id: turno.id, fecha, inicio: elegido, fin },
       () => acciones.moverTurno(turno.id, fecha, elegido),
-      `Movido al ${tituloDia(fecha).toLowerCase()} a las ${horaCorta(elegido)} ✓`,
+      aviso,
     );
   }
 
   return (
     <div className="flex flex-col gap-3">
-      <p className="text-sm">
-        Mover <strong>{textoTurno(turno)}</strong>
-        {turno.clase === "turno" && " (el turno original queda como reprogramado, sin costo)"}.
-      </p>
+      {sesion ? (
+        <p className="text-sm">
+          Mover juntos a <strong>{nombresDeLaSesion(sesion.turnos)}</strong> (cada turno original queda como reprogramado, sin
+          costo). Para mover a un solo chico, usá el Mover de ese chico.
+        </p>
+      ) : (
+        <p className="text-sm">
+          Mover <strong>{textoTurno(turno)}</strong>
+          {turno.clase === "turno" && " (el turno original queda como reprogramado, sin costo)"}.
+        </p>
+      )}
       <div className="flex flex-col gap-2">
         <Label htmlFor="mover-dia">Día</Label>
         <RuedaDia id="mover-dia" dias={dias} valor={fecha} alCambiar={buscar} />
@@ -418,6 +434,45 @@ export function FormularioExcepcion({
       <div className="flex flex-col gap-2">
         <Button size="touch" onClick={guardar}>
           Guardar excepción
+        </Button>
+        <Button variant="ghost" onClick={alVolver}>
+          Volver
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Cancelar la sesión doble o grupal entera: solo "Cancelé yo" (todos quedan para reponer). Si
+ * cancela una familia, se cancela solo a su chico con el Cancelar de siempre.
+ */
+export function FormularioCancelarSesion({
+  turnos,
+  cancelar,
+  ejecutar,
+  alVolver,
+}: {
+  /** Los chicos agendados de la sesión (agendadosDeLaSesion). */
+  turnos: TurnoAgenda[];
+  cancelar: () => Promise<ResultadoSimple>;
+  ejecutar: Ejecutar;
+  alVolver: () => void;
+}) {
+  function confirmar() {
+    ejecutar({ tipo: "cancelar_grupo", ids: turnos.map((t) => t.id) }, cancelar, "Sesión cancelada ✓ Quedaron en «Para reponer».");
+  }
+  return (
+    <div className="flex flex-col gap-3">
+      <p className="text-sm">
+        Cancelar la sesión de <strong>{nombresDeLaSesion(turnos)}</strong> ({horaCorta(turnos[0]?.inicio ?? "")}): <strong>la cancelás vos</strong>.
+        El horario queda libre y {turnos.length === 2 ? "los dos chicos quedan" : `los ${turnos.length} chicos quedan`} en «Para reponer
+        este mes».
+      </p>
+      <p className="rounded-md bg-muted px-3 py-2 text-sm">Si cancela una familia, cancelá solo a su chico con el botón Cancelar de ese chico.</p>
+      <div className="flex flex-col gap-2">
+        <Button size="touch" variant="destructive" onClick={confirmar} disabled={turnos.length === 0}>
+          Cancelar la sesión
         </Button>
         <Button variant="ghost" onClick={alVolver}>
           Volver

@@ -6,6 +6,7 @@ import { z } from "zod";
 
 import { ZONA } from "@/lib/fechas";
 import { aHora, aMinutos } from "./bloques";
+import { CUPO_MAXIMO } from "./grupos";
 import { liberaBloque, textoTurno, type TurnoAgenda } from "./turnos";
 
 /** Lo que se quiere agendar: un día, un horario y (si tiene) la modalidad del tipo de turno. */
@@ -85,6 +86,19 @@ const esquemaReserva = z.discriminatedUnion("clase", [
     tipo_turno_id: id,
     /** Si repone una sesión que canceló la profesional ("Para reponer"). */
     repone_a: id.nullable().optional(),
+    confirmado: z.boolean(),
+  }),
+  /** Sesión doble o grupal: un turno por chico, unidos por `grupo_id` (src/lib/agenda/grupos.ts). */
+  z.object({
+    clase: z.literal("grupo"),
+    fecha,
+    inicio: hora,
+    paciente_ids: z
+      .array(id)
+      .min(2, "Elegí al menos 2 chicos.")
+      .max(CUPO_MAXIMO, `Una sesión es de hasta ${CUPO_MAXIMO} chicos.`)
+      .refine((ids) => new Set(ids).size === ids.length, "Hay un chico repetido."),
+    tipo_turno_id: id,
     confirmado: z.boolean(),
   }),
   z.object({

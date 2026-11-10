@@ -47,6 +47,8 @@ export type TurnoAgenda = {
   tipo: string | null;
   /** Turno fijo: la serie que lo creó (para "Finalizar turno fijo"). */
   serieId: string | null;
+  /** Sesión doble o grupal: los turnos de la misma sesión (uno por chico) comparten este id (migración 0013). */
+  grupoId: string | null;
   /** Para reponer con el mismo tipo de turno. */
   tipoId: string | null;
   /** Paciente con ficha (para "Ver expediente"). */

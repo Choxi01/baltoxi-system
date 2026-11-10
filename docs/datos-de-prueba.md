@@ -15,6 +15,9 @@ Datos **inventados** para probar la app en el proyecto `pruebas`. Nunca en produ
   - Las últimas 4 semanas ya marcadas (mayoría "vino", y además canceló con aviso, aviso tardío, no vino, cancelé yo y un reprogramado).
   - Las próximas 4 semanas agendadas.
   - Un "Reservado: Fulano de Prueba", una reunión de equipo y un feriado de prueba (viernes de la semana que viene).
+  - Sesiones dobles y grupales (tipos "Sesión doble", 2 chicos, y "Sesión grupal", hasta 4): una doble del
+    jueves pasado a las 14:15 donde un chico vino y el otro no (se ve "½"), una doble el lunes que viene a las
+    15:00 y una grupal de 3 el martes que viene a las 15:45. Cada chico tiene su turno y su cargo.
 - **Cobros:**
   - Un cargo por cada turno pasado, según `docs/reglas-cobro.md`. Incluye una excepción manual al 0%.
   - Pagos completos, parciales, una familia sin pagar (Jorge Rolon, en atraso) y una con saldo a favor (Miguel Ayala).

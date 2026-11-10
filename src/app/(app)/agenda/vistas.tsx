@@ -1,7 +1,8 @@
 import { Check, X } from "lucide-react";
 
 import { horaCorta, type Tramo } from "@/lib/agenda/bloques";
-import { CLASES_COLOR, estiloTurno, leyendaTipos, type MarcaEstado } from "@/lib/agenda/colores";
+import { CLASES_COLOR, estiloGrupo, estiloTurno, leyendaTipos, type EstiloTurno, type MarcaEstado } from "@/lib/agenda/colores";
+import { agruparTurnos, encabezadoGrupo, textoGrupo, type ItemGrilla } from "@/lib/agenda/grupos";
 import { diaCorto, numeroDia } from "@/lib/agenda/calendario";
 import { filasSemana } from "@/lib/agenda/semana";
 import { NOMBRE_ESTADO_TURNO, textoEstado, textoTurno, type Dia, type FilaDia, type TurnoAgenda } from "@/lib/agenda/turnos";
@@ -13,8 +14,15 @@ import { cn } from "@/lib/utils";
 // Relleno = color del tipo de turno; estado = borde + ícono (src/lib/agenda/colores.ts).
 // Reservado y ocupado, en gris. Siempre con texto o ícono, no solo color.
 
-/** ✓ vino, ✕ no vino (con texto para lectores de pantalla). */
+/** ✓ vino, ✕ no vino, ½ asistencia mezclada en una sesión doble o grupal (con texto para lectores de pantalla). */
 function IconoEstado({ marca, className }: { marca: MarcaEstado; className?: string }) {
+  if (marca === "mezcla") {
+    return (
+      <span aria-label="Asistencia mezclada" className={cn("shrink-0 text-center text-[0.7rem] font-bold leading-none", className)}>
+        ½
+      </span>
+    );
+  }
   if (marca === "vino") return <Check aria-label="Vino" className={cn("shrink-0 text-emerald-700 dark:text-emerald-300", className)} strokeWidth={3} />;
   if (marca === "no_vino") return <X aria-label="No vino" className={cn("shrink-0 text-rose-700 dark:text-rose-300", className)} strokeWidth={3} />;
   return null;
@@ -52,6 +60,9 @@ export function LeyendaAgenda({ turnos }: { turnos: TurnoAgenda[] }) {
         <li className="flex items-center gap-1">
           <span className="size-3 shrink-0 rounded-sm border-2 border-rose-600" />
           <IconoEstado marca="no_vino" className="size-3" /> No vino
+        </li>
+        <li className="flex items-center gap-1">
+          <IconoEstado marca="mezcla" className="size-3" /> Doble o grupal: unos sí, otros no
         </li>
         <li className="flex items-center gap-1">
           <span className="rounded-sm border px-0.5 text-[0.6rem] font-semibold leading-none">%</span> Excepción de cobro
@@ -133,9 +144,9 @@ function ContenidoFila({ fila }: { fila: FilaDia }) {
           Libre
         </span>
       )}
-      {fila.turnos.map((t) => (
-        <TarjetaTurno key={t.id} turno={t} />
-      ))}
+      {agruparTurnos(fila.turnos).map((item) =>
+        item.tipo === "grupo" ? <TarjetaGrupo key={item.grupoId} turnos={item.turnos} /> : <TarjetaTurno key={item.turno.id} turno={item.turno} />,
+      )}
       {fila.liberados.map((t) => (
         <span key={t.id} className="px-3 text-xs text-muted-foreground">
           <span className="line-through">{textoTurno(t)}</span> · {textoEstado(t) ?? NOMBRE_ESTADO_TURNO[t.estado]}
@@ -159,6 +170,26 @@ function TarjetaTurno({ turno, aviso }: { turno: TurnoAgenda; aviso?: string }) 
       <span className="flex items-center gap-1.5">
         <IconoEstado marca={estilo.marca} className="size-4" />
         <span className="truncate font-medium">{textoTurno(turno)}</span>
+        {estilo.excepcion && <MarcaExcepcion />}
+      </span>
+      <span className="text-xs opacity-80">{detalle.join(" · ")}</span>
+    </span>
+  );
+}
+
+/** Sesión doble o grupal en la vista Día: un solo rectángulo ("Juan + Pedro" o "Grupal · 4"). */
+function TarjetaGrupo({ turnos }: { turnos: TurnoAgenda[] }) {
+  const estilo = estiloGrupo(turnos);
+  const primero = turnos[0];
+  const guardando = turnos.some((t) => t.guardando);
+  const detalle = [encabezadoGrupo(primero.tipo, turnos.length), `${horaCorta(primero.inicio)}–${horaCorta(primero.fin)}`, guardando ? "Guardando…" : null].filter(
+    Boolean,
+  );
+  return (
+    <span className={cn("flex min-h-12 w-full flex-col justify-center rounded-lg px-3 py-2", estilo.clases, guardando && "opacity-60")}>
+      <span className="flex items-center gap-1.5">
+        <IconoEstado marca={estilo.marca} className="size-4" />
+        <span className="truncate font-medium">{textoGrupo(turnos)}</span>
         {estilo.excepcion && <MarcaExcepcion />}
       </span>
       <span className="text-xs opacity-80">{detalle.join(" · ")}</span>
@@ -271,22 +302,29 @@ function CeldaSemana({ dia, hora, alElegir }: { dia: Dia; hora: string; alElegir
       {turnos.length === 0 ? (
         <span className="flex h-12 items-center justify-center rounded-md border border-dashed text-xs text-muted-foreground">Libre</span>
       ) : (
-        turnos.map((t) => {
-          const estilo = estiloTurno(t);
-          return (
-            <span key={t.id} className={cn("flex min-h-12 min-w-0 flex-col justify-center rounded-md px-1 py-1 md:px-1.5", estilo.clases, t.guardando && "opacity-60")}>
-              <span className="flex min-w-0 items-start gap-0.5">
-                <IconoEstado marca={estilo.marca} className="mt-px size-3" />
-                <span className="line-clamp-2 min-w-0 hyphens-auto break-words text-[0.7rem] font-medium leading-tight md:text-xs">{textoTurno(t)}</span>
-                {estilo.excepcion && <MarcaExcepcion />}
-              </span>
-              {/* En el iPhone alcanza con el ícono y el borde; en pantallas grandes, también el texto. */}
-              {textoEstado(t) && <span className="hidden text-[0.65rem] leading-tight opacity-80 md:block">{textoEstado(t)}</span>}
-            </span>
-          );
-        })
+        agruparTurnos(turnos).map((item) => <CeldaTurno key={item.tipo === "grupo" ? item.grupoId : item.turno.id} item={item} />)
       )}
     </button>
+  );
+}
+
+/** Un rectángulo de la celda de la semana: un turno, o una sesión doble o grupal entera. */
+function CeldaTurno({ item }: { item: ItemGrilla }) {
+  const grupo = item.tipo === "grupo";
+  const estilo: EstiloTurno = grupo ? estiloGrupo(item.turnos) : estiloTurno(item.turno);
+  const texto = grupo ? textoGrupo(item.turnos) : textoTurno(item.turno);
+  const guardando = grupo ? item.turnos.some((t) => t.guardando) : item.turno.guardando;
+  const estado = grupo ? encabezadoGrupo(item.turnos[0].tipo, item.turnos.length) : textoEstado(item.turno);
+  return (
+    <span className={cn("flex min-h-12 min-w-0 flex-col justify-center rounded-md px-1 py-1 md:px-1.5", estilo.clases, guardando && "opacity-60")}>
+      <span className="flex min-w-0 items-start gap-0.5">
+        <IconoEstado marca={estilo.marca} className="mt-px size-3" />
+        <span className="line-clamp-2 min-w-0 hyphens-auto break-words text-[0.7rem] font-medium leading-tight md:text-xs">{texto}</span>
+        {estilo.excepcion && <MarcaExcepcion />}
+      </span>
+      {/* En el iPhone alcanza con el ícono y el borde; en pantallas grandes, también el texto. */}
+      {estado && <span className="hidden text-[0.65rem] leading-tight opacity-80 md:block">{estado}</span>}
+    </span>
   );
 }
 

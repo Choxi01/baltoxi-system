@@ -1,5 +1,7 @@
 import "server-only";
 
+import { cache } from "react";
+
 import { exigirConsultorio } from "@/lib/auth/servidor";
 import { cobroDelCargo, puedeCobrarAhora } from "@/lib/cobro/pago";
 import { imputarPagos } from "@/lib/cobro/saldo";
@@ -15,7 +17,8 @@ import { aHoraLocal, inicioDelDiaUtc, type ClaseTurno, type EstadoTurno, type Tu
 // Lecturas del horario de atención y de los feriados/vacaciones.
 // Todo pasa por RLS y además se filtra por el consultorio.
 
-export async function obtenerHorario() {
+// `cache()`: lo piden el contador del menú y varias páginas; se lee una vez por pedido.
+export const obtenerHorario = cache(async () => {
   const consultorio = await exigirConsultorio();
   const supabase = await crearClienteServidor();
   const [{ data: config, error }, { data: tramos }, { data: bloqueos }] = await Promise.all([
@@ -29,7 +32,7 @@ export async function obtenerHorario() {
     tramos: (tramos ?? []).map((t) => ({ dia_semana: t.dia_semana, desde: horaDeBase(t.desde), hasta: horaDeBase(t.hasta) })),
     bloqueos: bloqueos ?? [],
   };
-}
+});
 
 /**
  * Turnos de un rango de días (de Asunción), ya pasados a la hora local.
@@ -41,7 +44,7 @@ export async function listarTurnos(desde: string, hasta: string): Promise<TurnoA
   const { data, error } = await supabase
     .from("turnos")
     .select(
-      "id, clase, estado, inicio, fin, paciente_id, tipo_turno_id, serie_id, nombre_reserva, motivo_ocupado, porcentaje_manual, pacientes!turnos_consultorio_id_paciente_id_fkey(nombre, apellido), tipos_turno!turnos_consultorio_id_tipo_turno_id_fkey(nombre, modalidad, color)",
+      "id, clase, estado, inicio, fin, paciente_id, tipo_turno_id, serie_id, grupo_id, nombre_reserva, motivo_ocupado, porcentaje_manual, pacientes!turnos_consultorio_id_paciente_id_fkey(nombre, apellido), tipos_turno!turnos_consultorio_id_tipo_turno_id_fkey(nombre, modalidad, color)",
     )
     .eq("consultorio_id", consultorio.id)
     .gte("inicio", inicioDelDiaUtc(desde))
@@ -62,6 +65,7 @@ export async function listarTurnos(desde: string, hasta: string): Promise<TurnoA
       titulo: (t.clase === "turno" ? paciente : t.clase === "reservado" ? t.nombre_reserva : t.motivo_ocupado) ?? "",
       tipo: t.tipos_turno?.nombre ?? null,
       serieId: t.serie_id,
+      grupoId: t.grupo_id,
       tipoId: t.tipo_turno_id,
       pacienteId: t.paciente_id,
       color: t.tipos_turno?.color ?? null,
@@ -157,7 +161,7 @@ export async function obtenerDatosParaReservar() {
       .order("nombre"),
     supabase
       .from("tipos_turno")
-      .select("id, nombre, modalidad, color, requiere_paciente")
+      .select("id, nombre, modalidad, color, cupo, requiere_paciente")
       .eq("consultorio_id", consultorio.id)
       .eq("activo", true)
       .order("nombre"),

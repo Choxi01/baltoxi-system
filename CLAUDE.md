@@ -75,6 +75,11 @@ docs/                      especificaciones y tareas
   sugerir mensaje de commit.
 - Si algo es ambiguo, preguntá en vez de inventar.
 
+## Protecciones de Claude Code
+- `.claude/hooks/proteger.mjs` bloquea leer o editar `.env`, y editar migraciones commiteadas, `types.ts`
+  y `package-lock.json`. No cubre comandos de terminal.
+- `.mcp.json` conecta Supabase solo a `pruebas` y en solo lectura: las migraciones se aplican con `npm run db:push`.
+
 ## Documentos
 - `docs/agenda.md` — bloques, estados, acciones, copiar libres, turnos fijos
 - `docs/expediente.md` — ficha, tutores, anamnesis, notas, documentos, ficha online, seguridad

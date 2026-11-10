@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { COLORES_TIPO } from "@/lib/agenda/colores";
+import { CUPO_MAXIMO } from "@/lib/agenda/grupos";
 import { leerGs } from "@/lib/cobro/formato";
 import { calcularDv } from "@/lib/tutores/ruc";
 
@@ -80,6 +81,16 @@ export const NOMBRE_MODALIDAD: Record<Modalidad, string> = {
   colegio: "En el colegio",
 };
 
+// Chicos por sesión (migración 0013): 1 individual, 2 doble, 3 o 4 grupal.
+export const CUPOS = [1, 2, 3, 4] as const;
+
+/** "Individual", "Doble" o "Grupal de 3"/"Grupal de 4": para el selector y la lista de tipos. */
+export function nombreCupo(cupo: number): string {
+  if (cupo <= 1) return "Individual";
+  if (cupo === 2) return "Doble";
+  return `Grupal de ${cupo}`;
+}
+
 // Checkbox de un formulario: viene "on" si está marcado y "" si no.
 const marcado = z.string().transform((v) => v === "on");
 
@@ -97,8 +108,16 @@ const esquemaTipoTurno = z
     cobra_en_el_momento: marcado,
     genera_cobro: marcado,
     requiere_paciente: marcado,
+    // Chicos por sesión. Sin elegir (formulario viejo) = individual.
+    cupo: z
+      .string()
+      .transform((v) => (v === "" ? 1 : Number(v)))
+      .refine((v) => Number.isInteger(v) && v >= 1 && v <= CUPO_MAXIMO, "Elegí cuántos chicos por sesión (1 a 4)."),
   })
   .superRefine((datos, ctx) => {
+    if (!datos.requiere_paciente && datos.cupo > 1) {
+      ctx.addIssue({ code: "custom", path: ["cupo"], message: "Un tipo sin paciente es de un solo turno: dejalo en 1." });
+    }
     if (!datos.requiere_paciente && datos.genera_cobro) {
       ctx.addIssue({ code: "custom", path: ["genera_cobro"], message: "Un tipo sin paciente no puede generar cobro." });
     }
@@ -161,7 +180,7 @@ export function validarTarifa(formulario: FormData) {
 export function validarTipoTurno(formulario: FormData) {
   return validar(
     esquemaTipoTurno,
-    ["nombre", "modalidad", "color", "tarifa_id", "cobra_en_el_momento", "genera_cobro", "requiere_paciente"],
+    ["nombre", "modalidad", "color", "tarifa_id", "cobra_en_el_momento", "genera_cobro", "requiere_paciente", "cupo"],
     formulario,
   );
 }
