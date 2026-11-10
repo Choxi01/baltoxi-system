@@ -85,6 +85,24 @@ profesional (tarea A6).
   - Código: `src/lib/anamnesis/estructura.ts` (esquema, `validarEstructura`, `validarPlantilla`,
     `idParaCampo`, `mover`, `copiarEstructura`) y `borrador.ts` (operaciones del editor), con tests;
     `acciones-plantillas.ts`, `datos-plantillas.ts` y `src/app/(app)/config/tab-anamnesis.tsx`.
+- **Pestaña Anamnesis del expediente (tarea A6b)**:
+  - Sin anamnesis: elegir una plantilla activa y "Crear anamnesis" (se copia la estructura y la fecha es
+    la de hoy). Puede haber varias por paciente (ej. reevaluación): un selector muestra fecha · plantilla,
+    la más nueva primero. No se borran ni se les cambia la fecha (por ahora).
+  - Formulario por tipo: texto corto (hasta 1.000 letras), texto largo (hasta 10.000), Sí / No con botones
+    (tocar el elegido lo borra), opciones con "Sin responder" y fecha con el selector del sistema.
+  - Guardado automático: 2 s después de dejar de escribir y al salir de un campo; arriba dice cuántas
+    están respondidas y "Guardando…" / "Guardado" / "No se pudo guardar. Reintentando…" (cada 5 s). Si
+    se cierra la pantalla con cambios sin guardar, pregunta. Si se edita en dos aparatos a la vez, gana
+    el último que guarda.
+  - Respuestas en `anamnesis.respuestas` como `{campo_id: valor}` (Sí / No es boolean; fecha "AAAA-MM-DD");
+    lo vacío no se guarda. El servidor valida todo contra la estructura copiada; los errores nombran la
+    pregunta pero nunca lo respondido.
+  - "Leer e imprimir": `/pacientes/<id>/anamnesis/<id>`, de solo lectura, con botón Imprimir (el del
+    navegador; el menú no sale en papel). El título de la pestaña no lleva el nombre del paciente.
+  - Código: `src/lib/anamnesis/respuestas.ts` (`validarRespuestas`, `leerRespuestas`, `textoRespuesta`,
+    con tests), `acciones-anamnesis.ts`, `datos-anamnesis.ts` y `src/app/(app)/pacientes/[id]/tab-anamnesis.tsx`.
+  - Para la 8.1: cada guardado automático deja en `auditoria` una copia completa de las respuestas.
 
 ## Ficha online para familias (`/ficha/<token_ficha>`, pública)
 - Única página pública. Corre en el servidor con el cliente admin; valida el token; límite de 10

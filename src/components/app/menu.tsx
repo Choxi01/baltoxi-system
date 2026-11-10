@@ -46,7 +46,7 @@ export function Menu({ ruta = "", pendientes = 0 }: { ruta?: string; pendientes?
     <>
       <nav
         aria-label="Menú"
-        className="fixed inset-x-0 bottom-0 z-10 border-t bg-background pb-[env(safe-area-inset-bottom)] md:hidden"
+        className="fixed inset-x-0 bottom-0 z-10 border-t bg-background pb-[env(safe-area-inset-bottom)] md:hidden print:hidden"
       >
         <ul className="grid grid-cols-5">
           {SECCIONES.filter((s) => s.principal).map((s) => (
@@ -69,7 +69,7 @@ export function Menu({ ruta = "", pendientes = 0 }: { ruta?: string; pendientes?
         </ul>
       </nav>
 
-      <nav aria-label="Menú" className="hidden w-60 shrink-0 flex-col border-r p-3 md:flex">
+      <nav aria-label="Menú" className="hidden w-60 shrink-0 flex-col border-r p-3 md:flex print:hidden">
         <ul className="flex flex-1 flex-col gap-1">
           {SECCIONES.map((s) => {
             const Icono = ICONOS[s.href];
