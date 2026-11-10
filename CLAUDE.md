@@ -78,7 +78,7 @@ docs/                      especificaciones y tareas
 ## Protecciones de Claude Code
 - `.claude/hooks/proteger.mjs` bloquea leer o editar `.env`, y editar migraciones commiteadas, `types.ts`
   y `package-lock.json`. No cubre comandos de terminal.
-- `.mcp.json` conecta Supabase solo a `pruebas` y en solo lectura: las migraciones se aplican con `npm run db:push`.
+- `.mcp.json` conecta Supabase solo a `pruebas 2` (São Paulo) y en solo lectura: las migraciones se aplican con `npm run db:push`.
 
 ## Documentos
 - `docs/agenda.md` — bloques, estados, acciones, copiar libres, turnos fijos
