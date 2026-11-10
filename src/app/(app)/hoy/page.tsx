@@ -14,6 +14,7 @@ import {
 import { tituloDia } from "@/lib/agenda/calendario";
 import { listarTurnosConCobro, obtenerDatosParaReservar } from "@/lib/agenda/datos";
 import { resumenHoy, textoResumenHoy } from "@/lib/agenda/hoy";
+import { cargarFeriados } from "@/lib/agenda/feriados-servidor";
 import { materializarSeries } from "@/lib/agenda/series-servidor";
 import { registrarPago } from "@/lib/cobro/acciones-pagos";
 import { hoyEnAsuncion } from "@/lib/fechas";
@@ -27,10 +28,12 @@ export default async function Pagina() {
   // La fecha de hoy es de cada pedido: no se arma la página de antemano (si no, falla `next build`).
   await connection();
   const hoy = hoyEnAsuncion();
-  // Igual que la Agenda: crear los turnos fijos que falten (después del login se entra acá).
-  // Solo los turnos esperan a eso; lo demás se pide a la vez.
+  // Igual que la Agenda: cargar los feriados del año y crear los turnos fijos que falten
+  // (después del login se entra acá). Solo los turnos esperan a eso; lo demás se pide a la vez.
   const [turnos, { horasAvisoMinimas }] = await Promise.all([
-    materializarSeries(hoy).then(() => listarTurnosConCobro(hoy, hoy)),
+    cargarFeriados(hoy)
+      .then(() => materializarSeries(hoy))
+      .then(() => listarTurnosConCobro(hoy, hoy)),
     obtenerDatosParaReservar(),
   ]);
   const resumen = textoResumenHoy(resumenHoy(turnos));

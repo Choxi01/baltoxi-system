@@ -185,6 +185,13 @@ Detalle y propuestas en `docs/pedidos-daniela-2026-11.md`. La A11 va antes de la
 > que el cargo. Si no hay nada para cobrar, no pregunta; si no se pudo calcular, pregunta sin el número.
 > Funciona en Agenda y en Hoy. El "Otro %" opcional no se hizo: sigue la acción Excepción._
 
+#### [x] A13 Feriados automáticos
+> Pedido el 10/11/2026. La app carga sola los feriados de ley del año actual y del siguiente, editables
+> (si se trasladan por decreto, se borran y se cargan a mano). Ver `docs/agenda.md` → Bloques.
+
+> _Hecha. Migración 0015 (`consultorios.feriados_cargados_hasta`), `src/lib/agenda/feriados.ts` con
+> tests y `cargarFeriados` al abrir Agenda y Hoy. Probada de punta a punta en `pruebas 2`._
+
 ---
 
 ## Semana 5 — Expediente y mensajes

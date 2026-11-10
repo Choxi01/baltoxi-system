@@ -17,6 +17,7 @@ import {
   quitarTurno,
 } from "@/lib/agenda/acciones-turnos";
 import { listarParaReponer, listarTurnosConCobro, obtenerDatosParaReservar, obtenerHorario, obtenerPlantillaLibres } from "@/lib/agenda/datos";
+import { cargarFeriados } from "@/lib/agenda/feriados-servidor";
 import { materializarSeries } from "@/lib/agenda/series-servidor";
 import { registrarPago } from "@/lib/cobro/acciones-pagos";
 import { hoyEnAsuncion } from "@/lib/fechas";
@@ -47,11 +48,13 @@ export default async function Pagina({ searchParams }: PageProps<"/agenda">) {
 
   // Se trae del mes anterior al siguiente: moverse por la agenda no vuelve a pedir datos.
   const rango = rangoParaCargar(fecha);
-  // Todo a la vez (cada espera de más se nota en el iPhone). Solo los turnos esperan a
-  // que estén creados los de los turnos fijos (próximas 8 semanas, una vez por día).
+  // Todo a la vez (cada espera de más se nota en el iPhone). El horario y los turnos esperan
+  // a los feriados del año (se cargan solos, una vez por año); los turnos, además, a que
+  // estén creados los de los turnos fijos (próximas 8 semanas, una vez por día).
+  const feriados = cargarFeriados(hoy);
   const [{ duracion, tramos, bloqueos }, turnos, paraReservar, paraReponer, plantillaLibres] = await Promise.all([
-    obtenerHorario(),
-    materializarSeries(hoy).then(() => listarTurnosConCobro(rango.desde, rango.hasta)),
+    feriados.then(() => obtenerHorario()),
+    feriados.then(() => materializarSeries(hoy)).then(() => listarTurnosConCobro(rango.desde, rango.hasta)),
     obtenerDatosParaReservar(),
     listarParaReponer(hoy),
     obtenerPlantillaLibres(),
