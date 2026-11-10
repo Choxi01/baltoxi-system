@@ -265,6 +265,7 @@ export type Database = {
           direccion: string | null
           duracion_bloque_min: number
           dv: string | null
+          feriados_cargados_hasta: number | null
           horas_aviso_minimas: number
           id: string
           nombre: string
@@ -285,6 +286,7 @@ export type Database = {
           direccion?: string | null
           duracion_bloque_min?: number
           dv?: string | null
+          feriados_cargados_hasta?: number | null
           horas_aviso_minimas?: number
           id?: string
           nombre: string
@@ -305,6 +307,7 @@ export type Database = {
           direccion?: string | null
           duracion_bloque_min?: number
           dv?: string | null
+          feriados_cargados_hasta?: number | null
           horas_aviso_minimas?: number
           id?: string
           nombre?: string
@@ -714,8 +717,8 @@ export type Database = {
       pacientes: {
         Row: {
           apellido: string | null
-          colegio: string | null
           cambios_familia_en: string | null
+          colegio: string | null
           consultorio_id: string
           creado_en: string
           derivado_por: string | null
@@ -731,8 +734,8 @@ export type Database = {
         }
         Insert: {
           apellido?: string | null
-          colegio?: string | null
           cambios_familia_en?: string | null
+          colegio?: string | null
           consultorio_id: string
           creado_en?: string
           derivado_por?: string | null
@@ -748,8 +751,8 @@ export type Database = {
         }
         Update: {
           apellido?: string | null
-          colegio?: string | null
           cambios_familia_en?: string | null
+          colegio?: string | null
           consultorio_id?: string
           creado_en?: string
           derivado_por?: string | null

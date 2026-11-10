@@ -7,6 +7,13 @@ La agenda la maneja solo la profesional. No hay reserva online de las familias.
   `consultorios.duracion_bloque_min` (45 min). Un bloque solo existe si entra entero en el tramo.
 - Ejemplo (9:00–11:15 y 13:30–17:15, 45 min): 9:00, 9:45, 10:30, 13:30, 14:15, 15:00, 15:45, 16:30.
 - Días en `bloqueos` (feriados, vacaciones): sin bloques.
+- **Feriados automáticos:** al abrir Agenda u Hoy, la app carga sola los feriados de ley (Ley
+  7544/2025) del año actual y del siguiente, con Semana Santa calculada, y anota el último año en
+  `consultorios.feriados_cargados_hasta`. Un año ya anotado no se vuelve a cargar: si se borra un
+  feriado (traslado por decreto), no reaparece. Los cuatro trasladables (Héroes, Paz del Chaco, Jura,
+  Boquerón) van en su fecha original con la nota "puede trasladarse por decreto". Los traslados y
+  feriados extra por decreto se cargan a mano. Al cargar, se sacan los turnos fijos de esos días (igual
+  que al agregar uno a mano). Código: `src/lib/agenda/feriados.ts` (con tests) y `feriados-servidor.ts`.
 - Función pura con tests: `src/lib/agenda/bloquesDelDia(fecha, horarios, duracion, bloqueos)`.
 
 ## Estado de cada bloque
