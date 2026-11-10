@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 
 import { Pestanas } from "@/components/app/pestanas";
 import { agregarBloqueo, borrarBloqueo, guardarHorario } from "@/lib/agenda/acciones";
+import { cambiarActivaPlantillaAnamnesis, guardarPlantillaAnamnesis } from "@/lib/anamnesis/acciones-plantillas";
+import { listarPlantillasAnamnesis } from "@/lib/anamnesis/datos-plantillas";
 import { obtenerHorario } from "@/lib/agenda/datos";
 import {
   actualizarConsultorio,
@@ -23,6 +25,7 @@ import { guardarPlantilla } from "@/lib/mensajes/acciones";
 import { listarPlantillas } from "@/lib/mensajes/datos";
 import { Feriados } from "./feriados";
 import { Horario } from "./horario";
+import { TabAnamnesis } from "./tab-anamnesis";
 import { TabConsultorio } from "./tab-consultorio";
 import { TabMensajes } from "./tab-mensajes";
 import { TabReglamento } from "./tab-reglamento";
@@ -34,7 +37,7 @@ export const metadata: Metadata = { title: "Configuración · Consultorio" };
 
 export default async function Pagina({ searchParams }: PageProps<"/config">) {
   const { pestana } = await searchParams;
-  const [consultorio, tarifas, { duracion, tramos, bloqueos }, tipos, reglas, plantillas, reglamento] = await Promise.all([
+  const [consultorio, tarifas, { duracion, tramos, bloqueos }, tipos, reglas, plantillas, reglamento, plantillasAnamnesis] = await Promise.all([
     obtenerConsultorio(),
     listarTodasLasTarifas(),
     obtenerHorario(),
@@ -42,6 +45,7 @@ export default async function Pagina({ searchParams }: PageProps<"/config">) {
     obtenerReglas(),
     listarPlantillas(),
     obtenerReglamento(),
+    listarPlantillasAnamnesis(),
   ]);
 
   return (
@@ -115,6 +119,17 @@ export default async function Pagina({ searchParams }: PageProps<"/config">) {
             id: "mensajes",
             titulo: "Mensajes",
             contenido: <TabMensajes plantillas={plantillas} guardar={guardarPlantilla} />,
+          },
+          {
+            id: "anamnesis",
+            titulo: "Anamnesis",
+            contenido: (
+              <TabAnamnesis
+                plantillas={plantillasAnamnesis}
+                guardar={guardarPlantillaAnamnesis}
+                cambiarActiva={cambiarActivaPlantillaAnamnesis}
+              />
+            ),
           },
           {
             id: "reglamento",
