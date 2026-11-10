@@ -69,8 +69,9 @@ export function Menu({ ruta = "", pendientes = 0 }: { ruta?: string; pendientes?
         </ul>
       </nav>
 
-      <nav aria-label="Menú" className="hidden w-60 shrink-0 flex-col border-r p-3 md:flex print:hidden">
-        <ul className="flex flex-1 flex-col gap-1">
+      {/* Fijo a la altura de la pantalla: "Salir" queda siempre abajo a la izquierda, aunque la página sea larga. */}
+      <nav aria-label="Menú" className="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col border-r p-3 md:flex print:hidden">
+        <ul className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto">
           {SECCIONES.map((s) => {
             const Icono = ICONOS[s.href];
             const activo = seccionActiva(ruta, s.href);

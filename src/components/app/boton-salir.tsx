@@ -14,6 +14,7 @@ export function BotonSalir({ className }: { className?: string }) {
   const [saliendo, iniciar] = useTransition();
 
   function cerrarSesion() {
+    if (!window.confirm("¿Cerrar sesión? Para volver a entrar vas a necesitar tu email y contraseña.")) return;
     iniciar(async () => {
       try {
         await salir();
