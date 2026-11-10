@@ -1,8 +1,9 @@
 # Supabase: variables, migraciones y tipos
 
-Proyectos: `pruebas` (ref `onwdydztprleaijfnycr`, ya tiene las migraciones 0001 a 0014).
+Proyectos: `pruebas 2` (ref `qkealdntgauypchcznrx`, ya tiene las migraciones 0001 a 0014). El viejo `pruebas`
+(ref `onwdydztprleaijfnycr`, Oregón) quedó pausado el 9/11/2026 tras migrar a São Paulo; no usarlo.
 Para confirmarlo: `npx supabase migration list` (columnas Local y Remote iguales).
-`pruebas` está en la región Oregón (`us-west-2`). `produccion` se crea en la semana 8 en la región
+`pruebas 2` está en São Paulo (`sa-east-1`). `produccion` se crea en la semana 8 en la región
 **Ohio (`us-east-2`)**, plan Pro: la misma región que las funciones de Netlify (ver sección 6).
 
 ## 1. Variables en tu compu (`.env.local`)
@@ -41,7 +42,7 @@ Reglas para que las pantallas sean rápidas:
 ## 4. CLI de Supabase (una vez por compu)
 ```bash
 npx supabase login
-npx supabase link --project-ref onwdydztprleaijfnycr
+npx supabase link --project-ref qkealdntgauypchcznrx
 ```
 
 ## 5. Cambios de base
@@ -60,7 +61,7 @@ la ve como una migración desconocida y deja de funcionar.
 ```bash
 npx supabase link --project-ref <ref-de-produccion>
 npm run db:push
-npx supabase link --project-ref onwdydztprleaijfnycr
+npx supabase link --project-ref qkealdntgauypchcznrx
 ```
 (El último paso vuelve a dejar vinculado `pruebas`.)
 
@@ -75,8 +76,8 @@ npx supabase link --project-ref onwdydztprleaijfnycr
 - Los datos quedan guardados en Estados Unidos. Si algún día hace falta tenerlos en Sudamérica, hay
   que mover **las dos cosas juntas**: Netlify a São Paulo (plan pago o pedido a soporte) y la base a
   `sa-east-1` (proyecto nuevo, porque la región de un proyecto no se cambia).
-- `pruebas` queda en Oregón (`us-west-2`): no vale la pena moverla. Por eso `npm run dev` desde
-  Paraguay es más lento que la app publicada (cada consulta va de Asunción a Oregón y vuelve).
+- El 9/11/2026 la base de pruebas se movió a São Paulo (`pruebas 2`): `npm run dev` desde Paraguay
+  queda más rápido, pero la app publicada en Netlify (Ohio) queda más lenta contra esta base.
 - Claves JWT: `pruebas` ya firma con **ECC (P-256)** (Settings > JWT Keys), así la sesión se verifica
   en el servidor sin consultar a Supabase. Crear `produccion` directamente con claves nuevas.
 
@@ -109,3 +110,12 @@ Cómo funciona:
   | Mismo navegador, usado hace menos de 24 h | Nada |
   | Mismo navegador, después de Salir o de 24 h sin uso | Email + contraseña |
   | Navegador nuevo, o pasaron 30 días desde el último código | Email + contraseña + código |
+
+## 7. Migración a `pruebas 2` (9/11/2026): qué hacer en cada compu
+1. En `.env.local` cambiar los valores de `NEXT_PUBLIC_SUPABASE_URL`
+   (`https://qkealdntgauypchcznrx.supabase.co`), `NEXT_PUBLIC_SUPABASE_ANON_KEY` (publishable key) y
+   `SUPABASE_SERVICE_ROLE_KEY` (secret key). Las keys están en el panel de `pruebas 2` → Project Settings → API Keys.
+2. `npx supabase login` y `npx supabase link --project-ref qkealdntgauypchcznrx`.
+3. Skills de Supabase para Claude Code: `npx skills experimental_install` (lee `skills-lock.json`).
+4. Reiniciar Claude Code para que el MCP de `.mcp.json` apunte al proyecto nuevo.
+Netlify (Site configuration → Environment variables, mismas 3 variables + redeploy) lo actualiza una sola persona.

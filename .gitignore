@@ -30,3 +30,9 @@ supabase/.temp/
 .DS_Store
 *.pem
 npm-debug.log*
+
+# respaldos locales de la base (migración de proyecto)
+/backup/
+
+# accesos directos de skills: apuntan a rutas de cada compu (se recrean con npx skills add)
+/.claude/skills/
