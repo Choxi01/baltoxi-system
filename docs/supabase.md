@@ -1,6 +1,6 @@
 # Supabase: variables, migraciones y tipos
 
-Proyectos: `pruebas 2` (ref `qkealdntgauypchcznrx`, ya tiene las migraciones 0001 a 0015). El viejo `pruebas`
+Proyectos: `pruebas 2` (ref `qkealdntgauypchcznrx`, ya tiene las migraciones 0001 a 0016). El viejo `pruebas`
 (ref `onwdydztprleaijfnycr`, Oregón) quedó pausado el 9/11/2026 tras migrar a São Paulo; no usarlo.
 Para confirmarlo: `npx supabase migration list` (columnas Local y Remote iguales).
 `pruebas 2` está en São Paulo (`sa-east-1`). `produccion` se crea en la semana 8 en la región

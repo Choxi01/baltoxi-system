@@ -6,7 +6,7 @@ import { connection } from "next/server";
 import { cache } from "react";
 
 import { crearClienteServidor } from "@/lib/supabase/servidor";
-import { RUTA_CODIGO, RUTA_INGRESAR, sesionVerificada } from "./acceso";
+import { RUTA_CODIGO, RUTA_INGRESAR, RUTA_PEDIR_CODIGO, sesionVerificada } from "./acceso";
 import { COOKIE_SESION_CONFIANZA } from "./dispositivo";
 
 // Verificaciones de sesión del lado del servidor. El proxy ya redirige, pero
@@ -29,6 +29,13 @@ export const exigirSesionCompleta = cache(async () => {
   if (!claims) redirect(RUTA_INGRESAR);
   const marca = (await cookies()).get(COOKIE_SESION_CONFIANZA)?.value;
   if (!sesionVerificada(claims, marca)) redirect(RUTA_CODIGO);
+  // Sin código, entró solo por la marca de confianza: confirmar con la base, que es
+  // la que decide qué datos se ven. Si no coinciden, la app se vería vacía y
+  // mandaría a crear otro consultorio.
+  if (claims.aal !== "aal2") {
+    const { data: verificada } = await supabase.rpc("sesion_verificada");
+    if (!verificada) redirect(RUTA_PEDIR_CODIGO);
+  }
   return { userId: claims.sub, supabase };
 });
 

@@ -28,6 +28,15 @@ describe("requisitoDeRuta", () => {
   });
 });
 
+describe("decidirAcceso: pedir el código de nuevo", () => {
+  it("con la marca de confianza no lo desvía a Hoy (si no, quedaría en un bucle)", () => {
+    expect(decidirAcceso("/codigo/pedir", completa)).toEqual({ tipo: "seguir" });
+  });
+  it("sin sesión, al login", () => {
+    expect(decidirAcceso("/codigo/pedir", sinSesion)).toEqual({ tipo: "redirigir", a: "/ingresar" });
+  });
+});
+
 describe("decidirAcceso", () => {
   it("sin sesión: deja ver lo público y manda el resto al login", () => {
     expect(decidirAcceso("/ingresar", sinSesion)).toEqual({ tipo: "seguir" });

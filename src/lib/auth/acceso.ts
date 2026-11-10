@@ -9,6 +9,8 @@ export type Requisito =
 export const RUTA_INGRESAR = "/ingresar";
 export const RUTA_CODIGO = "/codigo";
 export const RUTA_INICIO = "/hoy";
+/** Borra la marca de confianza que la base ya no reconoce y manda al código (ver servidor.ts). */
+export const RUTA_PEDIR_CODIGO = "/codigo/pedir";
 
 function empiezaCon(ruta: string, base: string): boolean {
   return ruta === base || ruta.startsWith(base + "/");
@@ -54,8 +56,9 @@ export function decidirAcceso(ruta: string, sesion: EstadoSesion, esNavegacion =
   const requisito = requisitoDeRuta(ruta);
   const completo = sesion.logueado && sesion.verificada;
 
-  // Ya entró del todo: el login y el código no tienen sentido.
-  if (esNavegacion && completo && (empiezaCon(ruta, RUTA_INGRESAR) || requisito === "sesion")) {
+  // Ya entró del todo: el login y el código no tienen sentido. Salvo RUTA_PEDIR_CODIGO:
+  // ahí se llega justamente cuando la marca dice "completa" pero la base no.
+  if (esNavegacion && completo && ruta !== RUTA_PEDIR_CODIGO && (empiezaCon(ruta, RUTA_INGRESAR) || requisito === "sesion")) {
     return { tipo: "redirigir", a: RUTA_INICIO };
   }
   if (requisito === "publico") return { tipo: "seguir" };
