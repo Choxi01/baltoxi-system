@@ -118,4 +118,4 @@ Cómo funciona:
 2. `npx supabase login` y `npx supabase link --project-ref qkealdntgauypchcznrx`.
 3. Skills de Supabase para Claude Code: `npx skills experimental_install` (lee `skills-lock.json`).
 4. Reiniciar Claude Code para que el MCP de `.mcp.json` apunte al proyecto nuevo.
-Netlify ya tiene las variables nuevas: no hay que tocarlo.
+Netlify (Site configuration → Environment variables, mismas 3 variables + redeploy) lo actualiza una sola persona.
